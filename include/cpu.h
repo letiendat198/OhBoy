@@ -3,9 +3,7 @@
 #include "cartridge.h"
 #include "logger.h"
 #include "memory.h"
-
-#define u_char unsigned char
-#define u_short unsigned short
+#include "types.h"
 
 class Cpu{
     private:
@@ -32,6 +30,7 @@ class Cpu{
         Memory memory;
         unsigned char opskip;
         unsigned char mcycle;
+        unsigned char cycle_count=0;
         void init();
         bool tick();
         void exec();
@@ -52,6 +51,23 @@ class Cpu{
         void dec8(u_char &a);
         void dec16(u_char &a, u_char &b);
         void dec_hl();
+
+        void add8(u_char &a, u_char b);
+        void adc8(u_char &a, u_char b);
+
+        void sub8(u_char &a, u_char b);
+        void sbc8(u_char &a, u_char b);
+
+        void and8(u_char &a, u_char b);
+        void or8(u_char &a, u_char b);
+        void xor8(u_char &a, u_char b);
+        void cp8(u_char a, u_char b);
+
+        void jr(u_char e);
+        void jrc(u_char flag, u_char e);
+
+        void jp(u_short e);
+        void jpc(u_char flag, u_short e);
 
         void op_00(); void op_01(); void op_02(); void op_03(); void op_04(); void op_05(); void op_06(); void op_07(); void op_08(); void op_09(); void op_0A(); void op_0B(); void op_0C(); void op_0D(); void op_0E(); void op_0F(); 
         void op_10(); void op_11(); void op_12(); void op_13(); void op_14(); void op_15(); void op_16(); void op_17(); void op_18(); void op_19(); void op_1A(); void op_1B(); void op_1C(); void op_1D(); void op_1E(); void op_1F(); 

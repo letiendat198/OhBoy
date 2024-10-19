@@ -1,4 +1,5 @@
 #include "cpu.h"
+#include "util.h"
 
 #include <iomanip>
 #include <iostream>
@@ -71,14 +72,18 @@ void Cpu::exec() {
 
 bool Cpu::tick(){
     // cout<<"Current PC: "<<(int)pc<<" Remaining M-Cycle: "<<(int) mcycle<<" OP skip: "<<(int)opskip<<endl;
-    if (mcycle) {
-        mcycle--;
-        return true;
-    }
     printf("%.4X %.2X\n", pc, memory.address[pc]);
-    pc+=opskip;
     (this->*jump_table[memory.address[pc]])();
-    logger.write(craft_debug());
+    cycle_count++;
+
+    if (mcycle == 1 || cycle_count == mcycle) {
+        logger.write(craft_debug());
+        exec_flag = 1;
+        (this->*jump_table[memory.address[pc]])();
+        pc+=opskip;
+        exec_flag = 0;
+        cycle_count = 0;
+    }
     return true;
 }
 
@@ -91,7 +96,7 @@ u_char Cpu::read8_mem(u_short addr) {
 }
 
 u_short Cpu::read16_mem(u_short addr) {
-    return memory.address[addr] << 8 | memory.address[addr+1];
+    return memory.address[addr+1] << 8 | memory.address[addr];
 }
 
 void Cpu::ld8_imm(u_char &a, u_char imm) {
@@ -117,7 +122,7 @@ void Cpu::inc16(u_char &a, u_char &b) {
     u_short t = a << 8 | b;
     t++;
     a = t >> 8;
-    b = t & 0xF;
+    b = t & 0xFF;
 }
 
 void Cpu::inc_hl() {
@@ -145,7 +150,7 @@ void Cpu::dec16(u_char &a, u_char &b) {
     u_short t = a << 8 | b;
     t--;
     a = t >> 8;
-    b = t & 0xF;
+    b = t & 0xFF;
 }
 
 void Cpu::dec_hl() {
@@ -158,4 +163,100 @@ void Cpu::dec_hl() {
     z_flag = data ? 0 : 1;
     n_flag = 1;
 }
+
+void Cpu::add8(u_char &a, u_char b) {
+    auto [result, carry] = SafeOperations::safe_add(a , b);
+    a = result;
+    n_flag = 0;
+    z_flag = a ? 0 : 1;
+    c_flag  = carry;
+    h_flag = ((a & 0xF) == 0) ? 1 : 0;
+}
+
+void Cpu::adc8(u_char&a, u_char b) {
+    auto [result_c, carry_c] = SafeOperations::safe_add(b,c_flag);
+    auto [result, carry] = SafeOperations::safe_add(a, result_c);
+
+    n_flag = 0;
+    z_flag = a ? 0 : 1;
+    c_flag  = carry > carry_c ? carry : carry_c;
+    h_flag = ((a & 0xF) == 0) ? 1 : 0;
+}
+
+
+void Cpu::sub8(u_char &a, u_char b) {
+    auto [result, carry] = SafeOperations::safe_sub(a, b);
+    a = result;
+    n_flag = 1;
+    z_flag = a ? 0 : 1;
+    c_flag  = carry;
+    h_flag = ((a & 0xF) == 0) ? 1 : 0;
+}
+
+void Cpu::sbc8(u_char &a, u_char b) { // A - B - C
+    auto [result_c, carry_c] = SafeOperations::safe_sub(a,b);
+    auto [result, carry] = SafeOperations::safe_sub(result_c, c_flag);
+
+    n_flag = 1;
+    z_flag = a ? 0 : 1;
+    c_flag  = carry > carry_c ? carry : carry_c;
+    h_flag = ((a & 0xF) == 0) ? 1 : 0;
+}
+
+void Cpu::and8(u_char &a, u_char b) {
+    a = a & b;
+
+    z_flag = a ? 0 : 1;
+    n_flag = 0;
+    h_flag = 1;
+    c_flag = 0;
+}
+
+void Cpu::or8(u_char &a, u_char b) {
+    a = a | b;
+    z_flag = a ? 0 : 1;
+    n_flag = 0;
+    h_flag = 0;
+    c_flag = 0;
+}
+void Cpu::xor8(u_char &a, u_char b) {
+    a = a ^ b;
+    z_flag = a ? 0 : 1;
+    n_flag = 0;
+    h_flag = 0;
+    c_flag = 0;
+}
+
+void Cpu::cp8(u_char a, u_char b) {
+    auto [result, carry] = SafeOperations::safe_sub(a, b);
+
+    n_flag = 1;
+    z_flag = a ? 0 : 1;
+    c_flag  = carry;
+    h_flag = ((a & 0xF) == 0) ? 1 : 0;
+}
+
+void Cpu::jr(u_char e) {
+    pc += (signed char) (e);
+}
+
+void Cpu::jrc(u_char flag, u_char e) {
+    if (flag) pc += (signed char) (e);
+}
+
+void Cpu::jp(u_short e) {
+    opskip = 0;
+    pc =  e;
+}
+
+void Cpu::jpc(u_char flag, u_short e) {
+    opskip = 0;
+    if (flag) pc = e;
+}
+
+
+
+
+
+
 

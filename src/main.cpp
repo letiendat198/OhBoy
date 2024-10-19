@@ -28,6 +28,7 @@ int main(){
         cout<<"Loading first part of cartridge into memory"<<endl;
         cpu.memory.init();
         copy(cpu.cartridge.address+0,cpu.cartridge.address+0x3fff, cpu.memory.address); //SEGFAULT. Do not try to use sizeof because that the size of the pointer itself
+        copy(cpu.cartridge.address+0x4000,cpu.cartridge.address+0x7fff, cpu.memory.address+0x4000);
         cout<<"Loaded cartridge into memory bus"<<endl;
     }
     cpu.exec();

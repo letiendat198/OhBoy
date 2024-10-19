@@ -8,6 +8,9 @@ add_executable(OhBoy src/main.cpp
         src/opcode.cpp
         src/memory.cpp
         src/cartridge.cpp
-        src/logger.cpp)
+        src/logger.cpp
+        include/util.h
+        lib/util.cpp
+        include/types.h)
 
 include_directories("include")
