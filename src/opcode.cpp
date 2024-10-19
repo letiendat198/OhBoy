@@ -1185,6 +1185,9 @@ void Cpu::op_BF() {
     opskip = 1;
 } // CP A A
 void Cpu::op_C0() {
+    mcycle=3;
+    opskip=1;
+    if(exec_flag) retc(!z_flag); // May override opskip if jump
 } // RET NZ
 void Cpu::op_C1() {
 } // POP BC
@@ -1199,6 +1202,9 @@ void Cpu::op_C3() {
     if(exec_flag) jp(read16_mem(pc+1)); // May override opskip if jump
 } // JP a16
 void Cpu::op_C4() {
+    mcycle=2;
+    opskip=3;
+    if(exec_flag) callc(!z_flag); // May override opskip if jump
 } // CALL NZ a16
 void Cpu::op_C5() {
 } // PUSH BC
@@ -1210,10 +1216,19 @@ void Cpu::op_C6() {
     opskip = 2;
 } // ADD A n8
 void Cpu::op_C7() {
+    mcycle=4;
+    opskip=1;
+    if(exec_flag) rst(0x00); // May override opskip if jump
 } // RST $00
 void Cpu::op_C8() {
+    mcycle=3;
+    opskip=1;
+    if(exec_flag) retc(z_flag); // May override opskip if jump
 } // RET Z
 void Cpu::op_C9() {
+    mcycle=4;
+    opskip=1;
+    if(exec_flag) ret(); // May override opskip if jump
 } // RET
 void Cpu::op_CA() {
     mcycle=2;
@@ -1223,8 +1238,14 @@ void Cpu::op_CA() {
 void Cpu::op_CB() {
 } // PREFIX
 void Cpu::op_CC() {
+    mcycle=2;
+    opskip=3;
+    if(exec_flag) callc(z_flag); // May override opskip if jump
 } // CALL Z a16
 void Cpu::op_CD() {
+    mcycle=6;
+    opskip=3;
+    if(exec_flag) call(); // May override opskip if jump
 } // CALL a16
 void Cpu::op_CE() {
     if(exec_flag) {
@@ -1234,8 +1255,14 @@ void Cpu::op_CE() {
     opskip = 2;
 } // ADC A n8
 void Cpu::op_CF() {
+    mcycle=4;
+    opskip=1;
+    if(exec_flag) rst(0x08); // May override opskip if jump
 } // RST $08
 void Cpu::op_D0() {
+    mcycle=3;
+    opskip=1;
+    if(exec_flag) retc(!c_flag); // May override opskip if jump
 } // RET NC
 void Cpu::op_D1() {
 } // POP DE
@@ -1247,6 +1274,9 @@ void Cpu::op_D2() {
 void Cpu::op_D3() {
 } // ILLEGAL_D3
 void Cpu::op_D4() {
+    mcycle=2;
+    opskip=3;
+    if(exec_flag) callc(!c_flag); // May override opskip if jump
 } // CALL NC a16
 void Cpu::op_D5() {
 } // PUSH DE
@@ -1258,8 +1288,14 @@ void Cpu::op_D6() {
     opskip = 2;
 } // SUB A n8
 void Cpu::op_D7() {
+    mcycle=4;
+    opskip=1;
+    if(exec_flag) rst(0x10); // May override opskip if jump
 } // RST $10
 void Cpu::op_D8() {
+    mcycle=3;
+    opskip=1;
+    if(exec_flag) retc(c_flag); // May override opskip if jump
 } // RET C
 void Cpu::op_D9() {
 } // RETI
@@ -1271,6 +1307,9 @@ void Cpu::op_DA() {
 void Cpu::op_DB() {
 } // ILLEGAL_DB
 void Cpu::op_DC() {
+    mcycle=2;
+    opskip=3;
+    if(exec_flag) callc(c_flag); // May override opskip if jump
 } // CALL C a16
 void Cpu::op_DD() {
 } // ILLEGAL_DD
@@ -1282,6 +1321,9 @@ void Cpu::op_DE() {
     opskip = 2;
 } // SBC A n8
 void Cpu::op_DF() {
+    mcycle=4;
+    opskip=1;
+    if(exec_flag) rst(0x18); // May override opskip if jump
 } // RST $18
 void Cpu::op_E0() {
 } // LDH [a8] A
@@ -1304,6 +1346,9 @@ void Cpu::op_E6() {
     opskip = 2;
 } // AND A n8
 void Cpu::op_E7() {
+    mcycle=4;
+    opskip=1;
+    if(exec_flag) rst(0x20); // May override opskip if jump
 } // RST $20
 void Cpu::op_E8() {
 } // ADD SP e8
@@ -1328,6 +1373,9 @@ void Cpu::op_EE() {
     opskip = 2;
 } // XOR A n8
 void Cpu::op_EF() {
+    mcycle=4;
+    opskip=1;
+    if(exec_flag) rst(0x28); // May override opskip if jump
 } // RST $28
 void Cpu::op_F0() {
 } // LDH A [a8]
@@ -1349,6 +1397,9 @@ void Cpu::op_F6() {
     opskip = 2;
 } // OR A n8
 void Cpu::op_F7() {
+    mcycle=4;
+    opskip=1;
+    if(exec_flag) rst(0x30); // May override opskip if jump
 } // RST $30
 void Cpu::op_F8() {
 } // LD HL SP e8
@@ -1370,4 +1421,7 @@ void Cpu::op_FE() {
     opskip = 2;
 } // CP A n8
 void Cpu::op_FF() {
+    mcycle=4;
+    opskip=1;
+    if(exec_flag) rst(0x38); // May override opskip if jump
 } // RST $38

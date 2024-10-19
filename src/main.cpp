@@ -10,7 +10,7 @@ int main(){
     cpu.init();
     cout<<"Starting GB emulator"<<endl;
 
-    FILE *f = fopen("../roms/06-ld r,r.gb", "rb");
+    FILE *f = fopen("../roms/07-jr,jp,call,ret,rst.gb", "rb");
     fseek(f, 0L, SEEK_END);
     int size = ftell(f);
     cout<<"ROM size: "<<size<<endl;

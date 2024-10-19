@@ -250,9 +250,48 @@ void Cpu::jp(u_short e) {
 }
 
 void Cpu::jpc(u_char flag, u_short e) {
-    opskip = 0;
-    if (flag) pc = e;
+    if (flag) {
+        opskip = 0;
+        pc = e;
+    }
 }
+
+void Cpu::call() {
+    write8_mem(--sp, pc+3 >> 8);
+    write8_mem(--sp, pc+3 & 0xFF);
+    pc = read16_mem(pc+1);
+    opskip = 0;
+}
+
+void Cpu::callc(u_char flag) {
+    if(flag) {
+        write8_mem(--sp, pc+3 >> 8);
+        write8_mem(--sp, pc+3 & 0xFF);
+        pc = read16_mem(pc+1);
+        opskip = 0;
+    }
+}
+
+void Cpu::ret() {
+    pc = read8_mem(sp++) | read8_mem(sp++) << 8;
+    opskip = 0;
+}
+
+void Cpu::retc(u_char flag) {
+    if (flag) {
+        pc = read8_mem(sp++) | read8_mem(sp++) << 8;
+        opskip = 0;
+    }
+}
+
+void Cpu::rst(u_char n) {
+    write8_mem(--sp, pc+3 >> 8);
+    write8_mem(--sp, pc+3 & 0xFF);
+    pc = 0x00 << 8 | n;
+    opskip = 0;
+}
+
+
 
 
 
