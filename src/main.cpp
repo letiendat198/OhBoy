@@ -1,12 +1,14 @@
+#define SDL_MAIN_HANDLED
 #include <iostream>
 #include <algorithm>
 #include "cpu.h"
+#include "debugger.h"
 
 using namespace std;
 
 Cpu cpu;
 
-int main(){
+int main(int, char **){
     cpu.init();
     cout<<"Starting GB emulator"<<endl;
 
@@ -31,6 +33,13 @@ int main(){
         copy(cpu.cartridge.address+0x4000,cpu.cartridge.address+0x7fff, cpu.memory.address+0x4000);
         cout<<"Loaded cartridge into memory bus"<<endl;
     }
-    cpu.exec();
+    Debugger debugger;
+    debugger.init();
+    while (!debugger.done) {
+        cpu.tick();
+        debugger.start();
+        debugger.ui();
+        debugger.render();
+    }
     return 0;
 }

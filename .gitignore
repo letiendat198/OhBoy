@@ -2,3 +2,4 @@ cmake-build-debug
 gameboy-doctor
 venv
 roms
+deps/SDL2

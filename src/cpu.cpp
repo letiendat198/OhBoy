@@ -6,42 +6,6 @@
 #include <sstream>
 using namespace std;
 
-void (Cpu::*jump_table[])() =
-        {Cpu::op_00, Cpu::op_01, Cpu::op_02, Cpu::op_03, Cpu::op_04, Cpu::op_05, Cpu::op_06, Cpu::op_07, Cpu::op_08, Cpu::op_09, Cpu::op_0A, Cpu::op_0B, Cpu::op_0C, Cpu::op_0D, Cpu::op_0E, Cpu::op_0F,
-        Cpu::op_10, Cpu::op_11, Cpu::op_12, Cpu::op_13, Cpu::op_14, Cpu::op_15, Cpu::op_16, Cpu::op_17, Cpu::op_18, Cpu::op_19, Cpu::op_1A, Cpu::op_1B, Cpu::op_1C, Cpu::op_1D, Cpu::op_1E, Cpu::op_1F,
-        Cpu::op_20, Cpu::op_21, Cpu::op_22, Cpu::op_23, Cpu::op_24, Cpu::op_25, Cpu::op_26, Cpu::op_27, Cpu::op_28, Cpu::op_29, Cpu::op_2A, Cpu::op_2B, Cpu::op_2C, Cpu::op_2D, Cpu::op_2E, Cpu::op_2F,
-        Cpu::op_30, Cpu::op_31, Cpu::op_32, Cpu::op_33, Cpu::op_34, Cpu::op_35, Cpu::op_36, Cpu::op_37, Cpu::op_38, Cpu::op_39, Cpu::op_3A, Cpu::op_3B, Cpu::op_3C, Cpu::op_3D, Cpu::op_3E, Cpu::op_3F,
-        Cpu::op_40, Cpu::op_41, Cpu::op_42, Cpu::op_43, Cpu::op_44, Cpu::op_45, Cpu::op_46, Cpu::op_47, Cpu::op_48, Cpu::op_49, Cpu::op_4A, Cpu::op_4B, Cpu::op_4C, Cpu::op_4D, Cpu::op_4E, Cpu::op_4F,
-        Cpu::op_50, Cpu::op_51, Cpu::op_52, Cpu::op_53, Cpu::op_54, Cpu::op_55, Cpu::op_56, Cpu::op_57, Cpu::op_58, Cpu::op_59, Cpu::op_5A, Cpu::op_5B, Cpu::op_5C, Cpu::op_5D, Cpu::op_5E, Cpu::op_5F,
-        Cpu::op_60, Cpu::op_61, Cpu::op_62, Cpu::op_63, Cpu::op_64, Cpu::op_65, Cpu::op_66, Cpu::op_67, Cpu::op_68, Cpu::op_69, Cpu::op_6A, Cpu::op_6B, Cpu::op_6C, Cpu::op_6D, Cpu::op_6E, Cpu::op_6F,
-        Cpu::op_70, Cpu::op_71, Cpu::op_72, Cpu::op_73, Cpu::op_74, Cpu::op_75, Cpu::op_76, Cpu::op_77, Cpu::op_78, Cpu::op_79, Cpu::op_7A, Cpu::op_7B, Cpu::op_7C, Cpu::op_7D, Cpu::op_7E, Cpu::op_7F,
-        Cpu::op_80, Cpu::op_81, Cpu::op_82, Cpu::op_83, Cpu::op_84, Cpu::op_85, Cpu::op_86, Cpu::op_87, Cpu::op_88, Cpu::op_89, Cpu::op_8A, Cpu::op_8B, Cpu::op_8C, Cpu::op_8D, Cpu::op_8E, Cpu::op_8F,
-        Cpu::op_90, Cpu::op_91, Cpu::op_92, Cpu::op_93, Cpu::op_94, Cpu::op_95, Cpu::op_96, Cpu::op_97, Cpu::op_98, Cpu::op_99, Cpu::op_9A, Cpu::op_9B, Cpu::op_9C, Cpu::op_9D, Cpu::op_9E, Cpu::op_9F,
-        Cpu::op_A0, Cpu::op_A1, Cpu::op_A2, Cpu::op_A3, Cpu::op_A4, Cpu::op_A5, Cpu::op_A6, Cpu::op_A7, Cpu::op_A8, Cpu::op_A9, Cpu::op_AA, Cpu::op_AB, Cpu::op_AC, Cpu::op_AD, Cpu::op_AE, Cpu::op_AF,
-        Cpu::op_B0, Cpu::op_B1, Cpu::op_B2, Cpu::op_B3, Cpu::op_B4, Cpu::op_B5, Cpu::op_B6, Cpu::op_B7, Cpu::op_B8, Cpu::op_B9, Cpu::op_BA, Cpu::op_BB, Cpu::op_BC, Cpu::op_BD, Cpu::op_BE, Cpu::op_BF,
-        Cpu::op_C0, Cpu::op_C1, Cpu::op_C2, Cpu::op_C3, Cpu::op_C4, Cpu::op_C5, Cpu::op_C6, Cpu::op_C7, Cpu::op_C8, Cpu::op_C9, Cpu::op_CA, Cpu::op_CB, Cpu::op_CC, Cpu::op_CD, Cpu::op_CE, Cpu::op_CF,
-        Cpu::op_D0, Cpu::op_D1, Cpu::op_D2, Cpu::op_D3, Cpu::op_D4, Cpu::op_D5, Cpu::op_D6, Cpu::op_D7, Cpu::op_D8, Cpu::op_D9, Cpu::op_DA, Cpu::op_DB, Cpu::op_DC, Cpu::op_DD, Cpu::op_DE, Cpu::op_DF,
-        Cpu::op_E0, Cpu::op_E1, Cpu::op_E2, Cpu::op_E3, Cpu::op_E4, Cpu::op_E5, Cpu::op_E6, Cpu::op_E7, Cpu::op_E8, Cpu::op_E9, Cpu::op_EA, Cpu::op_EB, Cpu::op_EC, Cpu::op_ED, Cpu::op_EE, Cpu::op_EF,
-        Cpu::op_F0, Cpu::op_F1, Cpu::op_F2, Cpu::op_F3, Cpu::op_F4, Cpu::op_F5, Cpu::op_F6, Cpu::op_F7, Cpu::op_F8, Cpu::op_F9, Cpu::op_FA, Cpu::op_FB, Cpu::op_FC, Cpu::op_FD, Cpu::op_FE, Cpu::op_FF};
-
-void (Cpu::*jump_table_prefixed[])() =
-        {Cpu::op_CB00, Cpu::op_CB01, Cpu::op_CB02, Cpu::op_CB03, Cpu::op_CB04, Cpu::op_CB05, Cpu::op_CB06, Cpu::op_CB07, Cpu::op_CB08, Cpu::op_CB09, Cpu::op_CB0A, Cpu::op_CB0B, Cpu::op_CB0C, Cpu::op_CB0D, Cpu::op_CB0E, Cpu::op_CB0F,
-        Cpu::op_CB10, Cpu::op_CB11, Cpu::op_CB12, Cpu::op_CB13, Cpu::op_CB14, Cpu::op_CB15, Cpu::op_CB16, Cpu::op_CB17, Cpu::op_CB18, Cpu::op_CB19, Cpu::op_CB1A, Cpu::op_CB1B, Cpu::op_CB1C, Cpu::op_CB1D, Cpu::op_CB1E, Cpu::op_CB1F,
-        Cpu::op_CB20, Cpu::op_CB21, Cpu::op_CB22, Cpu::op_CB23, Cpu::op_CB24, Cpu::op_CB25, Cpu::op_CB26, Cpu::op_CB27, Cpu::op_CB28, Cpu::op_CB29, Cpu::op_CB2A, Cpu::op_CB2B, Cpu::op_CB2C, Cpu::op_CB2D, Cpu::op_CB2E, Cpu::op_CB2F,
-        Cpu::op_CB30, Cpu::op_CB31, Cpu::op_CB32, Cpu::op_CB33, Cpu::op_CB34, Cpu::op_CB35, Cpu::op_CB36, Cpu::op_CB37, Cpu::op_CB38, Cpu::op_CB39, Cpu::op_CB3A, Cpu::op_CB3B, Cpu::op_CB3C, Cpu::op_CB3D, Cpu::op_CB3E, Cpu::op_CB3F,
-        Cpu::op_CB40, Cpu::op_CB41, Cpu::op_CB42, Cpu::op_CB43, Cpu::op_CB44, Cpu::op_CB45, Cpu::op_CB46, Cpu::op_CB47, Cpu::op_CB48, Cpu::op_CB49, Cpu::op_CB4A, Cpu::op_CB4B, Cpu::op_CB4C, Cpu::op_CB4D, Cpu::op_CB4E, Cpu::op_CB4F,
-        Cpu::op_CB50, Cpu::op_CB51, Cpu::op_CB52, Cpu::op_CB53, Cpu::op_CB54, Cpu::op_CB55, Cpu::op_CB56, Cpu::op_CB57, Cpu::op_CB58, Cpu::op_CB59, Cpu::op_CB5A, Cpu::op_CB5B, Cpu::op_CB5C, Cpu::op_CB5D, Cpu::op_CB5E, Cpu::op_CB5F,
-        Cpu::op_CB60, Cpu::op_CB61, Cpu::op_CB62, Cpu::op_CB63, Cpu::op_CB64, Cpu::op_CB65, Cpu::op_CB66, Cpu::op_CB67, Cpu::op_CB68, Cpu::op_CB69, Cpu::op_CB6A, Cpu::op_CB6B, Cpu::op_CB6C, Cpu::op_CB6D, Cpu::op_CB6E, Cpu::op_CB6F,
-        Cpu::op_CB70, Cpu::op_CB71, Cpu::op_CB72, Cpu::op_CB73, Cpu::op_CB74, Cpu::op_CB75, Cpu::op_CB76, Cpu::op_CB77, Cpu::op_CB78, Cpu::op_CB79, Cpu::op_CB7A, Cpu::op_CB7B, Cpu::op_CB7C, Cpu::op_CB7D, Cpu::op_CB7E, Cpu::op_CB7F,
-        Cpu::op_CB80, Cpu::op_CB81, Cpu::op_CB82, Cpu::op_CB83, Cpu::op_CB84, Cpu::op_CB85, Cpu::op_CB86, Cpu::op_CB87, Cpu::op_CB88, Cpu::op_CB89, Cpu::op_CB8A, Cpu::op_CB8B, Cpu::op_CB8C, Cpu::op_CB8D, Cpu::op_CB8E, Cpu::op_CB8F,
-        Cpu::op_CB90, Cpu::op_CB91, Cpu::op_CB92, Cpu::op_CB93, Cpu::op_CB94, Cpu::op_CB95, Cpu::op_CB96, Cpu::op_CB97, Cpu::op_CB98, Cpu::op_CB99, Cpu::op_CB9A, Cpu::op_CB9B, Cpu::op_CB9C, Cpu::op_CB9D, Cpu::op_CB9E, Cpu::op_CB9F,
-        Cpu::op_CBA0, Cpu::op_CBA1, Cpu::op_CBA2, Cpu::op_CBA3, Cpu::op_CBA4, Cpu::op_CBA5, Cpu::op_CBA6, Cpu::op_CBA7, Cpu::op_CBA8, Cpu::op_CBA9, Cpu::op_CBAA, Cpu::op_CBAB, Cpu::op_CBAC, Cpu::op_CBAD, Cpu::op_CBAE, Cpu::op_CBAF,
-        Cpu::op_CBB0, Cpu::op_CBB1, Cpu::op_CBB2, Cpu::op_CBB3, Cpu::op_CBB4, Cpu::op_CBB5, Cpu::op_CBB6, Cpu::op_CBB7, Cpu::op_CBB8, Cpu::op_CBB9, Cpu::op_CBBA, Cpu::op_CBBB, Cpu::op_CBBC, Cpu::op_CBBD, Cpu::op_CBBE, Cpu::op_CBBF,
-        Cpu::op_CBC0, Cpu::op_CBC1, Cpu::op_CBC2, Cpu::op_CBC3, Cpu::op_CBC4, Cpu::op_CBC5, Cpu::op_CBC6, Cpu::op_CBC7, Cpu::op_CBC8, Cpu::op_CBC9, Cpu::op_CBCA, Cpu::op_CBCB, Cpu::op_CBCC, Cpu::op_CBCD, Cpu::op_CBCE, Cpu::op_CBCF,
-        Cpu::op_CBD0, Cpu::op_CBD1, Cpu::op_CBD2, Cpu::op_CBD3, Cpu::op_CBD4, Cpu::op_CBD5, Cpu::op_CBD6, Cpu::op_CBD7, Cpu::op_CBD8, Cpu::op_CBD9, Cpu::op_CBDA, Cpu::op_CBDB, Cpu::op_CBDC, Cpu::op_CBDD, Cpu::op_CBDE, Cpu::op_CBDF,
-        Cpu::op_CBE0, Cpu::op_CBE1, Cpu::op_CBE2, Cpu::op_CBE3, Cpu::op_CBE4, Cpu::op_CBE5, Cpu::op_CBE6, Cpu::op_CBE7, Cpu::op_CBE8, Cpu::op_CBE9, Cpu::op_CBEA, Cpu::op_CBEB, Cpu::op_CBEC, Cpu::op_CBED, Cpu::op_CBEE, Cpu::op_CBEF,
-        Cpu::op_CBF0, Cpu::op_CBF1, Cpu::op_CBF2, Cpu::op_CBF3, Cpu::op_CBF4, Cpu::op_CBF5, Cpu::op_CBF6, Cpu::op_CBF7, Cpu::op_CBF8, Cpu::op_CBF9, Cpu::op_CBFA, Cpu::op_CBFB, Cpu::op_CBFC, Cpu::op_CBFD, Cpu::op_CBFE, Cpu::op_CBFF};
-
 void Cpu::init(){
     memory.init();
     a = 0x01;
@@ -78,14 +42,6 @@ std::string Cpu::craft_debug() {
     ss << std::setfill ('0') << std::setw(sizeof(u_char)*2) <<(int) read8_mem(pc+3);
     ss << "\n";
     return ss.str();
-}
-
-
-void Cpu::exec() {
-    while(true) {
-        tick();
-        // _sleep(1/1000000);
-    }
 }
 
 bool Cpu::tick(){
