@@ -11,6 +11,7 @@ add_executable(OhBoy src/main.cpp
         src/logger.cpp
         include/util.h
         lib/util.cpp
-        include/types.h)
+        include/types.h
+        src/opcode_prefixed.cpp)
 
 include_directories("include")
