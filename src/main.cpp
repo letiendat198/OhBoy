@@ -1,45 +1,38 @@
 #define SDL_MAIN_HANDLED
 #include <iostream>
 #include <algorithm>
-#include "cpu.h"
+#include <chrono>
+
 #include "debugger.h"
+#include "config.h"
 
 using namespace std;
 
-Cpu cpu;
-
 int main(int, char **){
-    cpu.init();
     cout<<"Starting GB emulator"<<endl;
 
-    FILE *f = fopen("../roms/07-jr,jp,call,ret,rst.gb", "rb");
-    fseek(f, 0L, SEEK_END);
-    int size = ftell(f);
-    cout<<"ROM size: "<<size<<endl;
-    if(size>0){
-        fseek(f, 0L, SEEK_SET);
-        unsigned char *buf = (unsigned char*)malloc(size);
-        fread(buf, size,1, f);
-        fclose(f);
+    bool cart_init = Cartridge::init("../roms/07-jr,jp,call,ret,rst.gb");
+    if (!cart_init) return -1;
 
-        cpu.cartridge.init(buf, size); //Never use sizeof(pointer) as it's always 8 bytes, the real malloc size is lost. Pass raw size
-        free(buf);
+    Cartridge::read_to_mem();
 
-        cout<<"Successfully load rom into cartridge"<<endl;
-
-        cout<<"Loading first part of cartridge into memory"<<endl;
-        cpu.memory.init();
-        copy(cpu.cartridge.address+0,cpu.cartridge.address+0x3fff, cpu.memory.address); //SEGFAULT. Do not try to use sizeof because that the size of the pointer itself
-        copy(cpu.cartridge.address+0x4000,cpu.cartridge.address+0x7fff, cpu.memory.address+0x4000);
-        cout<<"Loaded cartridge into memory bus"<<endl;
-    }
     Debugger debugger;
     debugger.init();
-    while (!debugger.done) {
-        cpu.tick();
-        debugger.start();
-        debugger.ui();
-        debugger.render();
+    int cycle = 0;
+    auto t1 = std::chrono::steady_clock::now();
+    while (!debugger.done){
+        cycle++;
+        debugger.tick_cpu();
+        if (cycle==CYCLE_PRE_FRAME) {
+            auto t2 = std::chrono::steady_clock::now(); // Capture render + cycle time
+            double elapse = chrono::duration<double, std::milli>(t2-t1).count();
+            if (elapse < MS_PER_FRAME) { // If still have some time left in this frame -> Sleep
+                _sleep(MS_PER_FRAME - elapse);
+            }
+            t1 = std::chrono::steady_clock::now(); // Capture time at the start of new frame
+            debugger.render();
+            cycle = 0;
+        }
     }
     return 0;
 }

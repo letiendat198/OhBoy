@@ -6,10 +6,11 @@ Logger::Logger() {
 }
 
 void Logger::write(std::string s) {
-    if(log.is_open()) {
-        log << s;
-    }
-    std::cout<<++line<<"\n";
+    // if(log.is_open()) {
+    //     log << s;
+    // }
+    // std::cout<<++line<<"\n";
+    ++line;
 }
 
 void Logger::close() {

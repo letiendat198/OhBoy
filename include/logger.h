@@ -11,8 +11,8 @@
 class Logger {
 private:
     std::ofstream log;
-    int line;
 public:
+    int line;
     Logger();
     void write(std::string s);
     void close();

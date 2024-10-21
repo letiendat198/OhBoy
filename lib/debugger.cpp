@@ -1,6 +1,9 @@
 #include "debugger.h"
 
 #include <cstdio>
+#include <format>
+
+ImVector<const char*> Debugger::debug_console;
 
 void Debugger::init() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
@@ -10,7 +13,7 @@ void Debugger::init() {
 
     // Create window with SDL_Renderer graphics context
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    window = SDL_CreateWindow("Dear ImGui SDL2+SDL_Renderer example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    window = SDL_CreateWindow("OhBoy Debugger", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
     if (window == nullptr)
     {
         printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
@@ -42,45 +45,134 @@ void Debugger::init() {
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer2_Init(renderer);
+
+    cpu.init();
 }
 
-void Debugger::start() {
+void Debugger::tick_cpu() {
+    if (!is_cpu_paused) {
+        cpu.tick();
+        u_char serial_data = Memory::read(0xFF01);
+        if (serial_data >= 32 && serial_data <= 127) {
+            serial_output.push_back(new char(serial_data));
+        }
+    }
+    if ((breakpoint != 0 && cpu.logger.line == breakpoint)) {
+            is_cpu_paused = true;
+    }
+}
+
+void Debugger::render() {
+    ImGuiIO& io = ImGui::GetIO(); (void) io;
     SDL_Event event;
-    while (SDL_PollEvent(&event))
-    {
-        ImGui_ImplSDL2_ProcessEvent(&event);
-        if (event.type == SDL_QUIT)
-            done = true;
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
-            done = true;
-    }
-    if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED)
-    {
-        SDL_Delay(10);
-        return;
-    }
+    SDL_PollEvent(&event);
+    ImGui_ImplSDL2_ProcessEvent(&event);
+    if (event.type == SDL_QUIT)
+        done = true;
+    if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
+        done = true;
 
     // Start the Dear ImGui frame
     ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
-}
 
-void Debugger::ui() {
-    ImGui::Begin("Debugger");
-    ImGui::Text("Hello");
+    ImGui::Begin("Debug Info");
+    ImGui::Text("Frame rate:");
+    ImGui::SameLine();
+    ImGui::Text(std::to_string(io.Framerate).c_str());
+    ImGui::SeparatorText("Debug Console");
+    ImGui::BeginChild("Debug Console");
+        for(const char* item: debug_console) {
+            ImGui::Text(item);
+        }
+    ImGui::EndChild();
     ImGui::End();
-}
 
-void Debugger::render() {
+    render_registers();
+    render_memdump();
+
     ImGui::Render();
-    ImGuiIO& io = ImGui::GetIO(); (void) io;
-    SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-    SDL_SetRenderDrawColor(renderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255));
+    // SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+    SDL_SetRenderDrawColor(renderer, 115, 140, 153, 255);
     SDL_RenderClear(renderer);
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
     SDL_RenderPresent(renderer);
 }
+
+void Debugger::render_registers() {
+    ImGui::Begin("Registers");
+    ImGui::Text(std::format("A: {:02X}", cpu.a).c_str());
+
+    ImGui::Text(std::format("B: {:02X}", cpu.b).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("C: {:02X}", cpu.c).c_str());
+
+    ImGui::Text(std::format("D: {:02X}", cpu.d).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("E: {:02X}", cpu.e).c_str());
+
+    ImGui::Text(std::format("H: {:02X}", cpu.h).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("L: {:02X}", cpu.l).c_str());
+
+    ImGui::Text(std::format("PC: {:04X}", cpu.pc).c_str());
+
+    ImGui::Text(std::format("Current: {:02X}", Memory::read(cpu.pc)).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("Next 1: {:02X}", Memory::read(cpu.pc+1)).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("Next 2: {:02X}", Memory::read(cpu.pc+2)).c_str());
+
+    ImGui::Text(std::format("SP: {:04X}", cpu.sp).c_str());
+
+    ImGui::SeparatorText("Flags");
+
+    ImGui::Text(std::format("Z: {}", cpu.z_flag).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("N: {}", cpu.n_flag).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("H: {}", cpu.h_flag).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("C: {}", cpu.c_flag).c_str());
+
+    ImGui::SeparatorText("Serial Output");
+    ImGui::BeginChild("Serial");
+        for(const char* item: serial_output) {
+            ImGui::Text(item);
+            ImGui::SameLine();
+        }
+    ImGui::EndChild();
+    ImGui::End();
+}
+
+void Debugger::render_memdump() {
+    ImGui::Begin("Memory Dump");
+    if (ImGui::Button("Pause")) is_cpu_paused = true;
+    ImGui::SameLine();
+    if (ImGui::Button("Step")) cpu.tick();
+    ImGui::SameLine();
+    if (ImGui::Button("Continue")) {
+        is_cpu_paused = false;
+    }
+    ImGui::Text("Current line:");
+    ImGui::SameLine();
+    ImGui::Text(std::to_string(cpu.logger.line).c_str());
+    ImGui::InputInt("Breakpoint", &breakpoint);
+    if (cpu.logger.line == breakpoint) {
+        ImGui::TextColored(ImVec4(255,255,0,255), "Breakpoint hit!");
+    }
+    ImGui::End();
+}
+
+void Debugger::log(const char* c) {
+   if (debug_console.size() >= 100) {
+       debug_console.pop_back();
+
+   }
+    debug_console.push_front(c);
+}
+
 
 void Debugger::end() {
     ImGui_ImplSDLRenderer2_Shutdown();

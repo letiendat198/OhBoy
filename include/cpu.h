@@ -1,12 +1,14 @@
+#ifndef CPU_H
+#define CPU_H
+
 #include <string>
 
-#include "cartridge.h"
 #include "logger.h"
 #include "memory.h"
 #include "types.h"
 
 class Cpu{
-private:
+public:
     unsigned char a=0;
     unsigned char b=0;
     unsigned char c=0;
@@ -26,9 +28,7 @@ private:
     unsigned char ime_next = 0;
 
     Logger logger;
-public:
-    Cartridge cartridge;
-    Memory memory;
+
     unsigned char opskip;
     unsigned char mcycle;
     unsigned char cycle_count=0;
@@ -186,3 +186,5 @@ public:
         Cpu::op_CBE0, Cpu::op_CBE1, Cpu::op_CBE2, Cpu::op_CBE3, Cpu::op_CBE4, Cpu::op_CBE5, Cpu::op_CBE6, Cpu::op_CBE7, Cpu::op_CBE8, Cpu::op_CBE9, Cpu::op_CBEA, Cpu::op_CBEB, Cpu::op_CBEC, Cpu::op_CBED, Cpu::op_CBEE, Cpu::op_CBEF,
         Cpu::op_CBF0, Cpu::op_CBF1, Cpu::op_CBF2, Cpu::op_CBF3, Cpu::op_CBF4, Cpu::op_CBF5, Cpu::op_CBF6, Cpu::op_CBF7, Cpu::op_CBF8, Cpu::op_CBF9, Cpu::op_CBFA, Cpu::op_CBFB, Cpu::op_CBFC, Cpu::op_CBFD, Cpu::op_CBFE, Cpu::op_CBFF};
 };
+
+#endif

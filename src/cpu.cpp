@@ -1,4 +1,8 @@
 #include "cpu.h"
+
+#include <debugger.h>
+#include <format>
+
 #include "util.h"
 
 #include <iomanip>
@@ -7,7 +11,6 @@
 using namespace std;
 
 void Cpu::init(){
-    memory.init();
     a = 0x01;
     b = 0x00;
     c = 0x13;
@@ -46,8 +49,7 @@ std::string Cpu::craft_debug() {
 
 bool Cpu::tick(){
     // cout<<"Current PC: "<<(int)pc<<" Remaining M-Cycle: "<<(int) mcycle<<" OP skip: "<<(int)opskip<<endl;
-    // printf("%.4X %.2X\n", pc, memory.address[pc]);
-    (this->*jump_table[memory.address[pc]])();
+    if(cycle_count==0) (this->*jump_table[Memory::read(pc)])();
     cycle_count++;
 
     if (mcycle == 1 || cycle_count == mcycle) {
@@ -55,9 +57,10 @@ bool Cpu::tick(){
             ime = 1;
             ime_next = 0;
         } // EI is delayed by 1 instr
-        logger.write(craft_debug());
+        logger.write("");
+        Debugger::log(std::format("Current mcycle: {}", mcycle).c_str());
         exec_flag = 1;
-        (this->*jump_table[memory.address[pc]])();
+        (this->*jump_table[Memory::read(pc)])();
         pc+=opskip;
         exec_flag = 0;
         cycle_count = 0;
@@ -66,15 +69,15 @@ bool Cpu::tick(){
 }
 
 void Cpu::write8_mem(u_short addr, u_char a) {
-    memory.address[addr] = a;
+    Memory::write(addr, a);
 }
 
 u_char Cpu::read8_mem(u_short addr) {
-    return memory.address[addr];
+    return Memory::read(addr);
 }
 
 u_short Cpu::read16_mem(u_short addr) {
-    return memory.address[addr+1] << 8 | memory.address[addr];
+    return Memory::read(addr+1) << 8 | Memory::read(addr);
 }
 
 void Cpu::ld8_imm(u_char &a, u_char imm) {
