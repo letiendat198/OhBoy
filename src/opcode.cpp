@@ -37,8 +37,10 @@ void Cpu::op_06() {
 void Cpu::op_07() {
     opskip = 1;
     mcycle = 1;
-    if (exec_flag) rlc(a);
-    z_flag = 0;
+    if (exec_flag) {
+        rlc(a);
+        z_flag = 0;
+    }
 } // RLCA
 void Cpu::op_08() {
     if(exec_flag) {
@@ -82,8 +84,10 @@ void Cpu::op_0E() {
 void Cpu::op_0F() {
     opskip = 1;
     mcycle = 1;
-    if (exec_flag) rrc(a);
-    z_flag = 0;
+    if (exec_flag) {
+        rrc(a);
+        z_flag = 0;
+    }
 } // RRCA
 void Cpu::op_10() {
     opskip = 2;
@@ -122,8 +126,10 @@ void Cpu::op_16() {
 void Cpu::op_17() {
     opskip = 1;
     mcycle = 1;
-    if (exec_flag) rl(a);
-    z_flag = 0;
+    if (exec_flag) {
+        rl(a);
+        z_flag = 0;
+    }
 } // RLA
 void Cpu::op_18() {
     if(exec_flag) jr(read8_mem(pc+1));
@@ -163,8 +169,10 @@ void Cpu::op_1E() {
 void Cpu::op_1F() {
     opskip = 1;
     mcycle = 1;
-    if (exec_flag) rr(a);
-    z_flag = 0;
+    if (exec_flag) {
+        rr(a);
+        z_flag = 0;
+    }
 } // RRA
 void Cpu::op_20() {
     if(exec_flag) jrc(!z_flag, read8_mem(pc+1));
@@ -1275,7 +1283,7 @@ void Cpu::op_C1() {
 } // POP BC
 void Cpu::op_C2() {
     opskip=3;
-    if(exec_flag) jpc(!z_flag, read8_mem(pc+1)); // May override opskip if jump
+    if(exec_flag) jpc(!z_flag, read16_mem(pc+1)); // May override opskip if jump
     if (!z_flag) mcycle = 4;
     else mcycle = 3;
 } // JP NZ a16
@@ -1320,7 +1328,7 @@ void Cpu::op_C9() {
 } // RET
 void Cpu::op_CA() {
     opskip=3;
-    if(exec_flag) jpc(z_flag, read8_mem(pc+1));
+    if(exec_flag) jpc(z_flag, read16_mem(pc+1));
     if (z_flag) mcycle = 4;
     else mcycle = 3;
 } // JP Z a16
@@ -1363,7 +1371,7 @@ void Cpu::op_D1() {
 } // POP DE
 void Cpu::op_D2() {
     opskip=3;
-    if(exec_flag) jpc(!c_flag, read8_mem(pc+1));
+    if(exec_flag) jpc(!c_flag, read16_mem(pc+1));
     if (!c_flag) mcycle = 4;
     else mcycle = 3;
 } // JP NC a16
@@ -1408,7 +1416,7 @@ void Cpu::op_D9() {
 } // RETI
 void Cpu::op_DA() {
     opskip=3;
-    if(exec_flag) jpc(c_flag, read8_mem(pc+1));
+    if(exec_flag) jpc(c_flag, read16_mem(pc+1));
     if (z_flag) mcycle = 4;
     else mcycle = 3;
 } // JP C a16

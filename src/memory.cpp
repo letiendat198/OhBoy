@@ -13,9 +13,11 @@ u_char Memory::read(u_short addr) {
 }
 
 void Memory::write(u_short addr, u_char data) {
-    if (0xA000 <= addr && addr <= 0xBFFF)
+    // if (0xA000 <= addr && addr <= 0xBFFF) {
+    //     return;
+    // }
     if (write_allow && can_write(addr)) {
-        memory[addr] = data;
+        *(memory+addr) = data;
     }
 }
 

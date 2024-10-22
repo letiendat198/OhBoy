@@ -8,16 +8,16 @@
 
 using namespace std;
 
+Debugger debugger;
 int main(int, char **){
-    cout<<"Starting GB emulator"<<endl;
+    debugger.init();
+    Debugger::log("Starting GB emulator");
 
-    bool cart_init = Cartridge::init("../roms/07-jr,jp,call,ret,rst.gb");
+    bool cart_init = Cartridge::init("../roms/03-op sp,hl.gb");
     if (!cart_init) return -1;
 
     Cartridge::read_to_mem();
 
-    Debugger debugger;
-    debugger.init();
     int cycle = 0;
     auto t1 = std::chrono::steady_clock::now();
     while (!debugger.done){

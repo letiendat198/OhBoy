@@ -24,6 +24,7 @@ void Cpu::init(){
     n_flag = 0;
     h_flag = 1;
     c_flag = 1;
+    Memory::write(0xFF44, 0x90);
 }
 
 std::string Cpu::craft_debug() {
@@ -57,9 +58,9 @@ bool Cpu::tick(){
             ime = 1;
             ime_next = 0;
         } // EI is delayed by 1 instr
-        logger.write("");
-        Debugger::log(std::format("Current mcycle: {}", mcycle).c_str());
+
         exec_flag = 1;
+        logger.write(craft_debug());
         (this->*jump_table[Memory::read(pc)])();
         pc+=opskip;
         exec_flag = 0;
@@ -162,29 +163,30 @@ void Cpu::dec_ind_hl() {
 
 void Cpu::add8(u_char &a, u_char b) {
     auto [result, carry] = SafeOperations::safe_add(a , b);
+    h_flag = (((a & 0xF) + (b & 0xF)) & 0x10) >> 4;
+
     a = result;
     n_flag = 0;
     z_flag = a==0;
     c_flag  = carry;
-    h_flag = ((a & 0xF) + (b & 0xF)) & 0x10;
 }
 
 void Cpu::add_hl(u_short imm) {
     auto [result, carry] = SafeOperations::safe_add(h<<8|l, imm);
+    h_flag = ((((h<<8|l) & 0x0FFF) + (imm & 0x0FFF)) & 0x1000) >> 12;
     h = result >> 8;
     l = result & 0xFF;
 
     n_flag = 0;
-    h_flag = h & 0x100;
     c_flag = carry;
 }
 
 void Cpu::add_sp(s_char imm) {
     if (imm > 0) {
         auto [result, carry] = SafeOperations::safe_add(sp, imm);
+        h_flag = (((sp & 0x0F) + (imm & 0x0F)) & 0x10) >> 4;
         sp = result;
         c_flag = carry;
-        h_flag = ((sp & 0xFF) + imm) & 0x100;
     }
     else {
         auto [result, carry] = SafeOperations::safe_sub(sp, -imm);
@@ -201,30 +203,32 @@ void Cpu::adc8(u_char&a, u_char b) {
     auto [result_c, carry_c] = SafeOperations::safe_add(b,c_flag);
     auto [result, carry] = SafeOperations::safe_add(a, result_c);
 
+    h_flag = (((a & 0xF) + (result_c & 0xF)) & 0x10) >> 4;
+    a = result;
     n_flag = 0;
     z_flag = a==0;
     c_flag  = carry > carry_c ? carry : carry_c;
-    h_flag = ((a & 0xF) + (b & 0xF)) & 0x10;
 }
 
 
 void Cpu::sub8(u_char &a, u_char b) {
     auto [result, carry] = SafeOperations::safe_sub(a, b);
+    h_flag = ((a & 0xF) < (b & 0xF));
     a = result;
     n_flag = 1;
     z_flag = a==0;
     c_flag  = carry;
-    h_flag = ((a & 0xF) < (b & 0xF));
 }
 
 void Cpu::sbc8(u_char &a, u_char b) { // A - B - C
     auto [result_c, carry_c] = SafeOperations::safe_sub(a,b);
     auto [result, carry] = SafeOperations::safe_sub(result_c, c_flag);
+    h_flag = ((a & 0xF) < (b & 0xF));
+    a = result;
 
     n_flag = 1;
     z_flag = a==0;
     c_flag  = carry > carry_c ? carry : carry_c;
-    h_flag = ((a & 0xF) < (b & 0xF));
 }
 
 void Cpu::and8(u_char &a, u_char b) {
@@ -255,7 +259,7 @@ void Cpu::cp8(u_char a, u_char b) {
     auto [result, carry] = SafeOperations::safe_sub(a, b);
 
     n_flag = 1;
-    z_flag = a==0;
+    z_flag = result==0;
     c_flag  = carry;
     h_flag = ((a & 0xF) < (b & 0xF));
 }

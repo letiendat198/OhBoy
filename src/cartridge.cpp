@@ -1,5 +1,7 @@
 #include "cartridge.h"
 
+#include <debugger.h>
+#include <format>
 #include <memory.h>
 
 FILE* Cartridge::f;
@@ -9,7 +11,7 @@ bool Cartridge::init(const char* file){
     f = fopen(file, "rb");
     fseek(f, 0L, SEEK_END);
     size = ftell(f);
-    std::cout<<"ROM size: "<<size<<std::endl;
+    Debugger::log(std::format("ROM size: {}", size).c_str());
     if(size<=0) return false;
     return true;
 }

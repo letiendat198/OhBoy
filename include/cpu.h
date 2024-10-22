@@ -24,8 +24,8 @@ public:
     unsigned short sp=0;
     unsigned char ime=0;
 
-    unsigned char exec_flag = 0;
-    unsigned char ime_next = 0;
+    bool exec_flag = false;
+    bool ime_next = false;
 
     Logger logger;
 

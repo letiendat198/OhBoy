@@ -37,7 +37,7 @@ ArithmeticResult<u_char> SafeOperations::safe_sub(u_char a, u_char b) {
     u_char carry = 0;
     if (a >= b) result = a-b;
     else {
-        result = 0xFF - (b-a);
+        result = 0xFF - (b-a) + 1;
         carry = 1;
     }
     return ArithmeticResult {
@@ -51,7 +51,7 @@ ArithmeticResult<u_short> SafeOperations::safe_sub(u_short a, u_short b) {
     u_short carry = 0;
     if (a >= b) result = a-b;
     else {
-        result = 0xFFFF - (b-a);
+        result = 0xFFFF - (b-a) + 1;
         carry = 1;
     }
     return ArithmeticResult {

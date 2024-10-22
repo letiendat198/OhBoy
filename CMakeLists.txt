@@ -16,10 +16,11 @@ add_executable(OhBoy src/main.cpp
         deps/imgui/imgui_draw.cpp
         deps/imgui/imgui_tables.cpp
         deps/imgui/imgui_widgets.cpp
+        deps/imgui/imgui_memory_editor.h
         deps/imgui/misc/cpp/imgui_stdlib.cpp
         deps/imgui/backends/imgui_impl_sdl2.cpp
         deps/imgui/backends/imgui_impl_sdlrenderer2.cpp
-        lib/debugger.cpp
+        src/debugger.cpp
         include/config.h)
 
 target_link_libraries(OhBoy "D:/Projects/OhBoy/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2main.a")
