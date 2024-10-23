@@ -60,7 +60,7 @@ bool Cpu::tick(){
         } // EI is delayed by 1 instr
 
         exec_flag = 1;
-        logger.write(craft_debug());
+        // logger.write(craft_debug());
         (this->*jump_table[Memory::read(pc)])();
         pc+=opskip;
         exec_flag = 0;

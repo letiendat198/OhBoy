@@ -4,7 +4,7 @@ A (hopefully) M-Cycle accurate GameBoy emulator
 
 ## TODO
 
-- Fix CPU to pass tests
+- Fix CPU to pass tests (Pass all of Blargg's tests except 02-interrupts)
 - Debugger:
   - Add ability to reset CPU state
   - Allow closing log file

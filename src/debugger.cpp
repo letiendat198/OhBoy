@@ -94,6 +94,7 @@ void Debugger::render() {
     ImGui::End();
 
     render_registers();
+    render_tiles();
     memory_editor.ReadOnly = true;
     memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0xFFFF+1);
 
@@ -163,6 +164,42 @@ void Debugger::render_registers() {
     ImGui::EndChild();
     ImGui::End();
 }
+
+void Debugger::render_tiles() {
+    ImGui::Begin("Tiles");
+    u_short tiles_addr = 0x8000;
+    for (int i=0;i<127;i++) {
+        u_char *pix = new u_char[64];
+        int id = 0;
+        for (int i=0; i < 15;i+=2) {
+            u_char byte1= Memory::read(tiles_addr+i);
+            u_char byte2 = Memory::read(tiles_addr+i+1);
+            for(int j=7;j>=0;j--) {
+                pix[id] = ((byte1 >> j) & 0x1) | (((byte2 >> j) & 0x1) << 1);
+                log(std::to_string(pix[id++]));
+            }
+        }
+        tiles_addr += 16;
+        SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)pix, 8, 8, 8, 8, 0x0, 0x0, 0x0, 0x0);
+        SDL_SetPaletteColors(surface->format->palette, colors, 0 ,4);
+        if (surface == nullptr)
+        {
+            fprintf(stderr, "Failed to create SDL surface: %s\n", SDL_GetError());
+        }
+
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        if (texture == nullptr)
+            fprintf(stderr, "Failed to create SDL texture: %s\n", SDL_GetError());
+
+        SDL_FreeSurface(surface);
+        delete pix;
+
+        ImGui::Image((ImTextureID)(intptr_t)texture, ImVec2((float)32, (float)32));
+        if ((i+1)%6!=0) ImGui::SameLine();
+    }
+    ImGui::End();
+}
+
 
 void Debugger::log(std::string s) {
    if (debug_buffer.size() >= 100) {
