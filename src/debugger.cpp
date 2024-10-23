@@ -76,6 +76,8 @@ void Debugger::render() {
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
+    ImGui::DockSpaceOverViewport(0, 0, ImGuiDockNodeFlags_PassthruCentralNode, 0);
+
     ImGui::Begin("Debug Info");
     ImGui::Text("Frame rate:");
     ImGui::SameLine();
@@ -96,7 +98,7 @@ void Debugger::render() {
     memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0xFFFF+1);
 
     ImGui::Render();
-    // SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+    SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
     SDL_SetRenderDrawColor(renderer, 115, 140, 153, 255);
     SDL_RenderClear(renderer);
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);

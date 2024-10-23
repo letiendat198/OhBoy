@@ -181,18 +181,19 @@ void Cpu::add_hl(u_short imm) {
     c_flag = carry;
 }
 
-void Cpu::add_sp(s_char imm) {
-    if (imm > 0) {
-        auto [result, carry] = SafeOperations::safe_add(sp, imm);
+void Cpu::add_sp(u_char imm) {
+    if ((imm & 0x80) >> 7 == 0) {
+        auto [result, carry] = SafeOperations::safe_add(sp, (s_char) imm);
         h_flag = (((sp & 0x0F) + (imm & 0x0F)) & 0x10) >> 4;
+        c_flag = (((sp & 0xFF) + imm) & 0x100) >> 8;
         sp = result;
-        c_flag = carry;
     }
     else {
-        auto [result, carry] = SafeOperations::safe_sub(sp, -imm);
+        auto [result, carry] = SafeOperations::safe_sub(sp,  -((s_char) imm));
+        // Carry and half carry still get calculated by addition
+        c_flag = (((sp & 0xFF) + imm) & 0x100) >> 8;
+        h_flag = (((sp & 0xF) + ((imm) & 0xF)) & 0x10) >> 4;
         sp = result;
-        c_flag = carry;
-        h_flag = ((sp & 0xFF) < -imm);
     }
     z_flag = 0;
     n_flag = 0;
@@ -203,7 +204,7 @@ void Cpu::adc8(u_char&a, u_char b) {
     auto [result_c, carry_c] = SafeOperations::safe_add(b,c_flag);
     auto [result, carry] = SafeOperations::safe_add(a, result_c);
 
-    h_flag = (((a & 0xF) + (result_c & 0xF)) & 0x10) >> 4;
+    h_flag = (((a & 0xF) + (b & 0xF) + c_flag) & 0x10) >> 4;
     a = result;
     n_flag = 0;
     z_flag = a==0;
@@ -223,7 +224,7 @@ void Cpu::sub8(u_char &a, u_char b) {
 void Cpu::sbc8(u_char &a, u_char b) { // A - B - C
     auto [result_c, carry_c] = SafeOperations::safe_sub(a,b);
     auto [result, carry] = SafeOperations::safe_sub(result_c, c_flag);
-    h_flag = ((a & 0xF) < (b & 0xF));
+    h_flag = (((a & 0xF) - (b & 0xF) - c_flag) & 0x10) >> 4;
     a = result;
 
     n_flag = 1;
@@ -313,8 +314,8 @@ void Cpu::retc(u_char flag) {
 }
 
 void Cpu::rst(u_char n) {
-    write8_mem(--sp, pc+3 >> 8);
-    write8_mem(--sp, pc+3 & 0xFF);
+    write8_mem(--sp, pc+1 >> 8);
+    write8_mem(--sp, pc+1 & 0xFF);
     pc = 0x00 << 8 | n;
     opskip = 0;
 }
@@ -330,7 +331,7 @@ void Cpu::push(u_char a, u_char b) {
 }
 
 void Cpu::rlc(u_char &a) {
-    c_flag = a & 0x80;
+    c_flag = (a & 0x80) >> 7;
     a = a << 1;
     a = a | c_flag;
 
@@ -341,7 +342,7 @@ void Cpu::rlc(u_char &a) {
 
 void Cpu::rlc_hl() {
     u_char a = read8_mem(h<<8|l);
-    c_flag = a & 0x80;
+    c_flag = (a & 0x80) >> 7;
     a = a << 1;
     a = a | c_flag;
     write8_mem(h<<8|l, a);
@@ -374,7 +375,7 @@ void Cpu::rrc_hl() {
 }
 
 void Cpu::rl(u_char &a) {
-    u_char t = a & 0x80;
+    u_char t = (a & 0x80) >> 7;
     a = a << 1;
     a = a | c_flag;
     c_flag = t;
@@ -386,7 +387,7 @@ void Cpu::rl(u_char &a) {
 
 void Cpu::rl_hl() {
     u_char a = read8_mem(h<<8|l);
-    u_char t = a & 0x80;
+    u_char t = (a & 0x80) >> 7;
     a = a << 1;
     a = a | c_flag;
     c_flag = t;
@@ -422,7 +423,7 @@ void Cpu::rr_hl() {
 }
 
 void Cpu::sla(u_char &a) {
-    c_flag = a & 0x80;
+    c_flag = (a & 0x80) >> 7;
     a = a << 1;
 
     z_flag = a==0;
@@ -432,7 +433,7 @@ void Cpu::sla(u_char &a) {
 
 void Cpu::sla_hl() {
     u_char a = read8_mem(h<<8|l);
-    c_flag = a & 0x80;
+    c_flag = (a & 0x80) >> 7;
     a = a << 1;
     write8_mem(h<<8|l, a);
 
@@ -480,6 +481,7 @@ void Cpu::swap_hl() {
     z_flag = a==0;
     n_flag = 0;
     h_flag = 0;
+    c_flag = 0;
 }
 
 void Cpu::srl(u_char &a) { // SRL IS WHAT SRA SUPPOSED TO BE

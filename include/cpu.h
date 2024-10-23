@@ -56,7 +56,7 @@ public:
 
     void add8(u_char &a, u_char b);
     void add_hl(u_short imm);
-    void add_sp(s_char imm);
+    void add_sp(u_char imm);
     void adc8(u_char &a, u_char b);
 
     void sub8(u_char &a, u_char b);

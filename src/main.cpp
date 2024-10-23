@@ -13,7 +13,7 @@ int main(int, char **){
     debugger.init();
     Debugger::log("Starting GB emulator");
 
-    bool cart_init = Cartridge::init("../roms/03-op sp,hl.gb");
+    bool cart_init = Cartridge::init("../roms/06-ld r,r.gb");
     if (!cart_init) return -1;
 
     Cartridge::read_to_mem();

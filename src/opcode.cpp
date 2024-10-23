@@ -316,7 +316,7 @@ void Cpu::op_35() {
 void Cpu::op_36() {
     if(exec_flag) write8_mem(h<<8|l, read8_mem(pc+1));
     mcycle = 3;
-    opskip = 3;
+    opskip = 2;
 } // LD [HL] n8
 void Cpu::op_37() {
     opskip = 1;
@@ -1481,7 +1481,7 @@ void Cpu::op_E7() {
 void Cpu::op_E8() {
     opskip = 2;
     mcycle = 4;
-    if (exec_flag) add_sp((signed char) read8_mem(pc+1));
+    if (exec_flag) add_sp(read8_mem(pc+1));
 } // ADD SP e8
 void Cpu::op_E9() {
     opskip=1;
@@ -1566,7 +1566,12 @@ void Cpu::op_F7() {
 void Cpu::op_F8() {
     opskip = 2;
     mcycle = 3;
-    if(exec_flag) ld16_imm(h, l, sp + (signed char) read8_mem(pc+1));
+    if(exec_flag) {
+        u_short temp_sp = sp;
+        add_sp(read8_mem(pc+1));
+        ld16_imm(h, l, sp);
+        sp = temp_sp;
+    }
 } // LD HL SP e8
 void Cpu::op_F9() {
     opskip = 1;
