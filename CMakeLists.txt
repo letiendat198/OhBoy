@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.29)
 project(OhBoy)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 add_executable(OhBoy src/main.cpp
         src/cpu.cpp
@@ -21,7 +22,9 @@ add_executable(OhBoy src/main.cpp
         deps/imgui/backends/imgui_impl_sdl2.cpp
         deps/imgui/backends/imgui_impl_sdlrenderer2.cpp
         src/debugger.cpp
-        include/config.h)
+        include/config.h
+        src/ppu.cpp
+        include/ppu.h)
 
 target_link_libraries(OhBoy "D:/Projects/OhBoy/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2main.a")
 target_link_libraries(OhBoy "D:/Projects/OhBoy/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2.dll.a")

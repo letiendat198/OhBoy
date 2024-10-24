@@ -34,5 +34,6 @@ int main(int, char **){
             cycle = 0;
         }
     }
+    debugger.end();
     return 0;
 }

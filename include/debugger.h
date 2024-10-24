@@ -2,6 +2,7 @@
 #define DEBUGGER_H
 
 #include <cpu.h>
+#include <ppu.h>
 #include <deque>
 
 #include "imgui.h"
@@ -22,13 +23,17 @@ private:
     inline static std::deque<std::string> debug_buffer;
     inline static MemoryEditor memory_editor;
     SDL_Color colors[4] = {{224, 248, 208, 255}, {136, 192, 112 ,255}, {52, 104, 86, 255}, {8, 24, 32, 255}};
+    SDL_Texture* used_textures[127] = {nullptr};
+    SDL_Texture* old_game_texture = nullptr;
 public:
     Cpu cpu;
+    Ppu ppu;
     bool done;
     void init();
     void render();
     void render_registers();
     void render_tiles();
+    void render_game();
     void tick_cpu();
     void end();
 
