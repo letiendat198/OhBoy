@@ -13,7 +13,7 @@ int main(int, char **){
     debugger.init();
     Debugger::log("Starting GB emulator");
 
-    bool cart_init = Cartridge::init("../roms/instr_timing.gb");
+    bool cart_init = Cartridge::init("../roms/dmg-acid2.gb");
     if (!cart_init) return -1;
 
     Cartridge::read_to_mem();

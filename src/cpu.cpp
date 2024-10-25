@@ -58,7 +58,7 @@ bool Cpu::tick(){
         }
         u_short iresult = Interrupts::check_and_service(ime); // Check interrupts
         if (iresult != 0) {
-            Debugger::log(std::format("Interrupt routine at {:#X}", iresult));
+            // Debugger::log(std::format("Interrupt routine at {:#X}", iresult));
             interrupt_addr = iresult;
             mcycle = 4;
         }

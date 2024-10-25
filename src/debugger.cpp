@@ -163,6 +163,18 @@ void Debugger::render_registers() {
     ImGui::SameLine();
     ImGui::Text(std::format("C: {}", cpu.c_flag).c_str());
 
+    ImGui::SeparatorText("Interrupts");
+
+    ImGui::Text(std::format("IME: {}", cpu.ime).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("IE: {:X}", Memory::read(0xFFFF)).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("IF: {:X}", Memory::read(0xFF0F)).c_str());
+    ImGui::SameLine();
+    ImGui::Text(std::format("STAT: {:08b}", Memory::read(0xFF41)).c_str());
+
+    ImGui::Text(std::format("LYC: {}", Memory::read(0xFF45)).c_str());
+
     ImGui::SeparatorText("Serial Output");
     ImGui::BeginChild("Serial");
         ImGui::TextWrapped(serial_output.c_str());
@@ -231,7 +243,7 @@ void Debugger::render_game() {
 }
 
 void Debugger::log(std::string s) {
-   if (debug_buffer.size() >= 100) {
+   if (debug_buffer.size() >= 1000) {
        debug_buffer.pop_front();
    }
     debug_buffer.push_back(s);

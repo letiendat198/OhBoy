@@ -19,7 +19,11 @@ private:
     u_char obj_size;
     u_char bg_w_priority;
 
+    u_char scx_lower;
+    u_char scy_lower;
+
     void render_background();
+    void render_window();
     u_short get_tile_index_from_pixel(u_char x, u_char y);
 
 public:
@@ -33,6 +37,8 @@ public:
     u_char read_wy();
     u_char read_wx();
     void read_lcdc();
+    void update_stat();
+    void check_stat_interrupt();
 };
 
 #endif //PPU_H
