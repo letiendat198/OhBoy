@@ -22,6 +22,9 @@ private:
     u_char scx_lower;
     u_char scy_lower;
 
+    u_char w_internal_lc = 0;
+    u_char line_did_enable_w = 0;
+
     void render_background();
     void render_window();
     u_short get_tile_index_from_pixel(u_char x, u_char y);
@@ -32,6 +35,7 @@ public:
     void tick();
     u_char read_ly();
     void inc_ly();
+    void inc_w_internal_lc();
     u_char read_scy();
     u_char read_scx();
     u_char read_wy();

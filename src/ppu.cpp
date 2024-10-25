@@ -13,12 +13,14 @@ void Ppu::init() {
 }
 
 void Ppu::tick() {
-    if (dots++==456) {
+    if (dots++==456) { // Start of frame
         dots = 0;
         // Debugger::log(std::format("Dot reseted while fb index was {}", frame_buf_index));
         inc_ly();
         update_stat();
         check_stat_interrupt();
+        if (line_did_enable_w) w_internal_lc++;
+        line_did_enable_w = 0;
     }
     if(wait>0) {
         wait--;
@@ -30,10 +32,13 @@ void Ppu::tick() {
 
     if (read_ly() >= 144) mode = 1;
 
+    update_stat();
+
     switch (mode) {
         case 0:
             break;
         case 1:
+            w_internal_lc = 0;
             if (read_ly() == 144 && dots == 0) Interrupts::set_if(0);
             break;
         case 2:
@@ -46,7 +51,7 @@ void Ppu::tick() {
                 scy_lower = read_scy() & 0x7;
             }
             render_background();
-            // render_window();
+            render_window();
             frame_buf_index++;
             break;
     }
@@ -63,7 +68,7 @@ void Ppu::render_background() {
     u_char scx = read_scx() & ~0x7 | scx_lower; // Mid-frame scroll behavior
     u_char scy = read_scy() & ~0x7 | scy_lower;
     u_char x = (scx + frame_buf_index % 160) % 256;
-    u_char y = (scy + 8 + frame_buf_index / 160) % 256;
+    u_char y = (scy + frame_buf_index / 160) % 256;
 
     u_short map_addr = 0x9800;
     if (bg_tilemap_area == 1) map_addr = 0x9C00;
@@ -99,20 +104,16 @@ void Ppu::render_window() {
     if (bg_w_priority == 0 || w_enable == 0) {
         return;
     }
-    u_char scx = read_scx();
-    u_char scy = read_scy();
     u_char wx = read_wx();
     u_char wy = read_wy();
     if ((wx < 0) || (wx > 166)) return;
     if ((wy < 0) || (wy > 143)) return;
-    u_char x = (scx + frame_buf_index % 160) % 256;
-    u_char y = (scy + 8 + frame_buf_index / 160) % 256;
-    // Debugger::log(std::format("Pix cord {} {}", x, y));
-    // Debugger::log(std::format("WX: {} WY: {}", wx, wy));
-    if ((wx-7) > x || wy > y) return;
+    u_char x = frame_buf_index % 160;
+    u_char y = frame_buf_index / 160;
+    if ((wx - 7) > x || wy > y) return;
+    line_did_enable_w = 1;
     x = x - (wx - 7);
-    y = y - wy;
-    // Debugger::log(std::format("Pix cord map to window {} {}", x, y));
+    y = w_internal_lc;
     // Debugger::log(std::format("Window tiles {}", get_tile_index_from_pixel(x, y)));
 
     u_short map_addr = 0x9800;
@@ -141,13 +142,14 @@ void Ppu::render_window() {
     // Debugger::log(std::format("Fetching data for line with byte 1: {}, byte 2: {}", p1, p2));
     // std::cout<<(int) p1<< " " << (int) p2 <<"\n";
     frame_buffer[frame_buf_index] = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+    // frame_buffer[frame_buf_index] = 0xee;
     // Debugger::log(std::format("Color for pixel {} of line {} is {}", x, y, frame_buffer[m3_x-1]));
     // std::cout<<(int) frame_buffer[m3_x-1]<<"\n";
 }
 
 
 u_short Ppu::get_tile_index_from_pixel(u_char x, u_char y) {
-    return ((x / 8) + 32 * (y/8 - 1));
+    return ((x / 8) + 32 * (y/8));
 }
 
 
@@ -215,6 +217,11 @@ void Ppu::inc_ly() {
     // Debugger::log(std::format("LY increased to {}", read_ly()+1));
     Memory::write(0xFF44, (read_ly() + 1)  % 154);
 }
+
+// void Ppu::inc_w_internal_lc() {
+//     w_internal_lc++;
+//     if (read_ly() == 0) w_internal_lc = 0;
+// }
 
 u_char Ppu::read_scx() {
     return Memory::read(0xFF43);
