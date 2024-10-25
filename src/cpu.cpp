@@ -8,6 +8,8 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+
+#include "interrupts.h"
 using namespace std;
 
 void Cpu::init(){
@@ -50,10 +52,22 @@ std::string Cpu::craft_debug() {
 
 bool Cpu::tick(){
     // cout<<"Current PC: "<<(int)pc<<" Remaining M-Cycle: "<<(int) mcycle<<" OP skip: "<<(int)opskip<<endl;
-    if(cycle_count==0) (this->*jump_table[Memory::read(pc)])();
+    if(cycle_count==0) { // Begin of new instrs
+        if (halt == 1) {
+            if(Interrupts::is_pending()) halt = 0;
+        }
+        u_short iresult = Interrupts::check_and_service(ime); // Check interrupts
+        if (iresult != 0) {
+            Debugger::log(std::format("Interrupt routine at {:#X}", iresult));
+            interrupt_addr = iresult;
+            mcycle = 4;
+        }
+        else (this->*jump_table[Memory::read(pc)])();
+    }
+    if (halt == 1) return true; // No HALT bug
     cycle_count++;
 
-    if (mcycle == 1 || cycle_count == mcycle) {
+    if ((mcycle == 1 || cycle_count == mcycle) && interrupt_addr == 0) {
         if (ime_next) {
             ime = 1;
             ime_next = 0;
@@ -66,6 +80,14 @@ bool Cpu::tick(){
         exec_flag = 0;
         cycle_count = 0;
     }
+    else if (cycle_count == mcycle && interrupt_addr != 0) { // If have an interrupt waiting, do it
+        write8_mem(--sp, pc >> 8);
+        write8_mem(--sp, pc & 0xFF);
+        pc = interrupt_addr;
+        interrupt_addr = 0;
+        cycle_count = 0;
+    }
+
     return true;
 }
 

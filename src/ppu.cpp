@@ -68,7 +68,7 @@ void Ppu::render_background() {
     tile_line_data |= Memory::read(tile_data_ptr + (tile_ref % 128)*16 + ((frame_buf_index / 160) % 8)*2 + 1) << 8;
 
     // Debugger::log(std::format("Fetched tile data: {:X}", tile_line_data));
-    u_char pixel_offset = x % 8;
+    u_char pixel_offset = 7 - (x % 8);
     u_char p1 = tile_line_data >> 8;
     u_char p2 = tile_line_data & 0xF;
     // Debugger::log(std::format("Fetching data for line with byte 1: {}, byte 2: {}", p1, p2));

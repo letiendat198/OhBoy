@@ -51,6 +51,7 @@ void Debugger::init() {
 void Debugger::tick_cpu() {
     if (!is_cpu_paused) {
         for(int i=0;i<4;i++) ppu.tick();
+        timer.tick();
         cpu.tick();
         u_char serial_data = Memory::read(0xFF01);
         if (Memory::read(0xFF02) == 0x81 && serial_data >= 32 && serial_data <= 127) {

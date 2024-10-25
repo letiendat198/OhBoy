@@ -13,6 +13,8 @@
 #include <iostream>
 #include <vector>
 
+#include "timer.h"
+
 class Debugger {
 private:
     SDL_Window* window;
@@ -26,6 +28,7 @@ private:
     SDL_Texture* used_textures[127] = {nullptr};
     SDL_Texture* old_game_texture = nullptr;
 public:
+    Timer timer;
     Cpu cpu;
     Ppu ppu;
     bool done;

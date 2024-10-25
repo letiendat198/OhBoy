@@ -23,9 +23,11 @@ public:
     unsigned short pc=0x0100;
     unsigned short sp=0;
     unsigned char ime=0;
+    unsigned char halt = 0;
 
     bool exec_flag = false;
     bool ime_next = false;
+    u_char interrupt_addr;
 
     Logger logger;
 

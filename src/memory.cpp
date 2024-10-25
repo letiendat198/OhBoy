@@ -16,9 +16,21 @@ void Memory::write(u_short addr, u_char data) {
     // if (0xA000 <= addr && addr <= 0xBFFF) {
     //     return;
     // }
+    if (addr == 0xFF04) {
+        *(memory+addr) = 0;
+        return;
+    }
     if (write_allow && can_write(addr)) {
         *(memory+addr) = data;
     }
+}
+
+u_char Memory::unsafe_read(u_short addr) {
+    return memory[addr];
+}
+
+void Memory::unsafe_write(u_short addr, u_char data) {
+    *(memory+addr) = data;
 }
 
 u_char *Memory::get_raw() {

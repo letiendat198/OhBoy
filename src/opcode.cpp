@@ -758,6 +758,7 @@ void Cpu::op_75() {
 void Cpu::op_76() {
     mcycle = 1;
     opskip = 1;
+    if (exec_flag) halt = 1;
 } // HALT
 void Cpu::op_77() {
     if(exec_flag) {
@@ -1036,7 +1037,7 @@ void Cpu::op_9E() {
     if(exec_flag) {
         sbc8(a,read8_mem(h<<8|l));
     }
-    mcycle = 1;
+    mcycle = 2;
     opskip = 1;
 } // SBC A [HL]
 void Cpu::op_9F() {
