@@ -32,6 +32,7 @@ private:
     void render_window();
     void render_object();
     u_short get_tile_index_from_pixel(u_char x, u_char y);
+    u_char parse_palette(u_char src_color, u_short palette_addr);
 
 public:
     void init();

@@ -1,5 +1,6 @@
 #include "ppu.h"
 
+#include <algorithm>
 #include <debugger.h>
 #include <format>
 #include <memory.h>
@@ -63,6 +64,7 @@ void Ppu::tick() {
             if (dots == 92) { // Mid-frame scroll behavior. Fetch 3 low bits of scx and scy
                 scx_lower = read_scx() & 0x7;
                 scy_lower = read_scy() & 0x7;
+                // std::stable_sort(std::begin(obj_queue), std::end(obj_queue), compare);
             }
             render_background();
             render_window();
@@ -110,7 +112,8 @@ void Ppu::render_background() {
     u_char p2 = tile_line_data >> 8;
     // Debugger::log(std::format("Fetching data for line with byte 1: {}, byte 2: {}", p1, p2));
     // std::cout<<(int) p1<< " " << (int) p2 <<"\n";
-    frame_buffer[frame_buf_index] = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+    u_char color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+    frame_buffer[frame_buf_index] = parse_palette(color, 0xFF47);
     // Debugger::log(std::format("Color for pixel {} of line {} is {}", x, y, frame_buffer[m3_x-1]));
     // std::cout<<(int) frame_buffer[m3_x-1]<<"\n";
 }
@@ -156,7 +159,8 @@ void Ppu::render_window() {
     u_char p2 = tile_line_data >> 8;
     // Debugger::log(std::format("Fetching data for line with byte 1: {}, byte 2: {}", p1, p2));
     // std::cout<<(int) p1<< " " << (int) p2 <<"\n";
-    frame_buffer[frame_buf_index] = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+    u_char color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+    frame_buffer[frame_buf_index] = parse_palette(color, 0xFF47);
     // frame_buffer[frame_buf_index] = 0xee;
     // Debugger::log(std::format("Color for pixel {} of line {} is {}", x, y, frame_buffer[m3_x-1]));
     // std::cout<<(int) frame_buffer[m3_x-1]<<"\n";
@@ -169,13 +173,16 @@ void Ppu::render_object() {
     u_char x = frame_buf_index % 160;
     u_char y = frame_buf_index / 160;
     u_short obj_addr = 0;
+    u_short obj_x_start = 200; // A maximal value so that first object found always satisfy
 
     for (u_char i=0;i<obj_queue_idx;i++) {
         u_short addr = obj_queue[i];
         u_char obj_x = Memory::unsafe_read(addr + 1);
-        if ((obj_x  - 8) <= x && x < obj_x) {
-            obj_addr = addr;
-            break;
+        if ((obj_x - 8) <= x  && x < obj_x) {
+            if (obj_x < obj_x_start) { // Select lowest X coordinate possible. If all the same, select the first one found
+                obj_addr = addr;
+                obj_x_start = obj_x;
+            }
         }
     }
 
@@ -212,18 +219,26 @@ void Ppu::render_object() {
     tile_line_data = Memory::read(tile_data_ptr + tile_ref + line_offset);
     tile_line_data |= Memory::read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
 
-    u_char pixel_offset = 7 - (x % 8);
-    if (obj_x_flip == 1) pixel_offset = x % 8;
+    // Because obj can be anywhere, it's pixel offset should not be calculated by x % 8 -> cause clipping if obj starting x pos not divisible by 8
+    // But should be calculated by (obj starting x cord - current x) to find which pixel to render
+    u_char pixel_offset = 7 - ((x - obj_x_start + 8) % 8);
+    if (obj_x_flip == 1) pixel_offset = (x - obj_x_start + 8) % 8;
     u_char p1 = tile_line_data & 0xFF;
     u_char p2 = tile_line_data >> 8;
 
     u_char color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
 
-    if (color > 0) frame_buffer[frame_buf_index] = color;
+    u_short palette_addr = obj_palette ? 0xFF49 : 0xFF48;
+    if (color > 0) frame_buffer[frame_buf_index] = parse_palette(color, palette_addr);
 }
 
 u_short Ppu::get_tile_index_from_pixel(u_char x, u_char y) {
     return ((x / 8) + 32 * (y/8));
+}
+
+u_char Ppu::parse_palette(u_char src_color, u_short palette_addr) {
+    u_char palette_data = Memory::unsafe_read(palette_addr);
+    return (palette_data >> src_color * 2) & 0x3;
 }
 
 void Ppu::read_lcdc() {
@@ -281,7 +296,6 @@ void Ppu::update_stat() {
     Memory::write(0xFF41, current_stat);
 }
 
-
 u_char Ppu::read_ly() {
     return Memory::read(0xFF44);
 }
@@ -311,7 +325,6 @@ u_char Ppu::read_wx() {
 u_char Ppu::read_wy() {
     return Memory::read(0xFF4A);
 }
-
 
 u_char *Ppu::get_frame_buffer() {
     return frame_buffer;
