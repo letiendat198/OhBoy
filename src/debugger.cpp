@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <format>
 
+#include "dma.h"
+
 void Debugger::init() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
@@ -50,6 +52,7 @@ void Debugger::init() {
 
 void Debugger::tick_cpu() {
     if (!is_cpu_paused) {
+        Dma::tick();
         for(int i=0;i<4;i++) ppu.tick();
         timer.tick();
         cpu.tick();
@@ -184,7 +187,7 @@ void Debugger::render_registers() {
 
 void Debugger::render_tiles() {
     ImGui::Begin("Tiles");
-    u_short tiles_addr = 0x9000;
+    u_short tiles_addr = 0x8000;
     for (int i=0;i<127;i++) {
         u_char pix[64];
         int id = 0;
@@ -238,7 +241,7 @@ void Debugger::render_game() {
     }
     old_game_texture = texture;
 
-    ImGui::Image((ImTextureID)(intptr_t)texture, ImVec2((float)160*2, (float)144*2));
+    ImGui::Image((ImTextureID)(intptr_t)texture, ImVec2((float)160*3, (float)144*3));
     ImGui::End();
 }
 

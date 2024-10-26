@@ -26,32 +26,47 @@ void Ppu::tick() {
         wait--;
         return;
     }
-    if (dots <= 80) mode = 2;
-    else if (dots <= 252+m3_penalties) mode = 3;
-    else if (dots <= 456) mode = 0;
+    if (dots < 80) mode = 2;
+    else if (dots < 252+m3_penalties) mode = 3;
+    else if (dots < 456) mode = 0;
 
     if (read_ly() >= 144) mode = 1;
 
     update_stat();
+    read_lcdc();
 
     switch (mode) {
-        case 0:
+        case 0: //HBLANK
             break;
-        case 1:
+        case 1: // VBLANK
             w_internal_lc = 0;
             if (read_ly() == 144 && dots == 0) Interrupts::set_if(0);
             break;
-        case 2:
+        case 2: // OAM scan
+            if (dots == 0) {
+                memset(obj_queue, 0, 10);
+                obj_queue_idx = 0;
+            }
+            if (dots % 2 == 0 && obj_queue_idx < 10) {
+                u_char ly = read_ly();
+                u_short obj_addr = 0xFE00 + dots * 2;
+                u_char obj_y = Memory::unsafe_read(obj_addr);
+                // if (obj_y >= 16) Debugger::log(std::format("OAM obj y: {}", obj_y));
+                u_char size = obj_size ? 16 : 8;
+                if ((obj_y - 16) <= ly && ly < (obj_y - 16 + size)) {
+                    obj_queue[obj_queue_idx++] = obj_addr;
+                }
+            }
             break;
-        case 3:
-            read_lcdc();
-            if (dots <= 92) return; // Need this to sync frame_buf_index with line, since once dots reset, a line should be drawn.
-            if (dots == 93) { // Mid-frame scroll behavior. Fetch 3 low bits of scx and scy
+        case 3: // Draw
+            if (dots < 92) return; // Need this to sync frame_buf_index with line, since once dots reset, a line should be drawn.
+            if (dots == 92) { // Mid-frame scroll behavior. Fetch 3 low bits of scx and scy
                 scx_lower = read_scx() & 0x7;
                 scy_lower = read_scy() & 0x7;
             }
             render_background();
             render_window();
+            render_object();
             frame_buf_index++;
             break;
     }
@@ -147,11 +162,69 @@ void Ppu::render_window() {
     // std::cout<<(int) frame_buffer[m3_x-1]<<"\n";
 }
 
+void Ppu::render_object() {
+    if (obj_enable == 0) {
+        return;
+    }
+    u_char x = frame_buf_index % 160;
+    u_char y = frame_buf_index / 160;
+    u_short obj_addr = 0;
+
+    for (u_char i=0;i<obj_queue_idx;i++) {
+        u_short addr = obj_queue[i];
+        u_char obj_x = Memory::unsafe_read(addr + 1);
+        if ((obj_x  - 8) <= x && x < obj_x) {
+            obj_addr = addr;
+            break;
+        }
+    }
+
+    if (obj_addr == 0) return;
+
+    u_char obj_att = Memory::unsafe_read(obj_addr + 3);
+    u_char obj_priority = (obj_att >> 7) & 0x1;
+    u_char obj_y_flip = (obj_att >> 6) & 0x1;
+    u_char obj_x_flip = (obj_att >> 5) & 0x1;
+    u_char obj_palette = (obj_att >> 4) & 0x1;
+
+    if (obj_priority == 1) {
+        if (frame_buffer[frame_buf_index] > 0) return; // Bg/Window color 1-3 draw over this obj
+    }
+
+    u_char size = obj_size ? 16 : 8;
+    u_short tile_ref = Memory::unsafe_read(obj_addr + 2);
+    if (size == 16) {
+        if (y%16 < 8) tile_ref = tile_ref | 0x01;
+        else tile_ref = tile_ref & 0xFE;
+
+        if (obj_y_flip == 1) tile_ref ^= 0x01;
+    }
+
+    u_short tile_line_data;
+    u_short tile_data_ptr;
+    if (tile_ref >= 128) tile_data_ptr = 0x8800;
+    else tile_data_ptr = 0x8000;
+
+    tile_ref = (tile_ref % 128)*16;
+    u_short line_offset = (y % 8)*2;
+    if(obj_y_flip == 1 && size == 8) line_offset = (7 - (y % 8))*2;
+
+    tile_line_data = Memory::read(tile_data_ptr + tile_ref + line_offset);
+    tile_line_data |= Memory::read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
+
+    u_char pixel_offset = 7 - (x % 8);
+    if (obj_x_flip == 1) pixel_offset = x % 8;
+    u_char p1 = tile_line_data & 0xFF;
+    u_char p2 = tile_line_data >> 8;
+
+    u_char color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+
+    if (color > 0) frame_buffer[frame_buf_index] = color;
+}
 
 u_short Ppu::get_tile_index_from_pixel(u_char x, u_char y) {
     return ((x / 8) + 32 * (y/8));
 }
-
 
 void Ppu::read_lcdc() {
     u_char data = Memory::read(0xFF40);

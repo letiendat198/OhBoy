@@ -10,6 +10,9 @@ private:
     u_short dots;
     u_short m3_penalties = 0;
     u_short frame_buf_index = 0;
+    u_short obj_queue[10];
+    u_char obj_queue_idx = 0;
+
     u_char enable;
     u_short w_tilemap_area;
     u_char w_enable;
@@ -27,6 +30,7 @@ private:
 
     void render_background();
     void render_window();
+    void render_object();
     u_short get_tile_index_from_pixel(u_char x, u_char y);
 
 public:
