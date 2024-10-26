@@ -12,7 +12,7 @@
 #include "interrupts.h"
 using namespace std;
 
-void Cpu::init(){
+void Cpu::init_noboot(){
     a = 0x01;
     b = 0x00;
     c = 0x13;
@@ -27,6 +27,12 @@ void Cpu::init(){
     h_flag = 1;
     c_flag = 1;
     Memory::write(0xFF44, 0x90);
+    Memory::write(0xFF00, 0xFF);
+    Memory::turnoff_boot();
+}
+
+void Cpu::init() {
+    Memory::write(0xFF00, 0xFF); // Write to joypad register cause 0 means clicked, 1 means no
 }
 
 std::string Cpu::craft_debug() {
@@ -58,7 +64,7 @@ bool Cpu::tick(){
         }
         u_short iresult = Interrupts::check_and_service(ime); // Check interrupts
         if (iresult != 0) {
-            if (iresult == 0x40) Debugger::log(std::format("Interrupt routine at {:#X}", iresult));
+            // if (iresult == 0x40) Debugger::log(std::format("Interrupt routine at {:#X}", iresult));
             interrupt_addr = iresult;
             mcycle = 4;
         }

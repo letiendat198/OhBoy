@@ -6,8 +6,10 @@
 
 class Cartridge{
 private:
-    static FILE *f;
-    static int size;
+    inline static FILE *f;
+    inline static FILE *f_boot;
+    inline static int size;
+    inline static int boot_size;
 public:
     static bool init(const char* file);
     static void read_to_mem();
