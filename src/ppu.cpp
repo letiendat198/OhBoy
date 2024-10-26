@@ -90,7 +90,7 @@ void Ppu::render_background() {
     u_short map_addr = 0x9800;
     if (bg_tilemap_area == 1) map_addr = 0x9C00;
     // Debugger::log(std::format("Reading tile map data from addr: {:X}", map_addr + get_tile_index_from_pixel(x, y)));
-    u_short tile_ref = Memory::read(map_addr + get_tile_index_from_pixel(x, y));
+    u_short tile_ref = Memory::unsafe_read(map_addr + get_tile_index_from_pixel(x, y));
     // Debugger::log(std::format("Tile map is referencing to tile: {}", tile_ref));
     // Debugger::log(std::format("Tile data area bit: {:X}", tiledata_area));
     u_short tile_line_data;
@@ -103,8 +103,8 @@ void Ppu::render_background() {
     tile_ref = (tile_ref % 128)*16;
     u_short line_offset = (y % 8)*2;
 
-    tile_line_data = Memory::read(tile_data_ptr + tile_ref + line_offset);
-    tile_line_data |= Memory::read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
+    tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
+    tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
 
     // Debugger::log(std::format("Fetched tile data: {:X}", tile_line_data));
     u_char pixel_offset = 7 - (x % 8);
@@ -137,7 +137,7 @@ void Ppu::render_window() {
     u_short map_addr = 0x9800;
     if (w_tilemap_area) map_addr = 0x9C00;
     // Debugger::log(std::format("Reading tile map data from addr: {:X}", map_addr + get_tile_index_from_pixel(x, y)));
-    u_short tile_ref = Memory::read(map_addr + get_tile_index_from_pixel(x, y));
+    u_short tile_ref = Memory::unsafe_read(map_addr + get_tile_index_from_pixel(x, y));
     // Debugger::log(std::format("Tile map is referencing to tile: {}", tile_ref));
     // Debugger::log(std::format("Tile data area bit: {:X}", tiledata_area));
     u_short tile_line_data;
@@ -150,8 +150,8 @@ void Ppu::render_window() {
     tile_ref = (tile_ref % 128)*16;
     u_short line_offset = (y % 8)*2;
 
-    tile_line_data = Memory::read(tile_data_ptr + tile_ref + line_offset);
-    tile_line_data |= Memory::read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
+    tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
+    tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
 
     // Debugger::log(std::format("Fetched tile data: {:X}", tile_line_data));
     u_char pixel_offset = 7 - (x % 8);
@@ -216,8 +216,8 @@ void Ppu::render_object() {
     u_short line_offset = (y % 8)*2;
     if(obj_y_flip == 1 && size == 8) line_offset = (7 - (y % 8))*2;
 
-    tile_line_data = Memory::read(tile_data_ptr + tile_ref + line_offset);
-    tile_line_data |= Memory::read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
+    tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
+    tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
 
     // Because obj can be anywhere, it's pixel offset should not be calculated by x % 8 -> cause clipping if obj starting x pos not divisible by 8
     // But should be calculated by (obj starting x cord - current x) to find which pixel to render
@@ -242,7 +242,7 @@ u_char Ppu::parse_palette(u_char src_color, u_short palette_addr) {
 }
 
 void Ppu::read_lcdc() {
-    u_char data = Memory::read(0xFF40);
+    u_char data = Memory::unsafe_read(0xFF40);
     enable = (data & 0x80) >> 7;
     w_tilemap_area = (data & 0x40) >> 6;
     w_enable = (data & 0x20) >> 5;
@@ -254,7 +254,7 @@ void Ppu::read_lcdc() {
 }
 
 void Ppu::check_stat_interrupt() {
-    u_char stat = Memory::read(0xFF41);
+    u_char stat = Memory::unsafe_read(0xFF41);
     for(int i=3; i<=6; i++) {
         u_char flag = (stat >> i) & 0x1;
         if (flag == 1) {
@@ -286,14 +286,14 @@ void Ppu::check_stat_interrupt() {
 
 
 void Ppu::update_stat() {
-    u_char current_stat = Memory::read(0xFF41);
-    u_char lyc = Memory::read(0xFF45);
+    u_char current_stat = Memory::unsafe_read(0xFF41);
+    u_char lyc = Memory::unsafe_read(0xFF45);
     u_char write_data = (lyc == read_ly()) << 2 |  mode;
     // Debugger::log(std::format("Current STAT: {:b}", current_stat));
     // Debugger::log(std::format("STAT update data: {:b}", write_data));
     current_stat = (current_stat & ~0x7) | write_data;
     // Debugger::log(std::format("Updated STAT: {:b}", current_stat));
-    Memory::write(0xFF41, current_stat);
+    Memory::unsafe_write(0xFF41, current_stat);
 }
 
 u_char Ppu::read_ly() {

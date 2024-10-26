@@ -7,7 +7,7 @@ u_char Memory::read(u_short addr) {
     if (boot_off == false && addr <= 0xFF) {
         return bootrom[addr];
     }
-
+    if (addr == 0xFF00) return 0xFF;
     if (can_read(addr)) {
         return memory[addr];
     }
@@ -30,25 +30,20 @@ void Memory::write(u_short addr, u_char data) {
         *(memory+addr) = 0;
         return;
     }
+    if (addr == 0xFF46 && !dma_requested) {
+        dma_requested = true;
+    }
     if (can_write(addr)) {
         *(memory+addr) = data;
     }
 }
 
-u_char Memory::unsafe_read(u_short addr) {
-    return memory[addr];
+bool Memory::check_dma() {
+    return dma_requested;
 }
 
-void Memory::unsafe_write(u_short addr, u_char data) {
-    *(memory+addr) = data;
-}
-
-u_char *Memory::get_raw() {
-    return memory;
-}
-
-u_char *Memory::get_boot_raw() {
-    return bootrom;
+void Memory::resolve_dma() {
+    dma_requested = false;
 }
 
 
@@ -67,6 +62,22 @@ bool Memory::can_read(unsigned short addr) {
     if (vram_lock && (0x8000 <= addr && addr <= 0x9FFF)) return false;
     if (dma_lock && (addr < 0xFF80 || addr > 0xFFFE)) return false;
     return true;
+}
+
+u_char Memory::unsafe_read(u_short addr) {
+    return memory[addr];
+}
+
+void Memory::unsafe_write(u_short addr, u_char data) {
+    *(memory+addr) = data;
+}
+
+u_char *Memory::get_raw() {
+    return memory;
+}
+
+u_char *Memory::get_boot_raw() {
+    return bootrom;
 }
 
 void Memory::lock_oam() {

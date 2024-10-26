@@ -5,7 +5,7 @@
 
 class Dma {
 private:
-    inline static u_char prev_dma = Memory::read(0xFF46);
+    inline static u_char dma_addr;
     inline static u_char cycle = 0;
 public:
     static void tick();

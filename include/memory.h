@@ -12,6 +12,7 @@ private:
     inline static bool vram_lock = false;
     inline static bool dma_lock = false;
     inline static bool boot_off = false;
+    inline static bool dma_requested = false;
 public:
     static u_char read(u_short addr);
     static void write(u_short addr, u_char data);
@@ -28,6 +29,8 @@ public:
     static void lock_dma();
     static void unlock_dma();
     static void turnoff_boot();
+    static bool check_dma();
+    static void resolve_dma();
 };
 
 #endif
