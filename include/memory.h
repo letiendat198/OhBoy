@@ -6,12 +6,10 @@
 
 class Memory{
 private:
-    inline static u_char* memory = (unsigned char*)malloc((0xFFFF+1)*sizeof(char));
-    inline static u_char* bootrom = (unsigned char*)malloc((0xFF+1)*sizeof(char));
+    inline static u_char* memory = (unsigned char*)malloc((0x3FFF+1)*sizeof(char));
     inline static bool oam_lock = false;
     inline static bool vram_lock = false;
     inline static bool dma_lock = false;
-    inline static bool boot_off = false;
     inline static bool dma_requested = false;
 public:
     static u_char read(u_short addr);
@@ -19,7 +17,6 @@ public:
     static u_char unsafe_read(u_short addr);
     static void unsafe_write(u_short addr, u_char data);
     static u_char* get_raw();
-    static u_char* get_boot_raw();
     static bool can_read(u_short addr);
     static bool can_write(u_short addr);
     static void lock_oam();

@@ -4,12 +4,12 @@
 #include <format>
 
 u_char Memory::read(u_short addr) {
-    if (boot_off == false && addr <= 0xFF) {
-        return bootrom[addr];
-    }
     if (addr == 0xFF00) return 0xFF;
     if (can_read(addr)) {
-        return memory[addr];
+        if (addr < 0xC000) {
+            return Cartridge::read(addr);
+        }
+        return memory[addr - 0xC000];
     }
     else {
         // Debugger::log(std::format("READ PROHIBITED AT ADDRESS {:#X}", addr));
@@ -18,23 +18,21 @@ u_char Memory::read(u_short addr) {
 }
 
 void Memory::write(u_short addr, u_char data) {
-    // if (0xA000 <= addr && addr <= 0xBFFF) {
-    //     return;
-    // }
-    if (addr == 0xFF50 && boot_off == false) {
-        Debugger::log("Turn off bootrom");
-        boot_off = true;
+    if (addr == 0xFF50) {
+        Cartridge::boot_off();
     }
-
     if (addr == 0xFF04) {
-        *(memory+addr) = 0;
+        *(memory+addr - 0xC000) = 0;
         return;
     }
     if (addr == 0xFF46 && !dma_requested) {
         dma_requested = true;
     }
     if (can_write(addr)) {
-        *(memory+addr) = data;
+        if (addr < 0xC000) {
+            return Cartridge::write(addr, data);
+        }
+        *(memory+addr - 0xC000) = data;
     }
 }
 
@@ -48,7 +46,7 @@ void Memory::resolve_dma() {
 
 
 bool Memory::can_write(u_short addr) {
-    if (addr <= 0x7FFF || (0xE000 <= addr && addr <= 0xFDFF) || (0xFEA0 <= addr && addr <= 0xFEFF)) {
+    if ((0xE000 <= addr && addr <= 0xFDFF) || (0xFEA0 <= addr && addr <= 0xFEFF)) {
         return false;
     }
     if (oam_lock && (0xFE00 <= addr && addr <= 0xFE9F)) return false;
@@ -65,19 +63,21 @@ bool Memory::can_read(unsigned short addr) {
 }
 
 u_char Memory::unsafe_read(u_short addr) {
-    return memory[addr];
+    if (addr < 0xC000) {
+        return Cartridge::read(addr);
+    }
+    return memory[addr - 0xC000];
 }
 
 void Memory::unsafe_write(u_short addr, u_char data) {
-    *(memory+addr) = data;
+    if (addr < 0xC000) {
+        return Cartridge::write(addr, data);
+    }
+    *(memory+addr - 0xC000) = data;
 }
 
 u_char *Memory::get_raw() {
     return memory;
-}
-
-u_char *Memory::get_boot_raw() {
-    return bootrom;
 }
 
 void Memory::lock_oam() {
@@ -102,8 +102,4 @@ void Memory::lock_dma() {
 
 void Memory::unlock_dma() {
     dma_lock = 0;
-}
-
-void Memory::turnoff_boot() {
-    boot_off = true;
 }

@@ -68,7 +68,7 @@ void Ppu::tick() {
             }
             render_background();
             render_window();
-            render_object();
+            render_object(0);
             frame_buf_index++;
             break;
     }
@@ -166,7 +166,7 @@ void Ppu::render_window() {
     // std::cout<<(int) frame_buffer[m3_x-1]<<"\n";
 }
 
-void Ppu::render_object() {
+void Ppu::render_object(u_char offset) {
     if (obj_enable == 0) {
         return;
     }
@@ -175,7 +175,7 @@ void Ppu::render_object() {
     u_short obj_addr = 0;
     u_short obj_x_start = 200; // A maximal value so that first object found always satisfy
 
-    for (u_char i=0;i<obj_queue_idx;i++) {
+    for (u_char i=offset;i<obj_queue_idx;i++) {
         u_short addr = obj_queue[i];
         u_char obj_x = Memory::unsafe_read(addr + 1);
         if ((obj_x - 8) <= x  && x < obj_x) {
@@ -193,6 +193,7 @@ void Ppu::render_object() {
     u_char obj_y_flip = (obj_att >> 6) & 0x1;
     u_char obj_x_flip = (obj_att >> 5) & 0x1;
     u_char obj_palette = (obj_att >> 4) & 0x1;
+    u_short obj_y_start = Memory::unsafe_read(obj_addr);
 
     if (obj_priority == 1) {
         if (frame_buffer[frame_buf_index] > 0) return; // Bg/Window color 1-3 draw over this obj
@@ -213,8 +214,8 @@ void Ppu::render_object() {
     else tile_data_ptr = 0x8000;
 
     tile_ref = (tile_ref % 128)*16;
-    u_short line_offset = (y % 8)*2;
-    if(obj_y_flip == 1 && size == 8) line_offset = (7 - (y % 8))*2;
+    u_short line_offset = ((y - obj_y_start + 16) % 8)*2;
+    if(obj_y_flip == 1 && size == 8) line_offset = (7 - ((y - obj_y_start + 16) % 8))*2;
 
     tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
     tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
@@ -230,6 +231,9 @@ void Ppu::render_object() {
 
     u_short palette_addr = obj_palette ? 0xFF49 : 0xFF48;
     if (color > 0) frame_buffer[frame_buf_index] = parse_palette(color, palette_addr);
+    else { // If pixel is transparent, find another one that may have priority
+        if (offset+1<obj_queue_idx) render_object(offset + 1);
+    }
 }
 
 u_short Ppu::get_tile_index_from_pixel(u_char x, u_char y) {
@@ -297,12 +301,12 @@ void Ppu::update_stat() {
 }
 
 u_char Ppu::read_ly() {
-    return Memory::read(0xFF44);
+    return Memory::unsafe_read(0xFF44);
 }
 
 void Ppu::inc_ly() {
     // Debugger::log(std::format("LY increased to {}", read_ly()+1));
-    Memory::write(0xFF44, (read_ly() + 1)  % 154);
+    Memory::unsafe_write(0xFF44, (read_ly() + 1)  % 154);
 }
 
 // void Ppu::inc_w_internal_lc() {
@@ -311,19 +315,19 @@ void Ppu::inc_ly() {
 // }
 
 u_char Ppu::read_scx() {
-    return Memory::read(0xFF43);
+    return Memory::unsafe_read(0xFF43);
 }
 
 u_char Ppu::read_scy() {
-    return Memory::read(0xFF42);
+    return Memory::unsafe_read(0xFF42);
 }
 
 u_char Ppu::read_wx() {
-    return Memory::read(0xFF4B);
+    return Memory::unsafe_read(0xFF4B);
 }
 
 u_char Ppu::read_wy() {
-    return Memory::read(0xFF4A);
+    return Memory::unsafe_read(0xFF4A);
 }
 
 u_char *Ppu::get_frame_buffer() {

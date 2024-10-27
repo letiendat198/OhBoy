@@ -41,3 +41,6 @@ include_directories("deps/imgui/backends")
 include_directories("deps/imgui/misc/cpp")
 include_directories("deps/SDL2/x86_64-w64-mingw32/include/SDL2")
 
+add_compile_options(-fsanitize=address)
+add_link_options(-fsanitize=address)
+

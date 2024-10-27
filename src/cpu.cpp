@@ -12,7 +12,7 @@
 #include "interrupts.h"
 using namespace std;
 
-void Cpu::init_noboot(){
+void Cpu::init() {
     a = 0x01;
     b = 0x00;
     c = 0x13;
@@ -26,12 +26,7 @@ void Cpu::init_noboot(){
     n_flag = 0;
     h_flag = 1;
     c_flag = 1;
-    Memory::write(0xFF44, 0x90);
-    Memory::turnoff_boot();
-}
-
-void Cpu::init() {
-
+    Cartridge::boot_off();
 }
 
 std::string Cpu::craft_debug() {

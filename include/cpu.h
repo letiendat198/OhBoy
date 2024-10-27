@@ -35,7 +35,6 @@ public:
     unsigned char mcycle;
     unsigned char cycle_count=0;
     void init();
-    void init_noboot();
     bool tick();
 
     std::string craft_debug();
