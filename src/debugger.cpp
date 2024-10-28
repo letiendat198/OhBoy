@@ -4,6 +4,7 @@
 #include <format>
 
 #include "dma.h"
+#include "joypad.h"
 
 void Debugger::init() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
@@ -55,6 +56,7 @@ void Debugger::tick_cpu() {
         Dma::tick();
         for(int i=0;i<4;i++) ppu.tick();
         timer.tick();
+        Joypad::tick();
         cpu.tick();
         u_char serial_data = Memory::read(0xFF01);
         if (Memory::read(0xFF02) == 0x81 && serial_data >= 32 && serial_data <= 127) {
@@ -243,6 +245,19 @@ void Debugger::render_game() {
 
     ImGui::Image((ImTextureID)(intptr_t)texture, ImVec2((float)160*3, (float)144*3));
     ImGui::End();
+}
+
+void Debugger::capture_keyboard() {
+    memset(Joypad::key_state, 0, 8);
+    const Uint8* key = SDL_GetKeyboardState(NULL);
+    if(key[SDL_SCANCODE_Y]) Joypad::key_state[0]=1;
+    if(key[SDL_SCANCODE_T]) Joypad::key_state[1]=1;
+    if(key[SDL_SCANCODE_M]) Joypad::key_state[2]=1;
+    if(key[SDL_SCANCODE_N]) Joypad::key_state[3]=1;
+    if(key[SDL_SCANCODE_S]) Joypad::key_state[4]=1;
+    if(key[SDL_SCANCODE_W]) Joypad::key_state[5]=1;
+    if(key[SDL_SCANCODE_A]) Joypad::key_state[6]=1;
+    if(key[SDL_SCANCODE_D]) Joypad::key_state[7]=1;
 }
 
 void Debugger::log(std::string s) {

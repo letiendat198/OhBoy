@@ -19,7 +19,7 @@ void Ppu::tick() {
         // Debugger::log(std::format("Dot reseted while fb index was {}", frame_buf_index));
         inc_ly();
         update_stat();
-        check_stat_interrupt();
+        check_and_req_lyc_stat();
         if (line_did_enable_w) w_internal_lc++;
         line_did_enable_w = 0;
     }
@@ -38,13 +38,18 @@ void Ppu::tick() {
 
     switch (mode) {
         case 0: //HBLANK
+            if (dots == 252+m3_penalties) check_and_req_mode0_stat();
             break;
         case 1: // VBLANK
             w_internal_lc = 0;
-            if (read_ly() == 144 && dots == 0) Interrupts::set_if(0);
+            if (read_ly() == 144 && dots == 0) {
+                Interrupts::set_if(0);
+                check_and_req_mode1_stat();
+            }
             break;
         case 2: // OAM scan
             if (dots == 0) {
+                check_and_req_mode2_stat();
                 memset(obj_queue, 0, 10);
                 obj_queue_idx = 0;
             }
@@ -59,7 +64,7 @@ void Ppu::tick() {
                 }
             }
             break;
-        case 3: // Draw
+        case 3: // TODO: Implement mode 3 penalty
             if (dots < 92) return; // Need this to sync frame_buf_index with line, since once dots reset, a line should be drawn.
             if (dots == 92) { // Mid-frame scroll behavior. Fetch 3 low bits of scx and scy
                 scx_lower = read_scx() & 0x7;
@@ -202,8 +207,8 @@ void Ppu::render_object(u_char offset) {
     u_char size = obj_size ? 16 : 8;
     u_short tile_ref = Memory::unsafe_read(obj_addr + 2);
     if (size == 16) {
-        if (y%16 < 8) tile_ref = tile_ref | 0x01;
-        else tile_ref = tile_ref & 0xFE;
+        if ((y-obj_y_start+16)%16 < 8) tile_ref = tile_ref & 0xFE;
+        else tile_ref = tile_ref | 0x01;
 
         if (obj_y_flip == 1) tile_ref ^= 0x01;
     }
@@ -215,7 +220,7 @@ void Ppu::render_object(u_char offset) {
 
     tile_ref = (tile_ref % 128)*16;
     u_short line_offset = ((y - obj_y_start + 16) % 8)*2;
-    if(obj_y_flip == 1 && size == 8) line_offset = (7 - ((y - obj_y_start + 16) % 8))*2;
+    if(obj_y_flip == 1) line_offset = (7 - ((y - obj_y_start + 16) % 8))*2;
 
     tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
     tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
@@ -257,37 +262,37 @@ void Ppu::read_lcdc() {
     bg_w_priority = (data & 0x1);
 }
 
-void Ppu::check_stat_interrupt() {
+void Ppu::check_and_req_lyc_stat() {
     u_char stat = Memory::unsafe_read(0xFF41);
-    for(int i=3; i<=6; i++) {
-        u_char flag = (stat >> i) & 0x1;
-        if (flag == 1) {
-            switch (i) {
-                case 3:
-                    if (mode==0 && dots == 252+m3_penalties+1) {
-                        Interrupts::set_if(1);
-                    }
-                    break;
-                case 4:
-                    if (mode==1 && dots==0 && read_ly()==144) {
-                        Interrupts::set_if(1);
-                    }
-                    break;
-                case 5:
-                    if (mode==2 && dots==0 && read_ly()<144) {
-                        Interrupts::set_if(1);
-                    }
-                    break;
-                case 6:
-                    if (((stat >> 2) & 0x1) == 1) {
-                        Interrupts::set_if(1);
-                    }
-                    break;
-            }
-        }
+    u_char flag = (stat >> 6) & 0x1;
+    if (flag && ((stat >> 2) & 0x1) == 1) {
+        Interrupts::set_if(1);
     }
 }
 
+void Ppu::check_and_req_mode0_stat() {
+    u_char stat = Memory::unsafe_read(0xFF41);
+    u_char flag = (stat >> 3) & 0x1;
+    if (flag && mode==0) {
+        Interrupts::set_if(1);
+    }
+}
+
+void Ppu::check_and_req_mode1_stat() {
+    u_char stat = Memory::unsafe_read(0xFF41);
+    u_char flag = (stat >> 4) & 0x1;
+    if (flag && mode==1) {
+        Interrupts::set_if(1);
+    }
+}
+
+void Ppu::check_and_req_mode2_stat() {
+    u_char stat = Memory::unsafe_read(0xFF41);
+    u_char flag = (stat >> 5) & 0x1;
+    if (flag && mode==2) {
+        Interrupts::set_if(1);
+    }
+}
 
 void Ppu::update_stat() {
     u_char current_stat = Memory::unsafe_read(0xFF41);

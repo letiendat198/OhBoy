@@ -1,0 +1,29 @@
+#include "joypad.h"
+
+#include <debugger.h>
+#include <memory.h>
+#include <string.h>
+
+void Joypad::tick() {
+    u_char joypad_control = (Memory::unsafe_read(0xFF00) >> 4) & 0x3;
+    u_char joypad_state = 0;
+    Debugger::capture_keyboard();
+    if ((joypad_control & 0x1) == 0) { // Select dpad
+        // std::cout<<"Reading from DPAD\n";
+        for (u_char i = 0;i<=3;i++) {
+            joypad_state = joypad_state << 1 | !key_state[4+i];
+        }
+    }
+    else if (((joypad_control>>1) & 0x1) == 0) { // Select buttons
+        // std::cout<<"Reading from buttons\n";
+        for (u_char i = 0;i<=3;i++) {
+            joypad_state = joypad_state << 1 | !key_state[i];
+        }
+    }
+    else {
+        // std::cout<<"Read nothing\n";
+        joypad_state = joypad_state << 4 | 0xF;
+    }
+    Memory::unsafe_write(0xFF00, joypad_control << 4 | joypad_state);
+}
+

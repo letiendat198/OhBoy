@@ -30,7 +30,9 @@ add_executable(OhBoy src/main.cpp
         src/timer.cpp
         include/timer.h
         src/dma.cpp
-        include/dma.h)
+        include/dma.h
+        src/joypad.cpp
+        include/joypad.h)
 
 target_link_libraries(OhBoy "D:/Projects/OhBoy/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2main.a")
 target_link_libraries(OhBoy "D:/Projects/OhBoy/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2.dll.a")

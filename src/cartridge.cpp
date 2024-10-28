@@ -77,12 +77,12 @@ void Cartridge::write(u_short addr, u_char data) {
         else if (0x2000 <= addr && addr <= 0x3FFF) {
             rom_bank = data & 0x0F; // Depends on ROM presented
             if (rom_bank == 0) rom_bank = 1;
-            std::cout<<"ROM bank switch requested: "<< (int) rom_bank<<"\n";
+            // std::cout<<"ROM bank switch requested: "<< (int) rom_bank<<"\n";
             return;
             // switch_rom_bank(rom_bank);
         }
         else if (0x4000 <= addr && addr <= 0x5FFF) {
-            std::cout<<"RAM bank switch requested"<<"\n";
+            // std::cout<<"RAM bank switch requested"<<"\n";
             ram_bank = data & 0x3;
             return;
         }

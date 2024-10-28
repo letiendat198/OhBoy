@@ -47,7 +47,10 @@ public:
     u_char read_wx();
     void read_lcdc();
     void update_stat();
-    void check_stat_interrupt();
+    void check_and_req_lyc_stat();
+    void check_and_req_mode0_stat();
+    void check_and_req_mode1_stat();
+    void check_and_req_mode2_stat();
 };
 
 #endif //PPU_H

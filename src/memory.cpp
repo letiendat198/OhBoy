@@ -4,7 +4,6 @@
 #include <format>
 
 u_char Memory::read(u_short addr) {
-    if (addr == 0xFF00) return 0xFF;
     if (can_read(addr)) {
         if (addr < 0xC000) {
             return Cartridge::read(addr);

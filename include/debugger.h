@@ -38,6 +38,7 @@ public:
     void render_tiles();
     void render_game();
     void tick_cpu();
+    static void capture_keyboard();
     void end();
 
     static void log(std::string);
