@@ -5,10 +5,10 @@
 #include <memory.h>
 
 #include "mbc1.h"
+#include "mbc5.h"
 
 bool Cartridge::init(const char* file){
     cartridge_mem = new uint8_t[0xBFFF+1]();
-    external_ram = new uint8_t[0x2000*16]();
 
     // Load bootrom
     f_boot = fopen("../roms/bootix.bin", "rb");
@@ -37,6 +37,7 @@ bool Cartridge::init(const char* file){
     // Read cartridge metadata
     rom_title = new char[0xF + 1]; // Stub
     strncpy(rom_title, reinterpret_cast<const char *>(rom_data+0x0134), 16);
+
     mbc_type = rom_data[0x0147];
     rom_size = (32 * (1<<rom_data[0x0148]));
     max_rom_banks = rom_size / 16;
@@ -75,8 +76,13 @@ bool Cartridge::init(const char* file){
     dest_code = rom_data[0x014A];
     version = rom_data[0x014D];
 
+    external_ram = new uint8_t[0x2000*max_ram_banks?max_ram_banks:1]();
+
     if (0x1 <= mbc_type && mbc_type <= 0x3) {
         mbc = new MBC1(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
+    }
+    else if (0x19 <= mbc_type && mbc_type <= 0x1E) {
+        mbc = new MBC5(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
     }
 
     std::cout<<"ROM title: "<<rom_title<<"\n";
@@ -103,8 +109,8 @@ uint8_t Cartridge::read(uint16_t addr) {
         return rom_data[mbc->calculate_address(addr)];
     }
     if (0xA000 <= addr && addr <= 0xBFFF) {
-        if (!mbc->ram_enable) return 0xFF;
         if (mbc_type == 0) return external_ram[addr - 0xA000];
+        if (!mbc->ram_enable) return 0xFF;
         return external_ram[mbc->calculate_address(addr)];
     }
     return cartridge_mem[addr]; // Only used for vram, move later
@@ -117,9 +123,9 @@ void Cartridge::write(uint16_t addr, uint8_t data) {
         return;
     }
     if (0xA000 <= addr && addr <= 0xBFFF) { // Write to External RAM
-        if (!mbc->ram_enable) return;
         if (mbc_type == 0) external_ram[addr - 0xA000] = data;
-        else external_ram[mbc->calculate_address(addr)] = data;
+        if (!mbc->ram_enable) return;
+        external_ram[mbc->calculate_address(addr)] = data;
         return;
     }
     cartridge_mem[addr] = data; // Only used for VRAM, remove later

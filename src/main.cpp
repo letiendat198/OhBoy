@@ -13,7 +13,7 @@ int main(int, char **){
     debugger.init();
     Debugger::log("Starting GB emulator");
 
-    bool cart_init = Cartridge::init("../roms/mbc1/rom_8Mb.gb");
+    bool cart_init = Cartridge::init("../roms/pokemon yellow.gb");
     if (!cart_init) return -1;
 
     int cycle = 0;
