@@ -3,7 +3,7 @@
 #include <debugger.h>
 #include <format>
 
-u_char Memory::read(u_short addr) {
+uint8_t Memory::read(uint16_t addr) {
     if (can_read(addr)) {
         if (addr < 0xC000) {
             return Cartridge::read(addr);
@@ -16,7 +16,7 @@ u_char Memory::read(u_short addr) {
     }
 }
 
-void Memory::write(u_short addr, u_char data) {
+void Memory::write(uint16_t addr, uint8_t data) {
     if (addr == 0xFF50) {
         Cartridge::boot_off();
     }
@@ -44,7 +44,7 @@ void Memory::resolve_dma() {
 }
 
 
-bool Memory::can_write(u_short addr) {
+bool Memory::can_write(uint16_t addr) {
     if ((0xE000 <= addr && addr <= 0xFDFF) || (0xFEA0 <= addr && addr <= 0xFEFF)) {
         return false;
     }
@@ -61,21 +61,21 @@ bool Memory::can_read(unsigned short addr) {
     return true;
 }
 
-u_char Memory::unsafe_read(u_short addr) {
+uint8_t Memory::unsafe_read(uint16_t addr) {
     if (addr < 0xC000) {
         return Cartridge::read(addr);
     }
     return memory[addr - 0xC000];
 }
 
-void Memory::unsafe_write(u_short addr, u_char data) {
+void Memory::unsafe_write(uint16_t addr, uint8_t data) {
     if (addr < 0xC000) {
         return Cartridge::write(addr, data);
     }
     *(memory+addr - 0xC000) = data;
 }
 
-u_char *Memory::get_raw() {
+uint8_t *Memory::get_raw() {
     return memory;
 }
 

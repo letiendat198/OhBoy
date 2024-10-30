@@ -1,41 +1,43 @@
 #ifndef CARTRIDGE_H
 #define CARTRIDGE_H
 
-#include <types.h>
-#include <iostream>
+#include <cstdint>
+#include <logger.h>
+
+#include "mbc.h"
 
 class Cartridge{
 private:
     inline static FILE *f;
     inline static FILE *f_boot;
-    inline static u_char *rom_data;
-    inline static u_char *cartridge_mem;
-    inline static u_char *boot_data;
-    inline static u_char *external_ram;
+    inline static uint8_t *rom_data;
+    inline static uint8_t *cartridge_mem;
+    inline static uint8_t *boot_data;
+    inline static uint8_t *external_ram;
     inline static bool is_boot = true;
     inline static int rom_file_size;
     inline static int boot_size;
-    inline static u_char mbc_type;
+    inline static uint8_t mbc_type;
     inline static char *rom_title;
-    inline static u_short rom_size;
-    inline static u_short ram_size;
-    inline static u_char dest_code;
-    inline static u_char version;
+    inline static uint16_t rom_size;
+    inline static uint16_t max_rom_banks;
+    inline static uint16_t max_rom_bank_bit = 0;
+    inline static uint16_t ram_size;
+    inline static uint16_t max_ram_bank_bit;
+    inline static uint8_t max_ram_banks;
+    inline static uint8_t dest_code;
+    inline static uint8_t version;
 
-    inline static bool ram_enable = false;
-    inline static u_char rom_bank = 1;
-    inline static u_char ram_bank = 0;
-    inline static u_char bank_mode = 0;
-
-    inline static u_char rom_bank_offset = 0;
+    inline static MBC *mbc;
 
 public:
     static bool init(const char* file);
-    static u_char read(u_short addr);
-    static void write(u_short addr, u_char data);
-    static void switch_rom_bank(u_char rom_bank);
+    static uint8_t read(uint16_t addr);
+    static void write(uint16_t addr, uint8_t data);
+    static void mbc1_register_handler(uint16_t addr, uint8_t data);
     static void boot_off();
     static void close();
+    inline static Logger logger;
 };
 
 #endif

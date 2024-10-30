@@ -23,8 +23,8 @@ add_executable(OhBoy src/main.cpp
         deps/imgui/backends/imgui_impl_sdlrenderer2.cpp
         src/debugger.cpp
         include/config.h
-        src/ppu.cpp
-        include/ppu.h
+        src/PPU.cpp
+        include/PPU.h
         src/interrupts.cpp
         include/interrupts.h
         src/timer.cpp
@@ -32,7 +32,10 @@ add_executable(OhBoy src/main.cpp
         src/dma.cpp
         include/dma.h
         src/joypad.cpp
-        include/joypad.h)
+        include/joypad.h
+        include/mbc.h
+        include/mbc1.h
+        src/mbc1.cpp)
 
 target_link_libraries(OhBoy "D:/Projects/OhBoy/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2main.a")
 target_link_libraries(OhBoy "D:/Projects/OhBoy/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2.dll.a")

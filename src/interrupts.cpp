@@ -2,15 +2,15 @@
 
 #include <memory.h>
 
-u_short Interrupts::check_and_service(u_char &ime){
+uint16_t Interrupts::check_and_service(uint8_t &ime){
     if (ime==0) {
         return 0x00;
     }
-    u_char ie = Memory::read(0xFFFF);
-    u_char iflag = Memory::read(0xFF0F);
-    u_char istatus = ie & iflag;
+    uint8_t ie = Memory::read(0xFFFF);
+    uint8_t iflag = Memory::read(0xFF0F);
+    uint8_t istatus = ie & iflag;
     for (int i=0;i<=4;i++) {
-        u_char idata = (istatus & 0x1<<i) >> i;
+        uint8_t idata = (istatus & 0x1<<i) >> i;
         if (idata == 1) {
             ime = 0;
             reset_if(i);
@@ -31,21 +31,21 @@ u_short Interrupts::check_and_service(u_char &ime){
     return 0x00;
 }
 
-u_char Interrupts::is_pending() {
-    u_char ie = Memory::read(0xFFFF);
-    u_char iflag = Memory::read(0xFF0F);
-    u_char istatus = ie & iflag;
+uint8_t Interrupts::is_pending() {
+    uint8_t ie = Memory::read(0xFFFF);
+    uint8_t iflag = Memory::read(0xFF0F);
+    uint8_t istatus = ie & iflag;
     return istatus != 0;
 }
 
 
-void Interrupts::set_if(u_char bit) {
-    u_char iflag = Memory::read(0xFF0F);
+void Interrupts::set_if(uint8_t bit) {
+    uint8_t iflag = Memory::read(0xFF0F);
     Memory::write(0xFF0F, iflag | 0x1<<bit);
 }
 
-void Interrupts::reset_if(u_char bit) {
-    u_char iflag = Memory::read(0xFF0F);
+void Interrupts::reset_if(uint8_t bit) {
+    uint8_t iflag = Memory::read(0xFF0F);
     Memory::write(0xFF0F, iflag & ~(0x1<<bit));
 }
 

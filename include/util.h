@@ -1,15 +1,16 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <cstdint>
 #include "types.h"
 
 class SafeOperations {
 public:
-    static ArithmeticResult<u_char> safe_add(u_char a, u_char b);
-    static ArithmeticResult<u_short> safe_add(u_short a, u_short b);
+    static ArithmeticResult<uint8_t> safe_add(uint8_t a, uint8_t b);
+    static ArithmeticResult<uint16_t> safe_add(uint16_t a, uint16_t b);
 
-    static ArithmeticResult<u_char> safe_sub(u_char a, u_char b);
-    static ArithmeticResult<u_short> safe_sub(u_short a, u_short b);
+    static ArithmeticResult<uint8_t> safe_sub(uint8_t a, uint8_t b);
+    static ArithmeticResult<uint16_t> safe_sub(uint16_t a, uint16_t b);
 };
 
 #endif //UTIL_H

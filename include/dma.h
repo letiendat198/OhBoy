@@ -1,12 +1,11 @@
 #ifndef DMA_H
 #define DMA_H
 #include <memory.h>
-#include <types.h>
 
-class Dma {
+class DMA {
 private:
-    inline static u_char dma_addr;
-    inline static u_char cycle = 0;
+    inline static uint8_t dma_addr;
+    inline static uint8_t cycle = 0;
 public:
     static void tick();
 };

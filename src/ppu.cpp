@@ -7,13 +7,13 @@
 
 #include "interrupts.h"
 
-void Ppu::init() {
+void PPU::init() {
     wait = 0;
     dots = 0;
     read_lcdc();
 }
 
-void Ppu::tick() {
+void PPU::tick() {
     if (dots++==456) { // Start of frame
         dots = 0;
         // Debugger::log(std::format("Dot reseted while fb index was {}", frame_buf_index));
@@ -54,11 +54,11 @@ void Ppu::tick() {
                 obj_queue_idx = 0;
             }
             if (dots % 2 == 0 && obj_queue_idx < 10) {
-                u_char ly = read_ly();
-                u_short obj_addr = 0xFE00 + dots * 2;
-                u_char obj_y = Memory::unsafe_read(obj_addr);
+                uint8_t ly = read_ly();
+                uint16_t obj_addr = 0xFE00 + dots * 2;
+                uint8_t obj_y = Memory::unsafe_read(obj_addr);
                 // if (obj_y >= 16) Debugger::log(std::format("OAM obj y: {}", obj_y));
-                u_char size = obj_size ? 16 : 8;
+                uint8_t size = obj_size ? 16 : 8;
                 if ((obj_y - 16) <= ly && ly < (obj_y - 16 + size)) {
                     obj_queue[obj_queue_idx++] = obj_addr;
                 }
@@ -82,107 +82,107 @@ void Ppu::tick() {
     }
 }
 
-void Ppu::render_background() {
+void PPU::render_background() {
     if (bg_w_priority == 0) {
         frame_buffer[frame_buf_index] = 0;
         return;
     }
-    u_char scx = read_scx() & ~0x7 | scx_lower; // Mid-frame scroll behavior
-    u_char scy = read_scy() & ~0x7 | scy_lower;
-    u_char x = (scx + frame_buf_index % 160) % 256;
-    u_char y = (scy + frame_buf_index / 160) % 256;
+    uint8_t scx = read_scx() & ~0x7 | scx_lower; // Mid-frame scroll behavior
+    uint8_t scy = read_scy() & ~0x7 | scy_lower;
+    uint8_t x = (scx + frame_buf_index % 160) % 256;
+    uint8_t y = (scy + frame_buf_index / 160) % 256;
 
-    u_short map_addr = 0x9800;
+    uint16_t map_addr = 0x9800;
     if (bg_tilemap_area == 1) map_addr = 0x9C00;
     // Debugger::log(std::format("Reading tile map data from addr: {:X}", map_addr + get_tile_index_from_pixel(x, y)));
-    u_short tile_ref = Memory::unsafe_read(map_addr + get_tile_index_from_pixel(x, y));
+    uint16_t tile_ref = Memory::unsafe_read(map_addr + get_tile_index_from_pixel(x, y));
     // Debugger::log(std::format("Tile map is referencing to tile: {}", tile_ref));
     // Debugger::log(std::format("Tile data area bit: {:X}", tiledata_area));
-    u_short tile_line_data;
-    u_short tile_data_ptr;
+    uint16_t tile_line_data;
+    uint16_t tile_data_ptr;
     if (tile_ref >= 128) tile_data_ptr = 0x8800;
     else {
         if (tiledata_area == 1) tile_data_ptr = 0x8000;
         else tile_data_ptr = 0x9000;
     }
     tile_ref = (tile_ref % 128)*16;
-    u_short line_offset = (y % 8)*2;
+    uint16_t line_offset = (y % 8)*2;
 
     tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
     tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
 
     // Debugger::log(std::format("Fetched tile data: {:X}", tile_line_data));
-    u_char pixel_offset = 7 - (x % 8);
-    u_char p1 = tile_line_data & 0xFF;
-    u_char p2 = tile_line_data >> 8;
+    uint8_t pixel_offset = 7 - (x % 8);
+    uint8_t p1 = tile_line_data & 0xFF;
+    uint8_t p2 = tile_line_data >> 8;
     // Debugger::log(std::format("Fetching data for line with byte 1: {}, byte 2: {}", p1, p2));
     // std::cout<<(int) p1<< " " << (int) p2 <<"\n";
-    u_char color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+    uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
     frame_buffer[frame_buf_index] = parse_palette(color, 0xFF47);
     // Debugger::log(std::format("Color for pixel {} of line {} is {}", x, y, frame_buffer[m3_x-1]));
     // std::cout<<(int) frame_buffer[m3_x-1]<<"\n";
 }
 
-void Ppu::render_window() {
+void PPU::render_window() {
     if (bg_w_priority == 0 || w_enable == 0) {
         return;
     }
-    u_char wx = read_wx();
-    u_char wy = read_wy();
+    uint8_t wx = read_wx();
+    uint8_t wy = read_wy();
     if ((wx < 0) || (wx > 166)) return;
     if ((wy < 0) || (wy > 143)) return;
-    u_char x = frame_buf_index % 160;
-    u_char y = frame_buf_index / 160;
+    uint8_t x = frame_buf_index % 160;
+    uint8_t y = frame_buf_index / 160;
     if ((wx - 7) > x || wy > y) return;
     line_did_enable_w = 1;
     x = x - (wx - 7);
     y = w_internal_lc;
     // Debugger::log(std::format("Window tiles {}", get_tile_index_from_pixel(x, y)));
 
-    u_short map_addr = 0x9800;
+    uint16_t map_addr = 0x9800;
     if (w_tilemap_area) map_addr = 0x9C00;
     // Debugger::log(std::format("Reading tile map data from addr: {:X}", map_addr + get_tile_index_from_pixel(x, y)));
-    u_short tile_ref = Memory::unsafe_read(map_addr + get_tile_index_from_pixel(x, y));
+    uint16_t tile_ref = Memory::unsafe_read(map_addr + get_tile_index_from_pixel(x, y));
     // Debugger::log(std::format("Tile map is referencing to tile: {}", tile_ref));
     // Debugger::log(std::format("Tile data area bit: {:X}", tiledata_area));
-    u_short tile_line_data;
-    u_short tile_data_ptr;
+    uint16_t tile_line_data;
+    uint16_t tile_data_ptr;
     if (tile_ref >= 128) tile_data_ptr = 0x8800;
     else {
         if (tiledata_area) tile_data_ptr = 0x8000;
         else tile_data_ptr = 0x9000;
     }
     tile_ref = (tile_ref % 128)*16;
-    u_short line_offset = (y % 8)*2;
+    uint16_t line_offset = (y % 8)*2;
 
     tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
     tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
 
     // Debugger::log(std::format("Fetched tile data: {:X}", tile_line_data));
-    u_char pixel_offset = 7 - (x % 8);
-    u_char p1 = tile_line_data & 0xFF;
-    u_char p2 = tile_line_data >> 8;
+    uint8_t pixel_offset = 7 - (x % 8);
+    uint8_t p1 = tile_line_data & 0xFF;
+    uint8_t p2 = tile_line_data >> 8;
     // Debugger::log(std::format("Fetching data for line with byte 1: {}, byte 2: {}", p1, p2));
     // std::cout<<(int) p1<< " " << (int) p2 <<"\n";
-    u_char color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+    uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
     frame_buffer[frame_buf_index] = parse_palette(color, 0xFF47);
     // frame_buffer[frame_buf_index] = 0xee;
     // Debugger::log(std::format("Color for pixel {} of line {} is {}", x, y, frame_buffer[m3_x-1]));
     // std::cout<<(int) frame_buffer[m3_x-1]<<"\n";
 }
 
-void Ppu::render_object(u_char offset) {
+void PPU::render_object(uint8_t offset) {
     if (obj_enable == 0) {
         return;
     }
-    u_char x = frame_buf_index % 160;
-    u_char y = frame_buf_index / 160;
-    u_short obj_addr = 0;
-    u_short obj_x_start = 200; // A maximal value so that first object found always satisfy
+    uint8_t x = frame_buf_index % 160;
+    uint8_t y = frame_buf_index / 160;
+    uint16_t obj_addr = 0;
+    uint16_t obj_x_start = 200; // A maximal value so that first object found always satisfy
 
-    for (u_char i=offset;i<obj_queue_idx;i++) {
-        u_short addr = obj_queue[i];
-        u_char obj_x = Memory::unsafe_read(addr + 1);
+    for (uint8_t i=offset;i<obj_queue_idx;i++) {
+        uint16_t addr = obj_queue[i];
+        uint8_t obj_x = Memory::unsafe_read(addr + 1);
         if ((obj_x - 8) <= x  && x < obj_x) {
             if (obj_x < obj_x_start) { // Select lowest X coordinate possible. If all the same, select the first one found
                 obj_addr = addr;
@@ -193,19 +193,19 @@ void Ppu::render_object(u_char offset) {
 
     if (obj_addr == 0) return;
 
-    u_char obj_att = Memory::unsafe_read(obj_addr + 3);
-    u_char obj_priority = (obj_att >> 7) & 0x1;
-    u_char obj_y_flip = (obj_att >> 6) & 0x1;
-    u_char obj_x_flip = (obj_att >> 5) & 0x1;
-    u_char obj_palette = (obj_att >> 4) & 0x1;
-    u_short obj_y_start = Memory::unsafe_read(obj_addr);
+    uint8_t obj_att = Memory::unsafe_read(obj_addr + 3);
+    uint8_t obj_priority = (obj_att >> 7) & 0x1;
+    uint8_t obj_y_flip = (obj_att >> 6) & 0x1;
+    uint8_t obj_x_flip = (obj_att >> 5) & 0x1;
+    uint8_t obj_palette = (obj_att >> 4) & 0x1;
+    uint16_t obj_y_start = Memory::unsafe_read(obj_addr);
 
     if (obj_priority == 1) {
         if (frame_buffer[frame_buf_index] > 0) return; // Bg/Window color 1-3 draw over this obj
     }
 
-    u_char size = obj_size ? 16 : 8;
-    u_short tile_ref = Memory::unsafe_read(obj_addr + 2);
+    uint8_t size = obj_size ? 16 : 8;
+    uint16_t tile_ref = Memory::unsafe_read(obj_addr + 2);
     if (size == 16) {
         if ((y-obj_y_start+16)%16 < 8) tile_ref = tile_ref & 0xFE;
         else tile_ref = tile_ref | 0x01;
@@ -213,13 +213,13 @@ void Ppu::render_object(u_char offset) {
         if (obj_y_flip == 1) tile_ref ^= 0x01;
     }
 
-    u_short tile_line_data;
-    u_short tile_data_ptr;
+    uint16_t tile_line_data;
+    uint16_t tile_data_ptr;
     if (tile_ref >= 128) tile_data_ptr = 0x8800;
     else tile_data_ptr = 0x8000;
 
     tile_ref = (tile_ref % 128)*16;
-    u_short line_offset = ((y - obj_y_start + 16) % 8)*2;
+    uint16_t line_offset = ((y - obj_y_start + 16) % 8)*2;
     if(obj_y_flip == 1) line_offset = (7 - ((y - obj_y_start + 16) % 8))*2;
 
     tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
@@ -227,31 +227,31 @@ void Ppu::render_object(u_char offset) {
 
     // Because obj can be anywhere, it's pixel offset should not be calculated by x % 8 -> cause clipping if obj starting x pos not divisible by 8
     // But should be calculated by (obj starting x cord - current x) to find which pixel to render
-    u_char pixel_offset = 7 - ((x - obj_x_start + 8) % 8);
+    uint8_t pixel_offset = 7 - ((x - obj_x_start + 8) % 8);
     if (obj_x_flip == 1) pixel_offset = (x - obj_x_start + 8) % 8;
-    u_char p1 = tile_line_data & 0xFF;
-    u_char p2 = tile_line_data >> 8;
+    uint8_t p1 = tile_line_data & 0xFF;
+    uint8_t p2 = tile_line_data >> 8;
 
-    u_char color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+    uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
 
-    u_short palette_addr = obj_palette ? 0xFF49 : 0xFF48;
+    uint16_t palette_addr = obj_palette ? 0xFF49 : 0xFF48;
     if (color > 0) frame_buffer[frame_buf_index] = parse_palette(color, palette_addr);
     else { // If pixel is transparent, find another one that may have priority
         if (offset+1<obj_queue_idx) render_object(offset + 1);
     }
 }
 
-u_short Ppu::get_tile_index_from_pixel(u_char x, u_char y) {
+uint16_t PPU::get_tile_index_from_pixel(uint8_t x, uint8_t y) {
     return ((x / 8) + 32 * (y/8));
 }
 
-u_char Ppu::parse_palette(u_char src_color, u_short palette_addr) {
-    u_char palette_data = Memory::unsafe_read(palette_addr);
+uint8_t PPU::parse_palette(uint8_t src_color, uint16_t palette_addr) {
+    uint8_t palette_data = Memory::unsafe_read(palette_addr);
     return (palette_data >> src_color * 2) & 0x3;
 }
 
-void Ppu::read_lcdc() {
-    u_char data = Memory::unsafe_read(0xFF40);
+void PPU::read_lcdc() {
+    uint8_t data = Memory::unsafe_read(0xFF40);
     enable = (data & 0x80) >> 7;
     w_tilemap_area = (data & 0x40) >> 6;
     w_enable = (data & 0x20) >> 5;
@@ -262,42 +262,42 @@ void Ppu::read_lcdc() {
     bg_w_priority = (data & 0x1);
 }
 
-void Ppu::check_and_req_lyc_stat() {
-    u_char stat = Memory::unsafe_read(0xFF41);
-    u_char flag = (stat >> 6) & 0x1;
+void PPU::check_and_req_lyc_stat() {
+    uint8_t stat = Memory::unsafe_read(0xFF41);
+    uint8_t flag = (stat >> 6) & 0x1;
     if (flag && ((stat >> 2) & 0x1) == 1) {
         Interrupts::set_if(1);
     }
 }
 
-void Ppu::check_and_req_mode0_stat() {
-    u_char stat = Memory::unsafe_read(0xFF41);
-    u_char flag = (stat >> 3) & 0x1;
+void PPU::check_and_req_mode0_stat() {
+    uint8_t stat = Memory::unsafe_read(0xFF41);
+    uint8_t flag = (stat >> 3) & 0x1;
     if (flag && mode==0) {
         Interrupts::set_if(1);
     }
 }
 
-void Ppu::check_and_req_mode1_stat() {
-    u_char stat = Memory::unsafe_read(0xFF41);
-    u_char flag = (stat >> 4) & 0x1;
+void PPU::check_and_req_mode1_stat() {
+    uint8_t stat = Memory::unsafe_read(0xFF41);
+    uint8_t flag = (stat >> 4) & 0x1;
     if (flag && mode==1) {
         Interrupts::set_if(1);
     }
 }
 
-void Ppu::check_and_req_mode2_stat() {
-    u_char stat = Memory::unsafe_read(0xFF41);
-    u_char flag = (stat >> 5) & 0x1;
+void PPU::check_and_req_mode2_stat() {
+    uint8_t stat = Memory::unsafe_read(0xFF41);
+    uint8_t flag = (stat >> 5) & 0x1;
     if (flag && mode==2) {
         Interrupts::set_if(1);
     }
 }
 
-void Ppu::update_stat() {
-    u_char current_stat = Memory::unsafe_read(0xFF41);
-    u_char lyc = Memory::unsafe_read(0xFF45);
-    u_char write_data = (lyc == read_ly()) << 2 |  mode;
+void PPU::update_stat() {
+    uint8_t current_stat = Memory::unsafe_read(0xFF41);
+    uint8_t lyc = Memory::unsafe_read(0xFF45);
+    uint8_t write_data = (lyc == read_ly()) << 2 |  mode;
     // Debugger::log(std::format("Current STAT: {:b}", current_stat));
     // Debugger::log(std::format("STAT update data: {:b}", write_data));
     current_stat = (current_stat & ~0x7) | write_data;
@@ -305,11 +305,11 @@ void Ppu::update_stat() {
     Memory::unsafe_write(0xFF41, current_stat);
 }
 
-u_char Ppu::read_ly() {
+uint8_t PPU::read_ly() {
     return Memory::unsafe_read(0xFF44);
 }
 
-void Ppu::inc_ly() {
+void PPU::inc_ly() {
     // Debugger::log(std::format("LY increased to {}", read_ly()+1));
     Memory::unsafe_write(0xFF44, (read_ly() + 1)  % 154);
 }
@@ -319,23 +319,23 @@ void Ppu::inc_ly() {
 //     if (read_ly() == 0) w_internal_lc = 0;
 // }
 
-u_char Ppu::read_scx() {
+uint8_t PPU::read_scx() {
     return Memory::unsafe_read(0xFF43);
 }
 
-u_char Ppu::read_scy() {
+uint8_t PPU::read_scy() {
     return Memory::unsafe_read(0xFF42);
 }
 
-u_char Ppu::read_wx() {
+uint8_t PPU::read_wx() {
     return Memory::unsafe_read(0xFF4B);
 }
 
-u_char Ppu::read_wy() {
+uint8_t PPU::read_wy() {
     return Memory::unsafe_read(0xFF4A);
 }
 
-u_char *Ppu::get_frame_buffer() {
+uint8_t *PPU::get_frame_buffer() {
     return frame_buffer;
 }
 

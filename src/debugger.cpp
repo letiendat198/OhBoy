@@ -53,12 +53,12 @@ void Debugger::init() {
 
 void Debugger::tick_cpu() {
     if (!is_cpu_paused) {
-        Dma::tick();
+        DMA::tick();
         for(int i=0;i<4;i++) ppu.tick();
         timer.tick();
         Joypad::tick();
         cpu.tick();
-        u_char serial_data = Memory::read(0xFF01);
+        uint8_t serial_data = Memory::read(0xFF01);
         if (Memory::read(0xFF02) == 0x81 && serial_data >= 32 && serial_data <= 127) {
             serial_output += serial_data;
             Memory::write(0xFF02, 0x01);
@@ -106,7 +106,7 @@ void Debugger::render() {
     // render_tiles();
     memory_editor.ReadOnly = true;
     memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0xFFFF+1);
-    memory_editor.DrawWindow("Frame Buffer", Ppu::get_frame_buffer(), 160*144);
+    memory_editor.DrawWindow("Frame Buffer", PPU::get_frame_buffer(), 160*144);
 
     ImGui::Render();
     SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
@@ -189,13 +189,13 @@ void Debugger::render_registers() {
 
 void Debugger::render_tiles() {
     ImGui::Begin("Tiles");
-    u_short tiles_addr = 0x8000;
+    uint16_t tiles_addr = 0x8000;
     for (int i=0;i<127;i++) {
-        u_char pix[64];
+        uint8_t pix[64];
         int id = 0;
         for (int i=0; i < 15;i+=2) {
-            u_char byte1= Memory::read(tiles_addr+i);
-            u_char byte2 = Memory::read(tiles_addr+i+1);
+            uint8_t byte1= Memory::read(tiles_addr+i);
+            uint8_t byte2 = Memory::read(tiles_addr+i+1);
             for(int j=7;j>=0;j--) {
                 pix[id++] = ((byte1 >> j) & 0x1) | (((byte2 >> j) & 0x1) << 1);
             }

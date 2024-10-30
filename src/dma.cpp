@@ -3,7 +3,7 @@
 #include <debugger.h>
 #include <format>
 
-void Dma::tick() {
+void DMA::tick() {
     if (cycle == 0) {
         bool dma_requested = Memory::check_dma();
         if (!dma_requested) return;
@@ -11,8 +11,8 @@ void Dma::tick() {
         // Debugger::log("DMA started");
         // Memory::lock_dma(); // DMA locking causes a lot of glitch. Disable for now
     }
-    u_short dest = 0xFE00;
-    u_short src = dma_addr*0x100;
+    uint16_t dest = 0xFE00;
+    uint16_t src = dma_addr*0x100;
     // Debugger::log(std::format("DMA writing from {:#X} to {:#X}: {:#X}", src+cycle, dest + cycle, Memory::unsafe_read(src+cycle)));
     Memory::unsafe_write(dest+cycle, Memory::unsafe_read(src+cycle));
     cycle++;

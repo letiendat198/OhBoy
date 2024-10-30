@@ -29,8 +29,8 @@ private:
     SDL_Texture* old_game_texture = nullptr;
 public:
     Timer timer;
-    Cpu cpu;
-    Ppu ppu;
+    CPU cpu;
+    PPU ppu;
     bool done;
     void init();
     void render();
