@@ -19,7 +19,7 @@ class Debugger {
 private:
     SDL_Window* window;
     SDL_Renderer* renderer;
-    bool is_cpu_paused=true;
+    bool is_cpu_paused=false;
     int breakpoint=0;
     std::string serial_output;
     inline static std::deque<std::string> debug_buffer;
@@ -27,13 +27,16 @@ private:
     SDL_Color colors[4] = {{224, 248, 208, 255}, {136, 192, 112 ,255}, {52, 104, 86, 255}, {8, 24, 32, 255}};
     SDL_Texture* used_textures[127] = {nullptr};
     SDL_Texture* old_game_texture = nullptr;
+
+    bool is_debug = false;
 public:
     Timer timer;
     CPU cpu;
     PPU ppu;
     bool done;
-    void init();
+    void init(bool debug);
     void render();
+    void render_console(const ImGuiIO& io);
     void render_registers();
     void render_tiles();
     void render_game();

@@ -2,11 +2,14 @@
 
 #include <cstdio>
 #include <format>
+#include <imgui_internal.h>
 
 #include "dma.h"
 #include "joypad.h"
 
-void Debugger::init() {
+void Debugger::init(bool debug) {
+    is_debug = debug;
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
@@ -14,7 +17,13 @@ void Debugger::init() {
 
     // Create window with SDL_Renderer graphics context
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    window = SDL_CreateWindow("OhBoy Debugger", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    int width = 1280;
+    int height = 720;
+    if (!is_debug) {
+        width = 160*3 + 20;
+        height = 144*3 + 35;
+    }
+    window = SDL_CreateWindow("OhBoy", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, window_flags);
     if (window == nullptr)
     {
         printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
@@ -84,8 +93,30 @@ void Debugger::render() {
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::DockSpaceOverViewport(0, 0, ImGuiDockNodeFlags_PassthruCentralNode, 0);
+    if(!is_debug)
+        ImGui::DockSpaceOverViewport(0, 0, ImGuiDockNodeFlags_PassthruCentralNode, 0);
+    else
+        ImGui::DockSpaceOverViewport(0, 0, ImGuiDockNodeFlags_AutoHideTabBar, 0);
 
+    render_game();
+    if (is_debug) {
+        render_console(io);
+        render_registers();
+        // render_tiles();
+        memory_editor.ReadOnly = true;
+        memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0xFFFF+1);
+        memory_editor.DrawWindow("Frame Buffer", PPU::get_frame_buffer(), 160*144);
+    }
+
+    ImGui::Render();
+    SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+    SDL_SetRenderDrawColor(renderer, 115, 140, 153, 255);
+    SDL_RenderClear(renderer);
+    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
+    SDL_RenderPresent(renderer);
+}
+
+void Debugger::render_console(const ImGuiIO& io) {
     ImGui::Begin("Debug Info");
     ImGui::Text("Frame rate:");
     ImGui::SameLine();
@@ -95,26 +126,13 @@ void Debugger::render() {
     }
     ImGui::SeparatorText("Debug Console");
     ImGui::BeginChild("Debug Console");
-        for(std::string i: debug_buffer) {
-            ImGui::Text(i.c_str());
-        }
+    for(std::string i: debug_buffer) {
+        ImGui::Text(i.c_str());
+    }
     ImGui::EndChild();
     ImGui::End();
-
-    render_registers();
-    render_game();
-    // render_tiles();
-    memory_editor.ReadOnly = true;
-    memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0xFFFF+1);
-    memory_editor.DrawWindow("Frame Buffer", PPU::get_frame_buffer(), 160*144);
-
-    ImGui::Render();
-    SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-    SDL_SetRenderDrawColor(renderer, 115, 140, 153, 255);
-    SDL_RenderClear(renderer);
-    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
-    SDL_RenderPresent(renderer);
 }
+
 
 void Debugger::render_registers() {
     ImGui::Begin("Registers");

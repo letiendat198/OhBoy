@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <chrono>
+#include <popl.hpp>
 
 #include "debugger.h"
 #include "config.h"
@@ -9,11 +10,27 @@
 using namespace std;
 
 Debugger debugger;
-int main(int, char **){
-    debugger.init();
+int main(int argc , char **argv){
+    popl::OptionParser op("Allowed Options");
+    auto help_options = op.add<popl::Switch>("h", "help", "Get help");
+    auto rom_path_option = op.add<popl::Value<std::string>>("r", "rom", "path to rom file");
+    auto debug_option = op.add<popl::Switch>("d", "debug", "Enable debugging");
+    op.parse(argc, argv);
+
+    bool debug_mode = false;
+    if (debug_option->is_set()) {
+        debug_mode = true;
+    }
+    if (!rom_path_option->is_set()) {
+        cerr<<"No rom specified\n";
+        return -1;
+    }
+
+    debugger.init(debug_mode);
     Debugger::log("Starting GB emulator");
 
-    bool cart_init = Cartridge::init("../roms/pokemon yellow.gb");
+    cout<<rom_path_option->value().c_str()<<endl;
+    bool cart_init = Cartridge::init(rom_path_option->value().c_str());
     if (!cart_init) return -1;
 
     int cycle = 0;

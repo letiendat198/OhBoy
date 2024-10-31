@@ -15,7 +15,10 @@ bool Cartridge::init(const char* file){
     fseek(f_boot, 0L, SEEK_END);
     boot_size = ftell(f_boot);
     Debugger::log(std::format("BOOT size: {}", boot_size).c_str());
-    if(boot_size<=0) return false;
+    if(boot_size<=0) {
+        std::cerr<<"Boot ROM not found!\n";
+        return false;
+    }
 
     boot_data = new uint8_t[0x100+1];
     fseek(f_boot, 0L, SEEK_SET);
@@ -27,7 +30,10 @@ bool Cartridge::init(const char* file){
     rom_file_size = ftell(f);
     std::cout<<"ROM file size: "<<rom_file_size<<"\n";
     Debugger::log(std::format("ROM size: {}", rom_file_size).c_str());
-    if(rom_file_size<=0) return false;
+    if(rom_file_size<=0) {
+        std::cerr<<"ROM file not found!\n";
+        return false;
+    }
 
     rom_data = new uint8_t[rom_file_size];
     fseek(f, 0L, SEEK_SET);
@@ -83,6 +89,11 @@ bool Cartridge::init(const char* file){
     }
     else if (0x19 <= mbc_type && mbc_type <= 0x1E) {
         mbc = new MBC5(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
+    }
+
+    if (mbc_type != 0 && mbc == nullptr) {
+        std::cerr<<"Unsupported MBC type\n";
+        return false;
     }
 
     std::cout<<"ROM title: "<<rom_title<<"\n";

@@ -37,17 +37,35 @@ add_executable(OhBoy src/main.cpp
         include/mbc1.h
         src/mbc1.cpp
         include/mbc5.h
-        src/mbc5.cpp)
+        src/mbc5.cpp
+        deps/popl/include/popl.hpp)
 
-target_link_libraries(OhBoy "D:/Projects/OhBoy/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2main.a")
-target_link_libraries(OhBoy "D:/Projects/OhBoy/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2.dll.a")
+# Enable ExternalProject CMake module
+include(ExternalProject)
+
+# Set default ExternalProject root directory
+set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR})
+
+ExternalProject_Add(
+        OhBoyGUI
+        SOURCE_DIR "${CMAKE_SOURCE_DIR}/gui"
+        DOWNLOAD_COMMAND ""
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND cargo build COMMAND cargo build --release
+        BINARY_DIR "${CMAKE_SOURCE_DIR}/gui"
+        INSTALL_COMMAND ""
+        USES_TERMINAL_BUILD true
+        LOG_BUILD ON)
+
+add_dependencies(OhBoy OhBoyGUI)
+configure_file("${CMAKE_SOURCE_DIR}/gui/target/release/OhBoyGUI.exe" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}" COPYONLY)
+
+target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2main.a)
+target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2.dll.a)
 
 include_directories("include")
 include_directories("deps/imgui")
 include_directories("deps/imgui/backends")
 include_directories("deps/imgui/misc/cpp")
 include_directories("deps/SDL2/x86_64-w64-mingw32/include/SDL2")
-
-add_compile_options(-fsanitize=address)
-add_link_options(-fsanitize=address)
-
+include_directories("deps/popl/include")

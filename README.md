@@ -1,31 +1,37 @@
 # OhBoy (WIP)
 
-A (hopefully) M-Cycle accurate GameBoy emulator
+An (hopefully) M-Cycle accurate Game Boy emulator. I will release pre-built binary after
+rom selection
+
+## Images
+
+
 
 ## TODO
 
-- Fix CPU to pass tests (Pass all of Blargg's tests except 02-interrupts)
 - Debugger:
   - Add ability to reset CPU state
-  - Allow closing log file
   - Allow toggling file logging
   - Add breakpoint by PC instead of current log line
-  - Finish serial
-- Implement interrupts
-- Implement OAM DMA
-- Implement PPU
-- Implement Joystick
+  - Allow selecting ROM
+  - Turn off debugging windows in Release mode
+- CPU:
+  - Implement STOP (or not)
 - Cartridge: 
   - Saving SRAM to a file
-  - Implement MBC1,2,3,5 support
+  - Implement MBC3 support
+  - Move VRAM to Memory
+- PPU:
+  - Implement Mode 3 scroll penalty
+- Implement APU
 
-## Fixed issues
+## Known Issues
 
-- Serial output garbage: Caused by not resetting bit 7 of 0xFF02 (serial control)
-after read out
-- Debug console is buggy or sometimes outputs pure garbage: ImVector do something funny with std::string.
-Use stdlib stuffs work just fine
-- Using std::string as a buffer for file writing is a bad idea. Will overflow. Use stringstream instead.
+- PPU:
+  - Sprite glitching in Zelda Link's Awakening intro
+  - Object priority is sometimes wrong
+- Cartridge:
+  - Only support MBC1 and MBC5 games (for now)
 
 ## License
 GPLv3
