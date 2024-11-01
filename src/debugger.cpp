@@ -9,6 +9,7 @@
 
 void Debugger::init(bool debug) {
     is_debug = debug;
+    is_cpu_paused = debug;
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
@@ -17,11 +18,12 @@ void Debugger::init(bool debug) {
 
     // Create window with SDL_Renderer graphics context
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    int width = 1280;
-    int height = 720;
-    if (!is_debug) {
-        width = 160*3 + 20;
-        height = 144*3 + 35;
+
+    int width = 160*3 + 18;
+    int height = 144*3 + 18;
+    if (is_debug) {
+        width = 1280;
+        height = 720;
     }
     window = SDL_CreateWindow("OhBoy", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, window_flags);
     if (window == nullptr)
@@ -93,10 +95,7 @@ void Debugger::render() {
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    if(!is_debug)
-        ImGui::DockSpaceOverViewport(0, 0, ImGuiDockNodeFlags_PassthruCentralNode, 0);
-    else
-        ImGui::DockSpaceOverViewport(0, 0, ImGuiDockNodeFlags_AutoHideTabBar, 0);
+    ImGui::DockSpaceOverViewport(0, 0, ImGuiDockNodeFlags_PassthruCentralNode, 0);
 
     render_game();
     if (is_debug) {
@@ -105,6 +104,7 @@ void Debugger::render() {
         // render_tiles();
         memory_editor.ReadOnly = true;
         memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0xFFFF+1);
+        memory_editor.DrawWindow("External RAM", Cartridge::external_ram, Cartridge::external_ram_size);
         memory_editor.DrawWindow("Frame Buffer", PPU::get_frame_buffer(), 160*144);
     }
 
@@ -243,6 +243,11 @@ void Debugger::render_tiles() {
 }
 
 void Debugger::render_game() {
+    if (!is_debug) {
+        ImGuiWindowClass window_class;
+        window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
+        ImGui::SetNextWindowClass(&window_class);
+    }
     ImGui::Begin("Game");
     SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)ppu.get_frame_buffer(), 160, 144, 8, 160, 0x0, 0x0, 0x0, 0x0);
     SDL_SetPaletteColors(surface->format->palette, colors, 0 ,4);
@@ -270,8 +275,8 @@ void Debugger::capture_keyboard() {
     const Uint8* key = SDL_GetKeyboardState(NULL);
     if(key[SDL_SCANCODE_Y]) Joypad::key_state[0]=1;
     if(key[SDL_SCANCODE_T]) Joypad::key_state[1]=1;
-    if(key[SDL_SCANCODE_M]) Joypad::key_state[2]=1;
-    if(key[SDL_SCANCODE_N]) Joypad::key_state[3]=1;
+    if(key[SDL_SCANCODE_N]) Joypad::key_state[2]=1;
+    if(key[SDL_SCANCODE_M]) Joypad::key_state[3]=1;
     if(key[SDL_SCANCODE_S]) Joypad::key_state[4]=1;
     if(key[SDL_SCANCODE_W]) Joypad::key_state[5]=1;
     if(key[SDL_SCANCODE_A]) Joypad::key_state[6]=1;

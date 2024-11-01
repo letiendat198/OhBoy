@@ -9,11 +9,11 @@
 class Cartridge{
 private:
     inline static FILE *f;
+    inline static std::string save_name;
     inline static FILE *f_boot;
     inline static uint8_t *rom_data;
     inline static uint8_t *cartridge_mem;
     inline static uint8_t *boot_data;
-    inline static uint8_t *external_ram;
     inline static bool is_boot = true;
     inline static int rom_file_size;
     inline static int boot_size;
@@ -31,11 +31,15 @@ private:
     inline static MBC *mbc;
 
 public:
+    inline static uint8_t *external_ram;
+    inline static uint32_t external_ram_size;
     static bool init(const char* file);
     static uint8_t read(uint16_t addr);
     static void write(uint16_t addr, uint8_t data);
     static void mbc1_register_handler(uint16_t addr, uint8_t data);
     static void boot_off();
+    static void save_sram();
+    static void load_save();
     static void close();
     inline static Logger logger;
 };

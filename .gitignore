@@ -4,3 +4,5 @@ venv
 roms
 deps/SDL2
 gui/target
+gui/*.ini
+gui/*.log

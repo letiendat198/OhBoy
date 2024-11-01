@@ -50,5 +50,6 @@ int main(int argc , char **argv){
         }
     }
     debugger.end();
+    Cartridge::close();
     return 0;
 }

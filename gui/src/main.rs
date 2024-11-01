@@ -1,20 +1,21 @@
 use std::path::Path;
-use iced::{Task, Element, Padding};
+use iced::{Task, Element, Padding, Theme};
 use iced::alignment;
-use iced::widget::{text, column, Column, container, text_input, button, row, toggler, horizontal_space, scrollable, Row};
+use iced::widget::{text, column, Column, container, text_input, button, row, toggler, horizontal_space, scrollable};
 use rfd::AsyncFileDialog;
+use ini::Ini;
 
 fn main() -> iced::Result {
     iced::application("OhBoy", RomSelector::update, RomSelector::view)
+        .theme(RomSelector::theme)
         .window_size((600.0,400.0))
-        .run()
+        .run_with(RomSelector::new)
 }
 
 #[derive(Default)]
 struct RomSelector {
     rom_folder: String,
     debug_mode: bool,
-    scale: String,
     rom_rows: Vec<RomEntry>
 }
 #[derive(Clone, Debug)]
@@ -28,10 +29,22 @@ enum Message {
 }
 
 impl RomSelector {
+    fn new () -> (Self, Task<Message>) {
+        (Self {
+            rom_folder: "".to_string(),
+            debug_mode: false,
+            rom_rows: vec![],
+        },
+        Task::perform(load_cache(), |result| Message::ROMFolderUpdated(result.unwrap_or_else(|_| "".to_string()))))
+    }
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ROMFolderUpdated(path) => {
+                if !Path::new(&path).exists() {
+                    return Task::none();
+                }
                 self.rom_folder = path.clone();
+                save_cache(&self.rom_folder);
                 Task::perform(scan_files(path), Message::ROMTitlesUpdated)
             }
             Message::DebugChanged(is_debug) => {
@@ -86,6 +99,10 @@ impl RomSelector {
         let view = column![folder_row, settings_row, scrollable].padding(5).spacing(10);
         container(view).padding(5).into()
     }
+
+    fn theme(&self) -> Theme {
+        Theme::Dark
+    }
 }
 
 #[derive(Clone)]
@@ -118,7 +135,7 @@ async fn scan_files(path: String) -> Vec<String> {
     let mut rom_list = Vec::new();
     let mut dir_iter = tokio::fs::read_dir(path).await.unwrap();
 
-    while let entry = dir_iter.next_entry().await.unwrap() {
+    while let Ok(entry) = dir_iter.next_entry().await {
         if entry.is_none() {
             break
         }
@@ -139,7 +156,31 @@ async fn run_emulator(path: String, is_debug: bool) {
     let output = tokio::process::Command::new("OhBoy.exe")
         .args(["-r", &path, debug_flag]).output().await.unwrap();
     let err = std::str::from_utf8(&output.stderr).unwrap();
+    let out = std::str::from_utf8(&output.stdout).unwrap();
+    println!("{}", out);
     println!("{}", err);
+}
+
+fn save_cache(path: &str) {
+    let mut conf = Ini::new();
+    conf.with_section(Some("Cache"))
+        .add("rom_path", path);
+    conf.write_to_file("ohboy.ini").unwrap()
+}
+
+async fn load_cache() -> Result<String, ()> {
+    let conf = match Ini::load_from_file("ohboy.ini") {
+        Ok(ini) => ini,
+        Err(_) => {
+            return Err(());
+        }
+    };
+    let section = match conf.section(Some("Cache")) {
+        None => return Err(()),
+        Some(section) => section
+    };
+    println!("{}", section.get("rom_path").unwrap().to_string());
+    Ok(section.get("rom_path").unwrap().to_string())
 }
 
 

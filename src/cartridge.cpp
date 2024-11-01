@@ -1,6 +1,7 @@
 #include "cartridge.h"
 
 #include <debugger.h>
+#include <filesystem>
 #include <format>
 #include <memory.h>
 
@@ -10,8 +11,17 @@
 bool Cartridge::init(const char* file){
     cartridge_mem = new uint8_t[0xBFFF+1]();
 
+    save_name = std::string(file);
+    std::size_t delim = save_name.find_last_of('/');
+    if (delim == std::string::npos) {
+        delim = save_name.find_last_of('\\');
+    }
+    if (delim != std::string::npos) save_name = save_name.substr(delim+1);
+    std::size_t ext_delim = save_name.find_last_of('.');
+    save_name = save_name.substr(0, ext_delim) + ".save";
+
     // Load bootrom
-    f_boot = fopen("../roms/bootix.bin", "rb");
+    f_boot = fopen("boot.bin", "rb");
     fseek(f_boot, 0L, SEEK_END);
     boot_size = ftell(f_boot);
     Debugger::log(std::format("BOOT size: {}", boot_size).c_str());
@@ -82,7 +92,9 @@ bool Cartridge::init(const char* file){
     dest_code = rom_data[0x014A];
     version = rom_data[0x014D];
 
-    external_ram = new uint8_t[0x2000*max_ram_banks?max_ram_banks:1]();
+    external_ram_size = max_ram_banks?0x2000*max_ram_banks:1;
+    external_ram = new uint8_t[external_ram_size]();
+    load_save();
 
     if (0x1 <= mbc_type && mbc_type <= 0x3) {
         mbc = new MBC1(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
@@ -146,7 +158,26 @@ void Cartridge::boot_off() {
     is_boot = false;
 }
 
+void Cartridge::save_sram() {
+    std::cout<<"Saving SRAM to file: "<<"save/"+save_name<<"\n";
+    std::filesystem::create_directory("save");
+    if(FILE *f_save = fopen(("save/"+save_name).c_str(), "wb")) {
+        fwrite(external_ram, sizeof(uint8_t), external_ram_size, f_save);
+        fclose(f_save);
+    }
+    else std::cout<<"Failed to create a save file\n";
+}
+
+void Cartridge::load_save() {
+    if (FILE *f_save = fopen(("save/"+save_name).c_str(), "rb")) {
+        fread(external_ram, sizeof(uint8_t), external_ram_size, f_save);
+        fclose(f_save);
+    }
+    else std::cout<<"No save file for ROM: "<<save_name<<"\n";
+}
+
 void Cartridge::close() {
+    save_sram();
     fclose(f);
 }
 

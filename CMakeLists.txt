@@ -46,19 +46,19 @@ include(ExternalProject)
 # Set default ExternalProject root directory
 set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR})
 
-ExternalProject_Add(
-        OhBoyGUI
-        SOURCE_DIR "${CMAKE_SOURCE_DIR}/gui"
-        DOWNLOAD_COMMAND ""
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND cargo build COMMAND cargo build --release
-        BINARY_DIR "${CMAKE_SOURCE_DIR}/gui"
-        INSTALL_COMMAND ""
-        USES_TERMINAL_BUILD true
-        LOG_BUILD ON)
+include(FetchContent)
+
+FetchContent_Declare(
+        Corrosion
+        GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
+        GIT_TAG v0.5 # Optionally specify a commit hash, version tag or branch here
+)
+FetchContent_MakeAvailable(Corrosion)
+
+# Import targets defined in a package or workspace manifest `Cargo.toml` file
+corrosion_import_crate(MANIFEST_PATH gui/Cargo.toml)
 
 add_dependencies(OhBoy OhBoyGUI)
-configure_file("${CMAKE_SOURCE_DIR}/gui/target/release/OhBoyGUI.exe" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}" COPYONLY)
 
 target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2main.a)
 target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2.dll.a)
