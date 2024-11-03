@@ -63,6 +63,9 @@ void PPU::tick() {
                     obj_queue[obj_queue_idx++] = obj_addr;
                 }
             }
+            if (dots == 79) {
+                std::stable_sort(obj_queue, obj_queue + obj_queue_idx, compare_sprite_priority);
+            }
             break;
         case 3: // TODO: Implement mode 3 penalty
             if (dots < 92) return; // Need this to sync frame_buf_index with line, since once dots reset, a line should be drawn.
@@ -73,7 +76,7 @@ void PPU::tick() {
             }
             render_background();
             render_window();
-            render_object(0);
+            render_object();
             frame_buf_index++;
             break;
     }
@@ -171,75 +174,73 @@ void PPU::render_window() {
     // std::cout<<(int) frame_buffer[m3_x-1]<<"\n";
 }
 
-void PPU::render_object(uint8_t offset) {
+void PPU::render_object() {
     if (obj_enable == 0) {
         return;
     }
     uint8_t x = frame_buf_index % 160;
     uint8_t y = frame_buf_index / 160;
-    uint16_t obj_addr = 0;
-    uint16_t obj_x_start = 200; // A maximal value so that first object found always satisfy
 
-    for (uint8_t i=offset;i<obj_queue_idx;i++) {
-        uint16_t addr = obj_queue[i];
-        uint8_t obj_x = Memory::unsafe_read(addr + 1);
-        if ((obj_x - 8) <= x  && x < obj_x) {
-            if (obj_x < obj_x_start) { // Select lowest X coordinate possible. If all the same, select the first one found
-                obj_addr = addr;
-                obj_x_start = obj_x;
-            }
+    for (uint8_t i=0;i<obj_queue_idx;i++) {
+        uint16_t obj_addr = obj_queue[i];
+        uint8_t obj_x_start = Memory::unsafe_read(obj_addr + 1);
+        if (!(obj_x_start - 8 <= x  && x < obj_x_start)) continue;
+
+        uint8_t obj_att = Memory::unsafe_read(obj_addr + 3);
+        uint8_t obj_priority = (obj_att >> 7) & 0x1;
+        uint8_t obj_y_flip = (obj_att >> 6) & 0x1;
+        uint8_t obj_x_flip = (obj_att >> 5) & 0x1;
+        uint8_t obj_palette = (obj_att >> 4) & 0x1;
+        uint16_t obj_y_start = Memory::unsafe_read(obj_addr);
+
+        if (obj_priority == 1) {
+            if (frame_buffer[frame_buf_index] > 0) return; // Bg/Window color 1-3 draw over this obj
+        }
+
+        uint8_t size = obj_size ? 16 : 8;
+        uint16_t tile_ref = Memory::unsafe_read(obj_addr + 2);
+        if (size == 16) {
+            if ((y-obj_y_start+16)%16 < 8) tile_ref = tile_ref & 0xFE;
+            else tile_ref = tile_ref | 0x01;
+
+            if (obj_y_flip == 1) tile_ref ^= 0x01;
+        }
+
+        uint16_t tile_line_data;
+        uint16_t tile_data_ptr;
+        if (tile_ref >= 128) tile_data_ptr = 0x8800;
+        else tile_data_ptr = 0x8000;
+
+        tile_ref = (tile_ref % 128)*16;
+        uint16_t line_offset = ((y - obj_y_start + 16) % 8)*2;
+        if(obj_y_flip == 1) line_offset = (7 - ((y - obj_y_start + 16) % 8))*2;
+
+        tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
+        tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
+
+        // Because obj can be anywhere, it's pixel offset should not be calculated by x % 8 -> cause clipping if obj starting x pos not divisible by 8
+        // But should be calculated by (obj starting x cord - current x) to find which pixel to render
+        uint8_t pixel_offset = 7 - ((x - obj_x_start + 8) % 8);
+        if (obj_x_flip == 1) pixel_offset = (x - obj_x_start + 8) % 8;
+        uint8_t p1 = tile_line_data & 0xFF;
+        uint8_t p2 = tile_line_data >> 8;
+
+        uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+
+        uint16_t palette_addr = obj_palette ? 0xFF49 : 0xFF48;
+        if (color > 0) {
+            frame_buffer[frame_buf_index] = parse_palette(color, palette_addr);
+            break;
         }
     }
-
-    if (obj_addr == 0) return;
-
-    uint8_t obj_att = Memory::unsafe_read(obj_addr + 3);
-    uint8_t obj_priority = (obj_att >> 7) & 0x1;
-    uint8_t obj_y_flip = (obj_att >> 6) & 0x1;
-    uint8_t obj_x_flip = (obj_att >> 5) & 0x1;
-    uint8_t obj_palette = (obj_att >> 4) & 0x1;
-    uint16_t obj_y_start = Memory::unsafe_read(obj_addr);
-
-    if (obj_priority == 1) {
-        if (frame_buffer[frame_buf_index] > 0) return; // Bg/Window color 1-3 draw over this obj
-    }
-
-    uint8_t size = obj_size ? 16 : 8;
-    uint16_t tile_ref = Memory::unsafe_read(obj_addr + 2);
-    if (size == 16) {
-        if ((y-obj_y_start+16)%16 < 8) tile_ref = tile_ref & 0xFE;
-        else tile_ref = tile_ref | 0x01;
-
-        if (obj_y_flip == 1) tile_ref ^= 0x01;
-    }
-
-    uint16_t tile_line_data;
-    uint16_t tile_data_ptr;
-    if (tile_ref >= 128) tile_data_ptr = 0x8800;
-    else tile_data_ptr = 0x8000;
-
-    tile_ref = (tile_ref % 128)*16;
-    uint16_t line_offset = ((y - obj_y_start + 16) % 8)*2;
-    if(obj_y_flip == 1) line_offset = (7 - ((y - obj_y_start + 16) % 8))*2;
-
-    tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
-    tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
-
-    // Because obj can be anywhere, it's pixel offset should not be calculated by x % 8 -> cause clipping if obj starting x pos not divisible by 8
-    // But should be calculated by (obj starting x cord - current x) to find which pixel to render
-    uint8_t pixel_offset = 7 - ((x - obj_x_start + 8) % 8);
-    if (obj_x_flip == 1) pixel_offset = (x - obj_x_start + 8) % 8;
-    uint8_t p1 = tile_line_data & 0xFF;
-    uint8_t p2 = tile_line_data >> 8;
-
-    uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
-
-    uint16_t palette_addr = obj_palette ? 0xFF49 : 0xFF48;
-    if (color > 0) frame_buffer[frame_buf_index] = parse_palette(color, palette_addr);
-    else { // If pixel is transparent, find another one that may have priority
-        if (offset+1<obj_queue_idx) render_object(offset + 1);
-    }
 }
+
+bool PPU::compare_sprite_priority(uint16_t obj_a, uint16_t obj_b) {
+    uint8_t obj_ax = Memory::unsafe_read(obj_a + 1);
+    uint8_t obj_bx = Memory::unsafe_read(obj_b + 1);
+    return obj_ax < obj_bx;
+}
+
 
 uint16_t PPU::get_tile_index_from_pixel(uint8_t x, uint8_t y) {
     return ((x / 8) + 32 * (y/8));

@@ -63,8 +63,7 @@ cmake --build .
 ## Known Issues
 
 - PPU:
-  - Sprite glitching in Zelda Link's Awakening intro
-  - Object priority is sometimes wrong
+  - LY = 153 oddities bug
 - Cartridge:
   - Only support MBC1 and MBC5 games (for now)
 

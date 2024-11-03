@@ -94,14 +94,13 @@ bool Cartridge::init(const char* file){
     version = rom_data[0x014D];
 
     external_ram_size = max_ram_banks?0x2000*max_ram_banks:1;
-    external_ram = new uint8_t[external_ram_size]();
-    load_save();
 
     if (0x1 <= mbc_type && mbc_type <= 0x3) {
         mbc = new MBC1(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
     }
     else if (0x0F <= mbc_type && mbc_type <= 0x13) {
         mbc = new MBC3(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
+        external_ram_size += 14;
     }
     else if (0x19 <= mbc_type && mbc_type <= 0x1E) {
         mbc = new MBC5(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
@@ -111,6 +110,9 @@ bool Cartridge::init(const char* file){
         std::cerr<<"Unsupported MBC type\n";
         return false;
     }
+
+    external_ram = new uint8_t[external_ram_size]();
+    load_save();
 
     std::cout<<"ROM title: "<<rom_title<<"\n";
     std::cout<<std::format("MBC type: {:#X}", mbc_type)<<"\n";

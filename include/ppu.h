@@ -31,7 +31,8 @@ private:
 
     void render_background();
     void render_window();
-    void render_object(uint8_t offset);
+    void render_object();
+    static bool compare_sprite_priority(uint16_t obj_a, uint16_t obj_b);
     uint16_t get_tile_index_from_pixel(uint8_t x, uint8_t y);
     uint8_t parse_palette(uint8_t src_color, uint16_t palette_addr);
 
