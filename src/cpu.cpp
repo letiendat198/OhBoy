@@ -60,7 +60,7 @@ bool CPU::tick(){
         if (iresult != 0) {
             // Debugger::log(std::format("Interrupt routine at {:#X}", iresult));
             interrupt_addr = iresult;
-            mcycle = 4;
+            mcycle = 5;
         }
         else (this->*jump_table[Memory::read(pc)])();
     }

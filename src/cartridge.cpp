@@ -6,6 +6,7 @@
 #include <memory.h>
 
 #include "mbc1.h"
+#include "mbc3.h"
 #include "mbc5.h"
 
 bool Cartridge::init(const char* file){
@@ -18,7 +19,7 @@ bool Cartridge::init(const char* file){
     }
     if (delim != std::string::npos) save_name = save_name.substr(delim+1);
     std::size_t ext_delim = save_name.find_last_of('.');
-    save_name = save_name.substr(0, ext_delim) + ".save";
+    save_name = save_name.substr(0, ext_delim) + ".sav";
 
     // Load bootrom
     f_boot = fopen("boot.bin", "rb");
@@ -98,6 +99,9 @@ bool Cartridge::init(const char* file){
 
     if (0x1 <= mbc_type && mbc_type <= 0x3) {
         mbc = new MBC1(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
+    }
+    else if (0x0F <= mbc_type && mbc_type <= 0x13) {
+        mbc = new MBC3(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
     }
     else if (0x19 <= mbc_type && mbc_type <= 0x1E) {
         mbc = new MBC5(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);

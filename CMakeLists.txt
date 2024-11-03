@@ -10,7 +10,7 @@ add_executable(OhBoy src/main.cpp
         src/memory.cpp
         src/cartridge.cpp
         src/logger.cpp
-        lib/util.cpp
+        src/util.cpp
         src/opcode_prefixed.cpp
         deps/imgui/imgui.cpp
         deps/imgui/imgui_demo.cpp
@@ -22,29 +22,16 @@ add_executable(OhBoy src/main.cpp
         deps/imgui/backends/imgui_impl_sdl2.cpp
         deps/imgui/backends/imgui_impl_sdlrenderer2.cpp
         src/debugger.cpp
-        include/config.h
         src/PPU.cpp
-        include/PPU.h
         src/interrupts.cpp
-        include/interrupts.h
         src/timer.cpp
-        include/timer.h
         src/dma.cpp
-        include/dma.h
         src/joypad.cpp
-        include/joypad.h
-        include/mbc.h
-        include/mbc1.h
         src/mbc1.cpp
-        include/mbc5.h
         src/mbc5.cpp
-        deps/popl/include/popl.hpp)
-
-# Enable ExternalProject CMake module
-include(ExternalProject)
-
-# Set default ExternalProject root directory
-set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR})
+        deps/popl/include/popl.hpp
+        src/mbc3.cpp
+        src/apu.cpp)
 
 include(FetchContent)
 

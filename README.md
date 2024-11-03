@@ -2,10 +2,17 @@
 
 An M-Cycle accurate Game Boy emulator
 
-The emulator core was written in C/C++ and the GUI was written in Rust (C++ GUI libraries
+The emulator core was written in C/C++ and the GUI was written in Rust (because C++ GUI libraries
 are either big or ugly)
 
 ## Images
+
+![](images/image1.png)
+![](images/image2.png)
+![](images/image3.png)
+![](images/image4.png)
+![](images/image5.png)
+![](images/image6.png)
 
 ## Keyboard Mapping
 ```
@@ -42,8 +49,7 @@ cmake --build .
 
 - CPU:
   - Implement STOP (or not)
-- Cartridge: 
-  - Saving SRAM to a file
+- Cartridge:
   - Implement MBC3 support
   - Move VRAM to Memory
 - PPU:
