@@ -8,6 +8,9 @@ uint8_t Memory::read(uint16_t addr) {
         if (addr < 0xC000) {
             return Cartridge::read(addr);
         }
+        if (0xE000 <= addr && addr <= 0xFDFF) { // Echo RAM
+            return memory[addr - 0xC000 - 0x2000];
+        }
         return memory[addr - 0xC000];
     }
     else {
@@ -30,6 +33,10 @@ void Memory::write(uint16_t addr, uint8_t data) {
     if (can_write(addr)) {
         if (addr < 0xC000) {
             return Cartridge::write(addr, data);
+        }
+        if (0xE000 <= addr && addr <= 0xFDFF) { // Echo RAM
+            *(memory+addr - 0xC000 - 0x2000) = data;
+            return;
         }
         *(memory+addr - 0xC000) = data;
     }
@@ -65,12 +72,19 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
     if (addr < 0xC000) {
         return Cartridge::read(addr);
     }
+    if (0xE000 <= addr && addr <= 0xFDFF) { // Echo RAM
+        return memory[addr - 0xC000 - 0x2000];
+    }
     return memory[addr - 0xC000];
 }
 
 void Memory::unsafe_write(uint16_t addr, uint8_t data) {
     if (addr < 0xC000) {
         return Cartridge::write(addr, data);
+    }
+    if (0xE000 <= addr && addr <= 0xFDFF) { // Echo RAM
+        *(memory+addr - 0xC000 - 0x2000) = data;
+        return;
     }
     *(memory+addr - 0xC000) = data;
 }

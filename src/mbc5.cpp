@@ -28,7 +28,7 @@ uint32_t MBC5::calculate_address(uint16_t addr) {
     if (addr <= 0x3FFF) { // BANK 0
         return addr;
     }
-    if (0x4000 <= addr && addr <= 0x7FFF) { // BANK 1 - mapable
+    if (0x4000 <= addr && addr <= 0x7FFF) { // BANK 1 - mappable
         return (rom_bank << 14) | (addr & 0x3FFF);
     }
     if (0xA000 <= addr && addr <= 0xBFFF) {

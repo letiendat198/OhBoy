@@ -16,6 +16,7 @@ private:
     uint8_t ram_bank = 0;
     uint8_t latch_reg = 1;
 
+    void tick_rtc();
     uint64_t read_stored_rtc();
     void write_to_rtc(uint64_t sec);
     uint64_t read_stored_timestamp();

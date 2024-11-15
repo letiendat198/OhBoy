@@ -14,7 +14,7 @@ void PPU::init() {
 }
 
 void PPU::tick() {
-    if (dots++==456) { // Start of frame
+    if (dots==456) { // Start of line
         dots = 0;
         // Debugger::log(std::format("Dot reseted while fb index was {}", frame_buf_index));
         inc_ly();
@@ -23,18 +23,26 @@ void PPU::tick() {
         if (line_did_enable_w) w_internal_lc++;
         line_did_enable_w = 0;
     }
-    if(wait>0) {
-        wait--;
-        return;
-    }
     if (dots < 80) mode = 2;
     else if (dots < 252+m3_penalties) mode = 3;
     else if (dots < 456) mode = 0;
 
     if (read_ly() >= 144) mode = 1;
 
-    update_stat();
     read_lcdc();
+    update_stat();
+
+    if (!enable) {  // If LCD disabled, don't do anything but keep incrementing dots? Somehow work for Pokemon Gold
+        dots++;
+        return;
+    }
+    else {
+        if (!prev_enale) { // When LCD turned back on, reset PPU
+            write_ly(0);
+            dots = 0;
+        }
+    }
+    prev_enale = enable;
 
     switch (mode) {
         case 0: //HBLANK
@@ -68,7 +76,7 @@ void PPU::tick() {
             }
             break;
         case 3: // TODO: Implement mode 3 penalty
-            if (dots < 92) return; // Need this to sync frame_buf_index with line, since once dots reset, a line should be drawn.
+            if (dots < 92) break; // Need this to sync frame_buf_index with line, since once dots reset, a line should be drawn.
             if (dots == 92) { // Mid-frame scroll behavior. Fetch 3 low bits of scx and scy
                 scx_lower = read_scx() & 0x7;
                 scy_lower = read_scy() & 0x7;
@@ -80,6 +88,7 @@ void PPU::tick() {
             frame_buf_index++;
             break;
     }
+    dots++;
     if (frame_buf_index == 160 * 144) {
         frame_buf_index = 0;
     }
@@ -302,6 +311,7 @@ void PPU::update_stat() {
     // Debugger::log(std::format("Current STAT: {:b}", current_stat));
     // Debugger::log(std::format("STAT update data: {:b}", write_data));
     current_stat = (current_stat & ~0x7) | write_data;
+    // if (!enable) current_stat = (current_stat & 0xFC) | 0x00;
     // Debugger::log(std::format("Updated STAT: {:b}", current_stat));
     Memory::unsafe_write(0xFF41, current_stat);
 }
@@ -313,6 +323,10 @@ uint8_t PPU::read_ly() {
 void PPU::inc_ly() {
     // Debugger::log(std::format("LY increased to {}", read_ly()+1));
     Memory::unsafe_write(0xFF44, (read_ly() + 1)  % 154);
+}
+
+void PPU::write_ly(uint8_t data) {
+    Memory::unsafe_write(0xFF44, data);
 }
 
 // void Ppu::inc_w_internal_lc() {

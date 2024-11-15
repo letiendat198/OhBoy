@@ -8,13 +8,14 @@ private:
     inline static uint8_t *frame_buffer = new uint8_t[160*144]();
     uint8_t mode;
     uint16_t wait;
-    uint16_t dots;
+    uint16_t dots = 0;
     uint16_t m3_penalties = 0;
     uint16_t frame_buf_index = 0;
     uint16_t obj_queue[10];
     uint8_t obj_queue_idx = 0;
 
     uint8_t enable;
+    uint8_t prev_enale;
     uint16_t w_tilemap_area;
     uint8_t w_enable;
     uint16_t bg_tilemap_area;
@@ -41,6 +42,7 @@ public:
     static uint8_t* get_frame_buffer();
     void tick();
     uint8_t read_ly();
+    void write_ly(uint8_t data);
     void inc_ly();
     void inc_w_internal_lc();
     uint8_t read_scy();
