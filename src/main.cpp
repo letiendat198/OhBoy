@@ -6,6 +6,7 @@
 
 #include "debugger.h"
 #include "config.h"
+#include "spdlog/sinks/basic_file_sink.h"
 
 using namespace std;
 

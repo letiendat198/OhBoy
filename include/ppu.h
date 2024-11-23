@@ -1,6 +1,7 @@
 #ifndef PPU_H
 #define PPU_H
 #include <cstdint>
+#include <logger.h>
 #include <types.h>
 
 class PPU {
@@ -30,6 +31,8 @@ private:
     uint8_t w_internal_lc = 0;
     uint8_t line_did_enable_w = 0;
 
+    Logger logger = Logger("PPU");
+
     void render_background();
     void render_window();
     void render_object();
@@ -51,10 +54,13 @@ public:
     uint8_t read_wx();
     void read_lcdc();
     void update_stat();
-    void check_and_req_lyc_stat();
-    void check_and_req_mode0_stat();
-    void check_and_req_mode1_stat();
-    void check_and_req_mode2_stat();
+
+    void update_stat_no_trigger();
+
+    static void check_and_req_lyc_stat();
+    static void check_and_req_mode0_stat();
+    static void check_and_req_mode1_stat();
+    static void check_and_req_mode2_stat();
 };
 
 #endif //PPU_H

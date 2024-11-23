@@ -8,16 +8,13 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <spdlog/spdlog.h>
 
 class Logger {
 private:
-    std::ofstream log;
-    std::stringstream write_buffer;
+    std::shared_ptr<spdlog::logger> logger;
 public:
-    int line;
-    Logger();
-    void write(std::string s);
-    void close();
-    void flush();
+    Logger(std::string logger_name);
+    std::shared_ptr<spdlog::logger> get_logger();
 };
 #endif //LOGGER_H

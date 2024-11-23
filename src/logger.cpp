@@ -1,31 +1,15 @@
 #include "logger.h"
+#include "spdlog/async.h"
+#include "spdlog/sinks/basic_file_sink.h"
 
-Logger::Logger() {
-    line = 0;
-    log.open("OhBoy_GBDoctor_Log.log", std::ios::trunc);
+Logger::Logger(std::string logger_name) {
+    logger = spdlog::basic_logger_mt<spdlog::async_factory>(logger_name, "ohboy_log.txt");
+    logger->set_level(spdlog::level::debug);
 }
 
-void Logger::write(std::string s) {
-    ++line;
-    write_buffer << s;
-    if (line%100000 == 0) {
-        if(log.is_open()) {
-            log << write_buffer.str();
-            write_buffer.clear();
-            write_buffer.str(std::string());
-        }
-    }
-
-}
-void Logger::flush() {
-    log << write_buffer.str();
-    write_buffer.clear();
-    write_buffer.str(std::string());
+std::shared_ptr<spdlog::logger> Logger::get_logger() {
+    return logger;
 }
 
-
-void Logger::close() {
-    if (log.is_open()) log.close();
-}
 
 

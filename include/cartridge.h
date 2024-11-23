@@ -41,7 +41,6 @@ public:
     static void save_sram();
     static void load_save();
     static void close();
-    inline static Logger logger;
 };
 
 #endif

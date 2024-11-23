@@ -29,36 +29,20 @@ void CPU::init() {
     Cartridge::boot_off();
 }
 
-std::string CPU::craft_debug() {
-    std::ostringstream ss;
-    ss << std::uppercase << std::hex;
-    ss << "A:"<< std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) a<<" ";
-    ss << "F:"<< std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) (z_flag<<7 | n_flag << 6 | h_flag << 5 | c_flag<<4) <<" ";
-    ss << "B:"<< std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) b<<" ";
-    ss << "C:"<< std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) c<<" ";
-    ss << "D:"<< std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) d<<" ";
-    ss << "E:"<< std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) e<<" ";
-    ss << "H:"<< std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) h<<" ";
-    ss << "L:"<< std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) l<<" ";
-    ss << "SP:"<< std::setfill ('0') << std::setw(sizeof(uint16_t)*2) <<(int) sp<<" ";
-    ss << "PC:"<< std::setfill ('0') << std::setw(sizeof(uint16_t)*2) <<(int) pc<<" ";
-    ss << "PCMEM:"<< std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) read8_mem(pc)<<",";
-    ss << std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) read8_mem(pc+1)<<",";
-    ss << std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) read8_mem(pc+2)<<",";
-    ss << std::setfill ('0') << std::setw(sizeof(uint8_t)*2) <<(int) read8_mem(pc+3);
-    ss << "\n";
-    return ss.str();
+void CPU::log_cpu() {
+    uint8_t f = z_flag<<7 | n_flag << 6 | h_flag << 5 | c_flag<<4;
+    logger.get_logger()->debug("A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}", a, f, b, c, d, e, h, l, sp, pc, read8_mem(pc), read8_mem(pc+1), read8_mem(pc+2), read8_mem(pc+3));
 }
 
 bool CPU::tick(){
     // cout<<"Current PC: "<<(int)pc<<" Remaining M-Cycle: "<<(int) mcycle<<" OP skip: "<<(int)opskip<<endl;
     if(cycle_count==0) { // Begin of new instrs
         if (halt == 1) {
-            if(Interrupts::is_pending()) halt = 0;
+            if (Interrupts::is_pending()) halt = 0;
         }
         uint16_t iresult = Interrupts::check_and_service(ime); // Check interrupts
         if (iresult != 0) {
-            // Debugger::log(std::format("Interrupt routine at {:#X}", iresult));
+            logger.get_logger()->debug(std::format("Interrupt requested at {:#X}", iresult));
             interrupt_addr = iresult;
             mcycle = 5;
         }
@@ -74,13 +58,14 @@ bool CPU::tick(){
         } // EI is delayed by 1 instr
 
         exec_flag = 1;
-        // logger.write(craft_debug());
+        // log_cpu();
         (this->*jump_table[Memory::read(pc)])();
         pc+=opskip;
         exec_flag = 0;
         cycle_count = 0;
     }
     else if (cycle_count == mcycle && interrupt_addr != 0) { // If have an interrupt waiting, do it
+        logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);
         write8_mem(--sp, pc >> 8);
         write8_mem(--sp, pc & 0xFF);
         pc = interrupt_addr;

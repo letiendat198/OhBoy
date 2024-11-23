@@ -8,6 +8,8 @@
 #include "types.h"
 
 class CPU{
+private:
+    Logger logger = Logger("CPU");
 public:
     unsigned char a=0;
     unsigned char b=0;
@@ -29,15 +31,13 @@ public:
     bool ime_next = false;
     uint8_t interrupt_addr;
 
-    Logger logger;
-
     unsigned char opskip;
     unsigned char mcycle;
     unsigned char cycle_count=0;
     void init();
     bool tick();
 
-    std::string craft_debug();
+    void log_cpu();
 
     void write8_mem(uint16_t addr, uint8_t a);
     uint8_t read8_mem(uint16_t addr);

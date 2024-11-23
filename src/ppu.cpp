@@ -1,25 +1,42 @@
 #include "ppu.h"
-
+#include "interrupts.h"
 #include <algorithm>
 #include <debugger.h>
-#include <format>
 #include <memory.h>
-
-#include "interrupts.h"
 
 void PPU::init() {
     wait = 0;
     dots = 0;
+    Memory::unsafe_write(0xFF40, 0b10000000);
     read_lcdc();
 }
 
 void PPU::tick() {
+    read_lcdc();
+    if (enable == 0) {  // If LCD disabled, don't do anything but keep incrementing dots? Somehow work for Pokemon Gold
+        if (prev_enale == 1) {
+            // logger.get_logger()->debug("LCD turned off, resetting register");
+            mode = 0;
+            dots = 0;
+            write_ly(0);
+            update_stat_no_trigger();
+        }
+        prev_enale = enable;
+        return;
+    }
+    if (prev_enale == 0) { // When LCD turned back on, reset PPU
+        // logger.get_logger()->debug("LCD turned on again");
+        write_ly(0);
+        mode = 0;
+        dots = 0;
+        update_stat();
+        prev_enale = enable;
+    }
     if (dots==456) { // Start of line
         dots = 0;
         // Debugger::log(std::format("Dot reseted while fb index was {}", frame_buf_index));
         inc_ly();
         update_stat();
-        check_and_req_lyc_stat();
         if (line_did_enable_w) w_internal_lc++;
         line_did_enable_w = 0;
     }
@@ -29,35 +46,19 @@ void PPU::tick() {
 
     if (read_ly() >= 144) mode = 1;
 
-    read_lcdc();
     update_stat();
-
-    if (!enable) {  // If LCD disabled, don't do anything but keep incrementing dots? Somehow work for Pokemon Gold
-        dots++;
-        return;
-    }
-    else {
-        if (!prev_enale) { // When LCD turned back on, reset PPU
-            write_ly(0);
-            dots = 0;
-        }
-    }
-    prev_enale = enable;
 
     switch (mode) {
         case 0: //HBLANK
-            if (dots == 252+m3_penalties) check_and_req_mode0_stat();
             break;
         case 1: // VBLANK
             w_internal_lc = 0;
             if (read_ly() == 144 && dots == 0) {
-                Interrupts::set_if(0);
-                check_and_req_mode1_stat();
+                Interrupts::set_interrupt_flag(0);
             }
             break;
         case 2: // OAM scan
             if (dots == 0) {
-                check_and_req_mode2_stat();
                 memset(obj_queue, 0, 10);
                 obj_queue_idx = 0;
             }
@@ -276,44 +277,57 @@ void PPU::check_and_req_lyc_stat() {
     uint8_t stat = Memory::unsafe_read(0xFF41);
     uint8_t flag = (stat >> 6) & 0x1;
     if (flag && ((stat >> 2) & 0x1) == 1) {
-        Interrupts::set_if(1);
+        Interrupts::set_interrupt_flag(1);
     }
 }
 
 void PPU::check_and_req_mode0_stat() {
     uint8_t stat = Memory::unsafe_read(0xFF41);
     uint8_t flag = (stat >> 3) & 0x1;
+    uint8_t mode = stat & 0x3;
     if (flag && mode==0) {
-        Interrupts::set_if(1);
+        Interrupts::set_interrupt_flag(1);
     }
 }
 
 void PPU::check_and_req_mode1_stat() {
     uint8_t stat = Memory::unsafe_read(0xFF41);
     uint8_t flag = (stat >> 4) & 0x1;
+    uint8_t mode = stat & 0x3;
     if (flag && mode==1) {
-        Interrupts::set_if(1);
+        Interrupts::set_interrupt_flag(1);
     }
 }
 
 void PPU::check_and_req_mode2_stat() {
     uint8_t stat = Memory::unsafe_read(0xFF41);
     uint8_t flag = (stat >> 5) & 0x1;
+    uint8_t mode = stat & 0x3;
     if (flag && mode==2) {
-        Interrupts::set_if(1);
+        Interrupts::set_interrupt_flag(1);
     }
 }
 
 void PPU::update_stat() {
-    uint8_t current_stat = Memory::unsafe_read(0xFF41);
+    uint8_t prev_stat = Memory::unsafe_read(0xFF41);
     uint8_t lyc = Memory::unsafe_read(0xFF45);
     uint8_t write_data = (lyc == read_ly()) << 2 |  mode;
-    // Debugger::log(std::format("Current STAT: {:b}", current_stat));
-    // Debugger::log(std::format("STAT update data: {:b}", write_data));
-    current_stat = (current_stat & ~0x7) | write_data;
-    // if (!enable) current_stat = (current_stat & 0xFC) | 0x00;
-    // Debugger::log(std::format("Updated STAT: {:b}", current_stat));
-    Memory::unsafe_write(0xFF41, current_stat);
+    uint8_t new_stat = (prev_stat & 0xF8) | write_data;
+    // spdlog::info("Current mode: {}", mode);
+    // spdlog::info("Current LYC and LY: {} {}", lyc, read_ly());
+    // spdlog::info("New stat: {:08b}", new_stat);
+    Memory::unsafe_write(0xFF41, new_stat);
+}
+
+void PPU::update_stat_no_trigger() {
+    uint8_t prev_stat = Memory::unsafe_read(0xFF41);
+    uint8_t lyc = Memory::unsafe_read(0xFF45);
+    uint8_t write_data = (lyc == read_ly()) << 2 |  mode;
+    uint8_t new_stat = (prev_stat & 0xF8) | write_data;
+    // spdlog::info("Current mode: {}", mode);
+    // spdlog::info("Current LYC and LY: {} {}", lyc, read_ly());
+    // spdlog::info("New stat: {:08b}", new_stat);
+    Memory::get_raw()[0xFF41 - 0xC000] = new_stat;
 }
 
 uint8_t PPU::read_ly() {

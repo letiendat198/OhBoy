@@ -5,40 +5,22 @@
 
 uint8_t Memory::read(uint16_t addr) {
     if (can_read(addr)) {
-        if (addr < 0xC000) {
-            return Cartridge::read(addr);
-        }
-        if (0xE000 <= addr && addr <= 0xFDFF) { // Echo RAM
-            return memory[addr - 0xC000 - 0x2000];
-        }
-        return memory[addr - 0xC000];
+        return unsafe_read(addr);
     }
-    else {
-        // Debugger::log(std::format("READ PROHIBITED AT ADDRESS {:#X}", addr));
-        return 0xFF;
-    }
+    // Debugger::log(std::format("READ PROHIBITED AT ADDRESS {:#X}", addr));
+    return 0xFF;
 }
 
 void Memory::write(uint16_t addr, uint8_t data) {
-    if (addr == 0xFF50) {
-        Cartridge::boot_off();
-    }
+    // DIV should reset if written to!
+    // Cannot put this in unsafe_write because that's used to increment DIV in Timer
+    // Put this in unsafe_write will write 0 everytime timer want to be incremented
     if (addr == 0xFF04) {
         *(memory+addr - 0xC000) = 0;
         return;
     }
-    if (addr == 0xFF46 && !dma_requested) {
-        dma_requested = true;
-    }
     if (can_write(addr)) {
-        if (addr < 0xC000) {
-            return Cartridge::write(addr, data);
-        }
-        if (0xE000 <= addr && addr <= 0xFDFF) { // Echo RAM
-            *(memory+addr - 0xC000 - 0x2000) = data;
-            return;
-        }
-        *(memory+addr - 0xC000) = data;
+        unsafe_write(addr, data);
     }
 }
 
@@ -79,6 +61,32 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
 }
 
 void Memory::unsafe_write(uint16_t addr, uint8_t data) {
+    if (addr == 0xFF50) {  // Write to this turn off boot
+        Cartridge::boot_off();
+    }
+    if (addr == 0xFF46 && !dma_requested) { // Capture DMA
+        dma_requested = true;
+    }
+    if (addr == 0xFF41) { // Capture STAT change
+        uint8_t prev_stat = unsafe_read(0xFF41);
+        uint8_t changes = prev_stat ^ data;
+        *(memory+addr - 0xC000) = data;
+        for(uint8_t i = 0; i < 7; i++) {
+            uint8_t is_bit_changed = (changes >> i) & 0x1;
+            if (!is_bit_changed) continue;
+            if (i == 2 || i == 6) {
+                PPU::check_and_req_lyc_stat();
+            }
+            else {
+                PPU::check_and_req_mode0_stat();
+                PPU::check_and_req_mode1_stat();
+                PPU::check_and_req_mode2_stat();
+            }
+        }
+        return;
+    }
+
+    // Re-route
     if (addr < 0xC000) {
         return Cartridge::write(addr, data);
     }
@@ -86,6 +94,7 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
         *(memory+addr - 0xC000 - 0x2000) = data;
         return;
     }
+
     *(memory+addr - 0xC000) = data;
 }
 
@@ -94,25 +103,25 @@ uint8_t *Memory::get_raw() {
 }
 
 void Memory::lock_oam() {
-    oam_lock = 1;
+    oam_lock = true;
 }
 
 void Memory::unlock_oam() {
-    oam_lock = 0;
+    oam_lock = false;
 }
 
 void Memory::lock_vram() {
-    vram_lock = 1;
+    vram_lock = true;
 }
 
 void Memory::unlock_vram() {
-    vram_lock = 0;
+    vram_lock = false;
 }
 
 void Memory::lock_dma() {
-    dma_lock = 1;
+    dma_lock = true;
 }
 
 void Memory::unlock_dma() {
-    dma_lock = 0;
+    dma_lock = false;
 }

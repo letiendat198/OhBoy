@@ -14,7 +14,7 @@ void Timer::tick() {
     if (cycle % inc_delay == 0 && enable) {
         uint8_t tima = (Memory::read(0xFF05) + 1) % 0x100;
         if (tima == 0) {
-            Interrupts::set_if(2);
+            Interrupts::set_interrupt_flag(2);
             tima = Memory::read(0xFF06);
         }
         Memory::write(0xFF05, tima);

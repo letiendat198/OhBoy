@@ -11,6 +11,7 @@ private:
     inline static bool vram_lock = false;
     inline static bool dma_lock = false;
     inline static bool dma_requested = false;
+    inline static Logger logger = Logger("Memory");
 public:
     static uint8_t read(uint16_t addr);
     static void write(uint16_t addr, uint8_t data);

@@ -75,7 +75,7 @@ void Debugger::tick_cpu() {
             Memory::write(0xFF02, 0x01);
         }
     }
-    if ((breakpoint != 0 && cpu.logger.line == breakpoint)) {
+    if ((breakpoint != 0 && cpu.pc == breakpoint)) {
             is_cpu_paused = true;
     }
 }
@@ -121,9 +121,9 @@ void Debugger::render_console(const ImGuiIO& io) {
     ImGui::Text("Frame rate:");
     ImGui::SameLine();
     ImGui::Text(std::to_string(io.Framerate).c_str());
-    if(ImGui::Button("Flush log")) {
-        cpu.logger.flush();
-    }
+    // if(ImGui::Button("Flush log")) {
+    //     cpu.logger.flush();
+    // }
     ImGui::SeparatorText("Debug Console");
     ImGui::BeginChild("Debug Console");
     for(std::string i: debug_buffer) {
@@ -144,11 +144,8 @@ void Debugger::render_registers() {
     if (ImGui::Button("Continue")) {
         is_cpu_paused = false;
     }
-    ImGui::Text("Current line:");
-    ImGui::SameLine();
-    ImGui::Text(std::to_string(cpu.logger.line).c_str());
     ImGui::InputInt("Breakpoint", &breakpoint);
-    if (cpu.logger.line == breakpoint) {
+    if (cpu.pc == breakpoint) {
         ImGui::TextColored(ImVec4(255,255,0,255), "Breakpoint hit!");
     }
 

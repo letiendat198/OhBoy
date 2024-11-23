@@ -4,3 +4,6 @@
 [submodule "deps/popl"]
 	path = deps/popl
 	url = https://github.com/badaix/popl.git
+[submodule "deps/spdlog"]
+	path = deps/spdlog
+	url = https://github.com/gabime/spdlog.git
