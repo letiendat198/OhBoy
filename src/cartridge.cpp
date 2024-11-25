@@ -10,8 +10,6 @@
 #include "mbc5.h"
 
 bool Cartridge::init(const char* file){
-    cartridge_mem = new uint8_t[0xBFFF+1]();
-
     save_name = std::string(file);
     std::size_t delim = save_name.find_last_of('/');
     if (delim == std::string::npos) {
@@ -49,7 +47,6 @@ bool Cartridge::init(const char* file){
     rom_data = new uint8_t[rom_file_size];
     fseek(f, 0L, SEEK_SET);
     fread(rom_data, sizeof(uint8_t),rom_file_size+1, f);
-    memcpy(cartridge_mem, rom_data, 0x7FFF+1); // Could f up later
 
     // Read cartridge metadata
     rom_title = new char[0xF + 1]; // Stub
@@ -142,7 +139,7 @@ uint8_t Cartridge::read(uint16_t addr) {
         if (!mbc->ram_enable) return 0xFF;
         return external_ram[mbc->calculate_address(addr)];
     }
-    return cartridge_mem[addr]; // Only used for vram, move later
+    std::cout<<"Trying to read VRAM from cartridge. This should not happen\n";
 }
 
 void Cartridge::write(uint16_t addr, uint8_t data) {
@@ -157,7 +154,7 @@ void Cartridge::write(uint16_t addr, uint8_t data) {
         external_ram[mbc->calculate_address(addr)] = data;
         return;
     }
-    cartridge_mem[addr] = data; // Only used for VRAM, remove later
+    std::cout<<"Trying to write VRAM from cartridge. This should not happen\n";
 }
 
 void Cartridge::boot_off() {

@@ -6,18 +6,31 @@
 
 class Memory{
 private:
-    inline static uint8_t* memory = (unsigned char*)malloc((0x3FFF+1)*sizeof(char));
+    inline static uint8_t* memory = new uint8_t[0x3FFF+1]();
+    inline static uint8_t* vram = new uint8_t[0x2000*2]();
+    inline static uint8_t* bg_cram = new uint8_t[64]();
+    inline static uint8_t* obj_cram = new uint8_t[64]();
+    inline static uint8_t vram_bank = 0;
     inline static bool oam_lock = false;
     inline static bool vram_lock = false;
     inline static bool dma_lock = false;
     inline static bool dma_requested = false;
+    inline static bool bg_auto_inc = false;
+    inline static bool obj_auto_inc = false;
     inline static Logger logger = Logger("Memory");
 public:
     static uint8_t read(uint16_t addr);
     static void write(uint16_t addr, uint8_t data);
+    static uint8_t read_vram(uint16_t addr, uint8_t bank);
+    static void write_vram(uint16_t addr, uint8_t data, uint8_t bank);
+    static uint8_t read_bg_cram(uint8_t addr);
+    static void write_bg_cram(uint8_t addr, uint8_t data);
+    static uint8_t read_obj_cram(uint8_t addr);
+    static void write_obj_cram(uint8_t addr, uint8_t data);
     static uint8_t unsafe_read(uint16_t addr);
     static void unsafe_write(uint16_t addr, uint8_t data);
     static uint8_t* get_raw();
+    static uint8_t* get_raw_vram();
     static bool can_read(uint16_t addr);
     static bool can_write(uint16_t addr);
     static void lock_oam();

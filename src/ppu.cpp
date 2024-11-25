@@ -13,9 +13,8 @@ void PPU::init() {
 
 void PPU::tick() {
     read_lcdc();
-    if (enable == 0) {  // If LCD disabled, don't do anything but keep incrementing dots? Somehow work for Pokemon Gold
+    if (enable == 0) {
         if (prev_enale == 1) {
-            // logger.get_logger()->debug("LCD turned off, resetting register");
             mode = 0;
             dots = 0;
             write_ly(0);
@@ -25,7 +24,6 @@ void PPU::tick() {
         return;
     }
     if (prev_enale == 0) { // When LCD turned back on, reset PPU
-        // logger.get_logger()->debug("LCD turned on again");
         write_ly(0);
         mode = 0;
         dots = 0;
@@ -34,7 +32,6 @@ void PPU::tick() {
     }
     if (dots==456) { // Start of line
         dots = 0;
-        // Debugger::log(std::format("Dot reseted while fb index was {}", frame_buf_index));
         inc_ly();
         update_stat();
         if (line_did_enable_w) w_internal_lc++;
@@ -66,14 +63,13 @@ void PPU::tick() {
                 uint8_t ly = read_ly();
                 uint16_t obj_addr = 0xFE00 + dots * 2;
                 uint8_t obj_y = Memory::unsafe_read(obj_addr);
-                // if (obj_y >= 16) Debugger::log(std::format("OAM obj y: {}", obj_y));
                 uint8_t size = obj_size ? 16 : 8;
                 if ((obj_y - 16) <= ly && ly < (obj_y - 16 + size)) {
                     obj_queue[obj_queue_idx++] = obj_addr;
                 }
             }
             if (dots == 79) {
-                std::stable_sort(obj_queue, obj_queue + obj_queue_idx, compare_sprite_priority);
+                if (!cgb_mode) std::stable_sort(obj_queue, obj_queue + obj_queue_idx, compare_sprite_priority);
             }
             break;
         case 3: // TODO: Implement mode 3 penalty
@@ -81,7 +77,6 @@ void PPU::tick() {
             if (dots == 92) { // Mid-frame scroll behavior. Fetch 3 low bits of scx and scy
                 scx_lower = read_scx() & 0x7;
                 scy_lower = read_scy() & 0x7;
-                // std::stable_sort(std::begin(obj_queue), std::end(obj_queue), compare);
             }
             render_background();
             render_window();
@@ -96,10 +91,12 @@ void PPU::tick() {
 }
 
 void PPU::render_background() {
-    if (bg_w_priority == 0) {
-        frame_buffer[frame_buf_index] = 0;
+    if (bg_w_priority == 0 && !cgb_mode) {
+        write_frame_buffer(0);
+        bg_color = 0;
         return;
     }
+
     uint8_t scx = read_scx() & ~0x7 | scx_lower; // Mid-frame scroll behavior
     uint8_t scy = read_scy() & ~0x7 | scy_lower;
     uint8_t x = (scx + frame_buf_index % 160) % 256;
@@ -107,37 +104,69 @@ void PPU::render_background() {
 
     uint16_t map_addr = 0x9800;
     if (bg_tilemap_area == 1) map_addr = 0x9C00;
-    // Debugger::log(std::format("Reading tile map data from addr: {:X}", map_addr + get_tile_index_from_pixel(x, y)));
-    uint16_t tile_ref = Memory::unsafe_read(map_addr + get_tile_index_from_pixel(x, y));
-    // Debugger::log(std::format("Tile map is referencing to tile: {}", tile_ref));
-    // Debugger::log(std::format("Tile data area bit: {:X}", tiledata_area));
-    uint16_t tile_line_data;
-    uint16_t tile_data_ptr;
-    if (tile_ref >= 128) tile_data_ptr = 0x8800;
-    else {
-        if (tiledata_area == 1) tile_data_ptr = 0x8000;
-        else tile_data_ptr = 0x9000;
+    uint16_t tile_addr = map_addr + get_tile_index_from_pixel(x, y);
+
+    if (!cgb_mode) {
+        uint16_t tile_ref = Memory::unsafe_read(tile_addr);
+        uint16_t tile_line_data;
+        uint16_t tile_data_ptr;
+        if (tile_ref >= 128) tile_data_ptr = 0x8800;
+        else {
+            if (tiledata_area == 1) tile_data_ptr = 0x8000;
+            else tile_data_ptr = 0x9000;
+        }
+        tile_ref = (tile_ref % 128)*16;
+        uint16_t line_offset = (y % 8)*2;
+
+        tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
+        tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
+
+        uint8_t pixel_offset = 7 - (x % 8);
+        uint8_t p1 = tile_line_data & 0xFF;
+        uint8_t p2 = tile_line_data >> 8;
+
+        uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+        write_frame_buffer(parse_palette(color, 0xFF47));
+        bg_color = color;
     }
-    tile_ref = (tile_ref % 128)*16;
-    uint16_t line_offset = (y % 8)*2;
+    else {
+        // CGB only attributes
+        uint8_t bg_att = Memory::read_vram(tile_addr, 1);
+        cgb_bg_priority = (bg_att >> 7) & 0x1;
+        uint8_t bg_y_flip = (bg_att >> 6) & 0x1;
+        uint8_t bg_x_flip = (bg_att >> 5) & 0x1;
+        uint8_t bg_bank = (bg_att >> 3) & 0x1;
+        uint8_t bg_color_palette = bg_att & 0x07;
 
-    tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
-    tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
+        uint16_t tile_ref = Memory::read_vram(tile_addr, 0);
+        uint16_t tile_line_data;
+        uint16_t tile_data_ptr;
+        if (tile_ref >= 128) tile_data_ptr = 0x8800;
+        else {
+            if (tiledata_area == 1) tile_data_ptr = 0x8000;
+            else tile_data_ptr = 0x9000;
+        }
+        tile_ref = (tile_ref % 128)*16;
+        uint16_t line_offset = (y % 8)*2;
+        if (bg_y_flip) line_offset = (7 - (y % 8)) * 2;
 
-    // Debugger::log(std::format("Fetched tile data: {:X}", tile_line_data));
-    uint8_t pixel_offset = 7 - (x % 8);
-    uint8_t p1 = tile_line_data & 0xFF;
-    uint8_t p2 = tile_line_data >> 8;
-    // Debugger::log(std::format("Fetching data for line with byte 1: {}, byte 2: {}", p1, p2));
-    // std::cout<<(int) p1<< " " << (int) p2 <<"\n";
-    uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
-    frame_buffer[frame_buf_index] = parse_palette(color, 0xFF47);
-    // Debugger::log(std::format("Color for pixel {} of line {} is {}", x, y, frame_buffer[m3_x-1]));
-    // std::cout<<(int) frame_buffer[m3_x-1]<<"\n";
+        tile_line_data = Memory::read_vram(tile_data_ptr + tile_ref + line_offset, bg_bank);
+        tile_line_data |= Memory::read_vram(tile_data_ptr + tile_ref + line_offset + 1, bg_bank) << 8;
+
+        uint8_t pixel_offset = 7 - (x % 8);
+        if (bg_x_flip) pixel_offset = x % 8;
+        uint8_t p1 = tile_line_data & 0xFF;
+        uint8_t p2 = tile_line_data >> 8;
+
+        uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+
+        write_frame_buffer(color, bg_color_palette);
+        bg_color = color;
+    }
 }
 
 void PPU::render_window() {
-    if (bg_w_priority == 0 || w_enable == 0) {
+    if ((bg_w_priority == 0 && !cgb_mode) || w_enable == 0) {
         return;
     }
     uint8_t wx = read_wx();
@@ -150,38 +179,68 @@ void PPU::render_window() {
     line_did_enable_w = 1;
     x = x - (wx - 7);
     y = w_internal_lc;
-    // Debugger::log(std::format("Window tiles {}", get_tile_index_from_pixel(x, y)));
 
     uint16_t map_addr = 0x9800;
     if (w_tilemap_area) map_addr = 0x9C00;
-    // Debugger::log(std::format("Reading tile map data from addr: {:X}", map_addr + get_tile_index_from_pixel(x, y)));
-    uint16_t tile_ref = Memory::unsafe_read(map_addr + get_tile_index_from_pixel(x, y));
-    // Debugger::log(std::format("Tile map is referencing to tile: {}", tile_ref));
-    // Debugger::log(std::format("Tile data area bit: {:X}", tiledata_area));
-    uint16_t tile_line_data;
-    uint16_t tile_data_ptr;
-    if (tile_ref >= 128) tile_data_ptr = 0x8800;
-    else {
-        if (tiledata_area) tile_data_ptr = 0x8000;
-        else tile_data_ptr = 0x9000;
+    uint16_t tile_addr = map_addr + get_tile_index_from_pixel(x, y);
+
+    if (!cgb_mode) {
+        uint16_t tile_ref = Memory::unsafe_read(tile_addr);
+        uint16_t tile_line_data;
+        uint16_t tile_data_ptr;
+        if (tile_ref >= 128) tile_data_ptr = 0x8800;
+        else {
+            if (tiledata_area) tile_data_ptr = 0x8000;
+            else tile_data_ptr = 0x9000;
+        }
+        tile_ref = (tile_ref % 128)*16;
+        uint16_t line_offset = (y % 8)*2;
+
+        tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
+        tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
+
+        uint8_t pixel_offset = 7 - (x % 8);
+        uint8_t p1 = tile_line_data & 0xFF;
+        uint8_t p2 = tile_line_data >> 8;
+
+        uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+        write_frame_buffer(parse_palette(color, 0xFF47));
+        bg_color = color;
     }
-    tile_ref = (tile_ref % 128)*16;
-    uint16_t line_offset = (y % 8)*2;
+    else {
+        // CGB only attributes
+        uint8_t bg_att = Memory::read_vram(tile_addr, 1);
+        uint8_t bg_priority = (bg_att >> 7) & 0x1;
+        uint8_t bg_y_flip = (bg_att >> 6) & 0x1;
+        uint8_t bg_x_flip = (bg_att >> 5) & 0x1;
+        uint8_t bg_bank = (bg_att >> 3) & 0x1;
+        uint8_t bg_color_palette = bg_att & 0x07;
 
-    tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
-    tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
+        uint16_t tile_ref = Memory::read_vram(tile_addr, 0);
+        uint16_t tile_line_data;
+        uint16_t tile_data_ptr;
+        if (tile_ref >= 128) tile_data_ptr = 0x8800;
+        else {
+            if (tiledata_area == 1) tile_data_ptr = 0x8000;
+            else tile_data_ptr = 0x9000;
+        }
+        tile_ref = (tile_ref % 128)*16;
+        uint16_t line_offset = (y % 8)*2;
+        if (bg_y_flip) line_offset = (7 - (y % 8)) * 2;
 
-    // Debugger::log(std::format("Fetched tile data: {:X}", tile_line_data));
-    uint8_t pixel_offset = 7 - (x % 8);
-    uint8_t p1 = tile_line_data & 0xFF;
-    uint8_t p2 = tile_line_data >> 8;
-    // Debugger::log(std::format("Fetching data for line with byte 1: {}, byte 2: {}", p1, p2));
-    // std::cout<<(int) p1<< " " << (int) p2 <<"\n";
-    uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
-    frame_buffer[frame_buf_index] = parse_palette(color, 0xFF47);
-    // frame_buffer[frame_buf_index] = 0xee;
-    // Debugger::log(std::format("Color for pixel {} of line {} is {}", x, y, frame_buffer[m3_x-1]));
-    // std::cout<<(int) frame_buffer[m3_x-1]<<"\n";
+        tile_line_data = Memory::read_vram(tile_data_ptr + tile_ref + line_offset, bg_bank);
+        tile_line_data |= Memory::read_vram(tile_data_ptr + tile_ref + line_offset + 1, bg_bank) << 8;
+
+        uint8_t pixel_offset = 7 - (x % 8);
+        if (bg_x_flip) pixel_offset = x % 8;
+        uint8_t p1 = tile_line_data & 0xFF;
+        uint8_t p2 = tile_line_data >> 8;
+
+        uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+        write_frame_buffer(color, bg_color_palette);
+        bg_color = color;
+    }
+
 }
 
 void PPU::render_object() {
@@ -201,10 +260,17 @@ void PPU::render_object() {
         uint8_t obj_y_flip = (obj_att >> 6) & 0x1;
         uint8_t obj_x_flip = (obj_att >> 5) & 0x1;
         uint8_t obj_palette = (obj_att >> 4) & 0x1;
+        uint8_t obj_bank = (obj_att >> 3) & 0x1;
+        uint8_t obj_cgb_palette = obj_att & 0x7;
         uint16_t obj_y_start = Memory::unsafe_read(obj_addr);
 
-        if (obj_priority == 1) {
-            if (frame_buffer[frame_buf_index] > 0) return; // Bg/Window color 1-3 draw over this obj
+        if (!cgb_mode) obj_bank = 0;
+
+        if (!cgb_mode && obj_priority == 1) {
+            if (bg_color > 0) return; // Bg/Window color 1-3 draw over this obj
+        }
+        else if (cgb_mode && bg_w_priority && (cgb_bg_priority || obj_priority)) {
+            if (bg_color > 0) return;
         }
 
         uint8_t size = obj_size ? 16 : 8;
@@ -225,8 +291,8 @@ void PPU::render_object() {
         uint16_t line_offset = ((y - obj_y_start + 16) % 8)*2;
         if(obj_y_flip == 1) line_offset = (7 - ((y - obj_y_start + 16) % 8))*2;
 
-        tile_line_data = Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset);
-        tile_line_data |= Memory::unsafe_read(tile_data_ptr + tile_ref + line_offset + 1) << 8;
+        tile_line_data = Memory::read_vram(tile_data_ptr + tile_ref + line_offset, obj_bank);
+        tile_line_data |= Memory::read_vram(tile_data_ptr + tile_ref + line_offset + 1, obj_bank) << 8;
 
         // Because obj can be anywhere, it's pixel offset should not be calculated by x % 8 -> cause clipping if obj starting x pos not divisible by 8
         // But should be calculated by (obj starting x cord - current x) to find which pixel to render
@@ -236,13 +302,62 @@ void PPU::render_object() {
         uint8_t p2 = tile_line_data >> 8;
 
         uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
-
         uint16_t palette_addr = obj_palette ? 0xFF49 : 0xFF48;
         if (color > 0) {
-            frame_buffer[frame_buf_index] = parse_palette(color, palette_addr);
+            if (!cgb_mode) write_frame_buffer(parse_palette(color, palette_addr));
+            else write_frame_buffer(color, obj_cgb_palette, true);
             break;
         }
     }
+}
+
+uint32_t min(uint32_t a, uint32_t b) {
+    return a<b?a:b;
+}
+
+void PPU::write_frame_buffer(uint8_t color_id, uint8_t color_palette, bool is_obj) { // color_palette not used in DMG mode
+    int index = frame_buf_index * 3;
+    if (!cgb_mode) { // SDL uses BGR
+        frame_buffer[index] = dmg_palette[color_id][2];
+        frame_buffer[index+1] = dmg_palette[color_id][1];
+        frame_buffer[index+2] = dmg_palette[color_id][0];
+    }
+    else {
+        uint8_t color_addr = color_palette * 8 + (color_id * 2);
+        uint8_t r;
+        uint8_t g;
+        uint8_t b;
+        if (!is_obj) {
+            r = Memory::read_bg_cram(color_addr) & 0x1F;
+            g = ((Memory::read_bg_cram(color_addr) >> 5) & 0x07) | (Memory::read_bg_cram(color_addr+1) & 0x03) << 3;;
+            b = (Memory::read_bg_cram(color_addr+1) >> 2) & 0x1F;
+        }
+        else {
+            r = Memory::read_obj_cram(color_addr) & 0x1F;
+            g = ((Memory::read_obj_cram(color_addr) >> 5) & 0x07) | (Memory::read_obj_cram(color_addr+1) & 0x03) << 3;
+            b = (Memory::read_obj_cram(color_addr+1) >> 2) & 0x1F;
+        }
+
+        // b = b << 3 | b >> 2;
+        // r = r << 3 | r >> 2;
+        // g = g << 3 | g >> 2;
+
+        uint32_t R = (r * 26 + g *  4 + b *  2);
+        uint32_t G = (         g * 24 + b *  8);
+        uint32_t B = (r *  6 + g *  4 + b * 22);
+        R = min(960, R) >> 2;
+        G = min(960, G) >> 2;
+        B = min(960, B) >> 2;
+
+        frame_buffer[index] = B & 0xFF;
+        frame_buffer[index+1] = G & 0xFF;
+        frame_buffer[index+2] = R & 0xFF;
+    }
+}
+
+uint8_t PPU::parse_palette(uint8_t src_color, uint16_t palette_addr) {
+    uint8_t palette_data = Memory::unsafe_read(palette_addr);
+    return (palette_data >> src_color * 2) & 0x3;
 }
 
 bool PPU::compare_sprite_priority(uint16_t obj_a, uint16_t obj_b) {
@@ -251,14 +366,8 @@ bool PPU::compare_sprite_priority(uint16_t obj_a, uint16_t obj_b) {
     return obj_ax < obj_bx;
 }
 
-
 uint16_t PPU::get_tile_index_from_pixel(uint8_t x, uint8_t y) {
     return ((x / 8) + 32 * (y/8));
-}
-
-uint8_t PPU::parse_palette(uint8_t src_color, uint16_t palette_addr) {
-    uint8_t palette_data = Memory::unsafe_read(palette_addr);
-    return (palette_data >> src_color * 2) & 0x3;
 }
 
 void PPU::read_lcdc() {
@@ -316,7 +425,7 @@ void PPU::update_stat() {
     // spdlog::info("Current mode: {}", mode);
     // spdlog::info("Current LYC and LY: {} {}", lyc, read_ly());
     // spdlog::info("New stat: {:08b}", new_stat);
-    Memory::unsafe_write(0xFF41, new_stat);
+    Memory::write(0xFF41, new_stat);
 }
 
 void PPU::update_stat_no_trigger() {
@@ -327,7 +436,7 @@ void PPU::update_stat_no_trigger() {
     // spdlog::info("Current mode: {}", mode);
     // spdlog::info("Current LYC and LY: {} {}", lyc, read_ly());
     // spdlog::info("New stat: {:08b}", new_stat);
-    Memory::get_raw()[0xFF41 - 0xC000] = new_stat;
+    Memory::unsafe_write(0xFF41, new_stat);
 }
 
 uint8_t PPU::read_ly() {
@@ -342,11 +451,6 @@ void PPU::inc_ly() {
 void PPU::write_ly(uint8_t data) {
     Memory::unsafe_write(0xFF44, data);
 }
-
-// void Ppu::inc_w_internal_lc() {
-//     w_internal_lc++;
-//     if (read_ly() == 0) w_internal_lc = 0;
-// }
 
 uint8_t PPU::read_scx() {
     return Memory::unsafe_read(0xFF43);

@@ -16,22 +16,63 @@ void Memory::write(uint16_t addr, uint8_t data) {
     // Cannot put this in unsafe_write because that's used to increment DIV in Timer
     // Put this in unsafe_write will write 0 everytime timer want to be incremented
     if (addr == 0xFF04) {
-        *(memory+addr - 0xC000) = 0;
+        unsafe_write(0xFF04, 0);
         return;
     }
+    if (addr == 0xFF50) {  // Write to this turn off boot
+        Cartridge::boot_off();
+    }
+    if (addr == 0xFF46 && !dma_requested) { // Capture DMA
+        dma_requested = true;
+    }
+    if (addr == 0xFF41) { // Capture STAT change
+        uint8_t prev_stat = unsafe_read(0xFF41);
+        uint8_t changes = prev_stat ^ data;
+        unsafe_write(addr, data);
+        for(uint8_t i = 0; i < 7; i++) {
+            uint8_t is_bit_changed = (changes >> i) & 0x1;
+            if (!is_bit_changed) continue;
+            if (i == 2 || i == 6) {
+                PPU::check_and_req_lyc_stat();
+            }
+            else {
+                PPU::check_and_req_mode0_stat();
+                PPU::check_and_req_mode1_stat();
+                PPU::check_and_req_mode2_stat();
+            }
+        }
+        return;
+    }
+    if (addr == 0xFF68) { // Capture BGPI change event
+        bg_auto_inc = data >> 7;
+        uint8_t palette_addr = data & 0x3F;
+        unsafe_write(0xFF69, read_bg_cram(palette_addr));
+    }
+    if (addr == 0xFF69) { // Capture BCPD change event
+        uint8_t bgpi = unsafe_read(0xFF68);
+        uint8_t palette_addr = bgpi & 0x3F;
+        write_bg_cram(palette_addr, data);
+        if (bg_auto_inc) write(0xFF68, (bgpi & 0xC0) | ((palette_addr + 1) % 64));
+    }
+    if (addr == 0xFF6A) {
+        obj_auto_inc = data >> 7;
+        uint8_t palette_addr = data & 0x3F;
+        unsafe_write(0xFF6B, read_obj_cram(palette_addr));
+    }
+    if (addr == 0xFF6B) {
+        uint8_t obpi = unsafe_read(0xFF6A);
+        uint8_t palette_addr = obpi & 0x3F;
+        write_obj_cram(palette_addr, data);
+        if (obj_auto_inc) write(0xFF6A, (obpi & 0xC0) | ((palette_addr + 1) % 64));
+    }
+    if (addr == 0xFF4F) {
+        vram_bank = data & 0x1;
+    }
+
     if (can_write(addr)) {
         unsafe_write(addr, data);
     }
 }
-
-bool Memory::check_dma() {
-    return dma_requested;
-}
-
-void Memory::resolve_dma() {
-    dma_requested = false;
-}
-
 
 bool Memory::can_write(uint16_t addr) {
     if ((0xE000 <= addr && addr <= 0xFDFF) || (0xFEA0 <= addr && addr <= 0xFEFF)) {
@@ -51,8 +92,11 @@ bool Memory::can_read(unsigned short addr) {
 }
 
 uint8_t Memory::unsafe_read(uint16_t addr) {
-    if (addr < 0xC000) {
+    if (addr <= 0x7FFF || (0xA000 <= addr && addr <= 0xBFFF)) {
         return Cartridge::read(addr);
+    }
+    if (0x8000 <= addr && addr <= 0x9FFF) {
+        return read_vram(addr, vram_bank);
     }
     if (0xE000 <= addr && addr <= 0xFDFF) { // Echo RAM
         return memory[addr - 0xC000 - 0x2000];
@@ -61,34 +105,12 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
 }
 
 void Memory::unsafe_write(uint16_t addr, uint8_t data) {
-    if (addr == 0xFF50) {  // Write to this turn off boot
-        Cartridge::boot_off();
-    }
-    if (addr == 0xFF46 && !dma_requested) { // Capture DMA
-        dma_requested = true;
-    }
-    if (addr == 0xFF41) { // Capture STAT change
-        uint8_t prev_stat = unsafe_read(0xFF41);
-        uint8_t changes = prev_stat ^ data;
-        *(memory+addr - 0xC000) = data;
-        for(uint8_t i = 0; i < 7; i++) {
-            uint8_t is_bit_changed = (changes >> i) & 0x1;
-            if (!is_bit_changed) continue;
-            if (i == 2 || i == 6) {
-                PPU::check_and_req_lyc_stat();
-            }
-            else {
-                PPU::check_and_req_mode0_stat();
-                PPU::check_and_req_mode1_stat();
-                PPU::check_and_req_mode2_stat();
-            }
-        }
-        return;
-    }
-
     // Re-route
-    if (addr < 0xC000) {
+    if (addr <= 0x7FFF || (0xA000 <= addr && addr <= 0xBFFF)) {
         return Cartridge::write(addr, data);
+    }
+    if (0x8000 <= addr && addr <= 0x9FFF) {
+        return write_vram(addr, data, vram_bank);
     }
     if (0xE000 <= addr && addr <= 0xFDFF) { // Echo RAM
         *(memory+addr - 0xC000 - 0x2000) = data;
@@ -98,8 +120,47 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
     *(memory+addr - 0xC000) = data;
 }
 
+uint8_t Memory::read_vram(uint16_t addr, uint8_t bank) { // Low level VRAM access - Won't automatically use current bank
+    uint16_t real_addr = addr - 0x8000;
+    return vram[real_addr + 0x2000 * bank];
+}
+
+void Memory::write_vram(uint16_t addr, uint8_t data, uint8_t bank) { // Low level VRAM access - Won't automatically use current bank
+    // logger.get_logger()->debug("Writing to VRAM at addr: {:X}, translated to: {:X}", addr, addr - 0x8000);
+    uint16_t real_addr = addr - 0x8000;
+    vram[real_addr + 0x2000 * bank] = data;
+}
+
+uint8_t Memory::read_bg_cram(uint8_t addr) {
+    return bg_cram[addr];
+}
+
+void Memory::write_bg_cram(uint8_t addr, uint8_t data) {
+    bg_cram[addr] = data;
+}
+
+uint8_t Memory::read_obj_cram(uint8_t addr) {
+    return obj_cram[addr];
+}
+
+void Memory::write_obj_cram(uint8_t addr, uint8_t data) {
+    obj_cram[addr] = data;
+}
+
+bool Memory::check_dma() {
+    return dma_requested;
+}
+
+void Memory::resolve_dma() {
+    dma_requested = false;
+}
+
 uint8_t *Memory::get_raw() {
     return memory;
+}
+
+uint8_t *Memory::get_raw_vram() {
+    return vram;
 }
 
 void Memory::lock_oam() {

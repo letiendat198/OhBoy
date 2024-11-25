@@ -12,7 +12,6 @@ private:
     inline static std::string save_name;
     inline static FILE *f_boot;
     inline static uint8_t *rom_data;
-    inline static uint8_t *cartridge_mem;
     inline static uint8_t *boot_data;
     inline static bool is_boot = true;
     inline static int rom_file_size;

@@ -101,11 +101,11 @@ void Debugger::render() {
     if (is_debug) {
         render_console(io);
         render_registers();
-        // render_tiles();
         memory_editor.ReadOnly = true;
         memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0xFFFF+1);
         memory_editor.DrawWindow("External RAM", Cartridge::external_ram, Cartridge::external_ram_size);
-        memory_editor.DrawWindow("Frame Buffer", PPU::get_frame_buffer(), 160*144);
+        memory_editor.DrawWindow("Video RAM", Memory::get_raw_vram(), 0x2000*2);
+        memory_editor.DrawWindow("Frame Buffer", PPU::get_frame_buffer(), 160*144*3);
     }
 
     ImGui::Render();
@@ -114,6 +114,32 @@ void Debugger::render() {
     SDL_RenderClear(renderer);
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
     SDL_RenderPresent(renderer);
+}
+
+void Debugger::render_game() {
+    if (!is_debug) {
+        ImGuiWindowClass window_class;
+        window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
+        ImGui::SetNextWindowClass(&window_class);
+    }
+    ImGui::Begin("Game");
+    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)ppu.get_frame_buffer(), 160, 144, 24, 160*3, 0x0, 0x0, 0x0, 0x0);
+    if (surface == nullptr) {
+        fprintf(stderr, "Failed to create SDL surface: %s\n", SDL_GetError());
+    }
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (texture == nullptr)
+        fprintf(stderr, "Failed to create SDL texture: %s\n", SDL_GetError());
+
+    SDL_FreeSurface(surface);
+    if (old_game_texture != nullptr) {
+        SDL_DestroyTexture(old_game_texture);
+    }
+    old_game_texture = texture;
+
+    ImGui::Image((ImTextureID)(intptr_t)texture, ImVec2((float)160*3, (float)144*3));
+    ImGui::End();
 }
 
 void Debugger::render_console(const ImGuiIO& io) {
@@ -132,7 +158,6 @@ void Debugger::render_console(const ImGuiIO& io) {
     ImGui::EndChild();
     ImGui::End();
 }
-
 
 void Debugger::render_registers() {
     ImGui::Begin("Registers");
@@ -199,71 +224,6 @@ void Debugger::render_registers() {
     ImGui::BeginChild("Serial");
         ImGui::TextWrapped(serial_output.c_str());
     ImGui::EndChild();
-    ImGui::End();
-}
-
-void Debugger::render_tiles() {
-    ImGui::Begin("Tiles");
-    uint16_t tiles_addr = 0x8000;
-    for (int i=0;i<127;i++) {
-        uint8_t pix[64];
-        int id = 0;
-        for (int i=0; i < 15;i+=2) {
-            uint8_t byte1= Memory::read(tiles_addr+i);
-            uint8_t byte2 = Memory::read(tiles_addr+i+1);
-            for(int j=7;j>=0;j--) {
-                pix[id++] = ((byte1 >> j) & 0x1) | (((byte2 >> j) & 0x1) << 1);
-            }
-        }
-        tiles_addr += 16;
-        SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)&pix, 8, 8, 8, 8, 0x0, 0x0, 0x0, 0x0);
-        SDL_SetPaletteColors(surface->format->palette, colors, 0 ,4);
-        if (surface == nullptr)
-        {
-            fprintf(stderr, "Failed to create SDL surface: %s\n", SDL_GetError());
-        }
-
-        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-        if (texture == nullptr)
-            fprintf(stderr, "Failed to create SDL texture: %s\n", SDL_GetError());
-
-        SDL_FreeSurface(surface);
-        if (used_textures[i] != nullptr) {
-            SDL_DestroyTexture(used_textures[i]);
-        }
-        used_textures[i] = texture;
-
-        ImGui::Image((ImTextureID)(intptr_t)texture, ImVec2((float)32, (float)32));
-        if ((i+1)%6!=0) ImGui::SameLine();
-    }
-    ImGui::End();
-}
-
-void Debugger::render_game() {
-    if (!is_debug) {
-        ImGuiWindowClass window_class;
-        window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
-        ImGui::SetNextWindowClass(&window_class);
-    }
-    ImGui::Begin("Game");
-    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)ppu.get_frame_buffer(), 160, 144, 8, 160, 0x0, 0x0, 0x0, 0x0);
-    SDL_SetPaletteColors(surface->format->palette, colors, 0 ,4);
-    if (surface == nullptr)
-    {
-        fprintf(stderr, "Failed to create SDL surface: %s\n", SDL_GetError());
-    }
-
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-    if (texture == nullptr)
-        fprintf(stderr, "Failed to create SDL texture: %s\n", SDL_GetError());
-
-    SDL_FreeSurface(surface);
-    if (old_game_texture != nullptr) {
-        SDL_DestroyTexture(old_game_texture);
-    }
-    old_game_texture = texture;
-
-    ImGui::Image((ImTextureID)(intptr_t)texture, ImVec2((float)160*3, (float)144*3));
     ImGui::End();
 }
 

@@ -37,7 +37,7 @@ uint32_t MBC1::calculate_address(uint16_t addr) {
         uint16_t safe_wrap = (rom_bank_high << 5) % max_rom_banks;
         return (safe_wrap << 14) | (addr & 0x3FFF);
     }
-    if (0x4000 <= addr && addr <= 0x7FFF) { // BANK 1 - mapable
+    if (0x4000 <= addr && addr <= 0x7FFF) { // BANK 1 - mappable
         return (rom_bank << 14) | (addr & 0x3FFF);
     }
     if (0xA000 <= addr && addr <= 0xBFFF) {

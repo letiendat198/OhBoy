@@ -25,7 +25,7 @@ public:
     unsigned short pc=0x0100;
     unsigned short sp=0;
     unsigned char ime=0;
-    unsigned char halt = 0;
+    unsigned char halt=0;
 
     bool exec_flag = false;
     bool ime_next = false;
@@ -33,9 +33,11 @@ public:
 
     unsigned char opskip;
     unsigned char mcycle;
-    unsigned char cycle_count=0;
+    unsigned char cycle_count = 0;
+    uint8_t interrupt_cycle_count = 0;
     void init();
-    bool tick();
+    void tick();
+    bool handle_interrupts();
 
     void log_cpu();
 

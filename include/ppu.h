@@ -6,7 +6,9 @@
 
 class PPU {
 private:
-    inline static uint8_t *frame_buffer = new uint8_t[160*144]();
+    inline static uint8_t *frame_buffer = new uint8_t[160*144*3]();
+    uint8_t dmg_palette[4][3] = {{224, 248, 208}, {136, 192, 112}, {52, 104, 86}, {8, 24, 32}};
+    bool cgb_mode = true;
     uint8_t mode;
     uint16_t wait;
     uint16_t dots = 0;
@@ -14,6 +16,8 @@ private:
     uint16_t frame_buf_index = 0;
     uint16_t obj_queue[10];
     uint8_t obj_queue_idx = 0;
+
+    uint8_t bg_color;
 
     uint8_t enable;
     uint8_t prev_enale;
@@ -24,6 +28,8 @@ private:
     uint8_t obj_enable;
     uint8_t obj_size;
     uint8_t bg_w_priority;
+
+    uint8_t cgb_bg_priority;
 
     uint8_t scx_lower;
     uint8_t scy_lower;
@@ -39,6 +45,7 @@ private:
     static bool compare_sprite_priority(uint16_t obj_a, uint16_t obj_b);
     uint16_t get_tile_index_from_pixel(uint8_t x, uint8_t y);
     uint8_t parse_palette(uint8_t src_color, uint16_t palette_addr);
+    void write_frame_buffer(uint8_t color_id, uint8_t color_palette = 0, bool is_obj = false);
 
 public:
     void init();

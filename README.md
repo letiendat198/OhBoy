@@ -1,6 +1,6 @@
 # OhBoy
 
-An M-Cycle accurate Game Boy emulator
+An M-Cycle accurate Game Boy (WIP Color) emulator
 
 The emulator core was written in C/C++ and the GUI was written in Rust (because C++ GUI libraries
 are either big or ugly)
@@ -49,9 +49,6 @@ cmake --build .
 
 - CPU:
   - Implement STOP (or not)
-- Cartridge:
-  - Implement MBC3 support
-  - Move VRAM to Memory
 - PPU:
   - Implement Mode 3 scroll penalty
 - Implement APU
@@ -64,8 +61,6 @@ cmake --build .
 
 - PPU:
   - LY = 153 oddities bug
-- Cartridge:
-  - Only support MBC1 and MBC5 games (for now)
 
 ## License
 GPLv3

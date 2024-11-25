@@ -13,19 +13,34 @@
 using namespace std;
 
 void CPU::init() {
-    a = 0x01;
+    // a = 0x01;
+    // b = 0x00;
+    // c = 0x13;
+    // d = 0x00;
+    // e = 0xD8;
+    // h = 0x01;
+    // l = 0x4D;
+    // sp = 0xFFFE;
+    // pc = 0x0100;
+    // z_flag = 1;
+    // n_flag = 0;
+    // h_flag = 1;
+    // c_flag = 1;
+
+    // CGB initial value
+    a = 0x11;
     b = 0x00;
-    c = 0x13;
-    d = 0x00;
-    e = 0xD8;
-    h = 0x01;
-    l = 0x4D;
+    c = 0x00;
+    d = 0xFF;
+    e = 0x56;
+    h = 0x00;
+    l = 0x0D;
     sp = 0xFFFE;
     pc = 0x0100;
     z_flag = 1;
     n_flag = 0;
-    h_flag = 1;
-    c_flag = 1;
+    h_flag = 0;
+    c_flag = 0;
     Cartridge::boot_off();
 }
 
@@ -34,46 +49,49 @@ void CPU::log_cpu() {
     logger.get_logger()->debug("A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}", a, f, b, c, d, e, h, l, sp, pc, read8_mem(pc), read8_mem(pc+1), read8_mem(pc+2), read8_mem(pc+3));
 }
 
-bool CPU::tick(){
-    // cout<<"Current PC: "<<(int)pc<<" Remaining M-Cycle: "<<(int) mcycle<<" OP skip: "<<(int)opskip<<endl;
-    if(cycle_count==0) { // Begin of new instrs
-        if (halt == 1) {
-            if (Interrupts::is_pending()) halt = 0;
-        }
-        uint16_t iresult = Interrupts::check_and_service(ime); // Check interrupts
-        if (iresult != 0) {
-            logger.get_logger()->debug(std::format("Interrupt requested at {:#X}", iresult));
-            interrupt_addr = iresult;
-            mcycle = 5;
-        }
-        else (this->*jump_table[Memory::read(pc)])();
+void CPU::tick(){
+    if(cycle_count==0) {
+        bool is_servicing_interrupt = handle_interrupts();
+        if (halt == 1 || is_servicing_interrupt) return; // No HALT bug
+        (this->*jump_table[Memory::read(pc)])();
     }
-    if (halt == 1) return true; // No HALT bug
     cycle_count++;
 
-    if ((mcycle == 1 || cycle_count == mcycle) && interrupt_addr == 0) {
+    if (mcycle == 1 || cycle_count == mcycle) {
         if (ime_next) {
             ime = 1;
-            ime_next = 0;
+            ime_next = false;
         } // EI is delayed by 1 instr
-
-        exec_flag = 1;
+        exec_flag = true;
         // log_cpu();
         (this->*jump_table[Memory::read(pc)])();
         pc+=opskip;
-        exec_flag = 0;
+        exec_flag = false;
         cycle_count = 0;
     }
-    else if (cycle_count == mcycle && interrupt_addr != 0) { // If have an interrupt waiting, do it
-        logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);
-        write8_mem(--sp, pc >> 8);
-        write8_mem(--sp, pc & 0xFF);
-        pc = interrupt_addr;
-        interrupt_addr = 0;
-        cycle_count = 0;
-    }
+}
 
-    return true;
+bool CPU::handle_interrupts() {
+    if (Interrupts::is_pending() || interrupt_addr != 0) {
+        if (interrupt_cycle_count == 0) {
+            halt = 0;
+            interrupt_addr = Interrupts::check_and_service(ime); // Check interrupts
+            if (interrupt_addr == 0) return false; // In case IME is disabled
+            logger.get_logger()->debug(std::format("Interrupt requested at {:#X}", interrupt_addr));
+            mcycle = 5;
+        }
+        interrupt_cycle_count++;
+        if (interrupt_cycle_count == mcycle) {
+            logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);
+            write8_mem(--sp, pc >> 8);
+            write8_mem(--sp, pc & 0xFF);
+            pc = interrupt_addr;
+            interrupt_addr = 0;
+            interrupt_cycle_count = 0;
+        }
+        return true;
+    }
+    return false;
 }
 
 void CPU::write8_mem(uint16_t addr, uint8_t a) {
