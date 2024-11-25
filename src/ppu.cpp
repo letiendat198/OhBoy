@@ -210,7 +210,7 @@ void PPU::render_window() {
     else {
         // CGB only attributes
         uint8_t bg_att = Memory::read_vram(tile_addr, 1);
-        uint8_t bg_priority = (bg_att >> 7) & 0x1;
+        cgb_bg_priority = (bg_att >> 7) & 0x1;
         uint8_t bg_y_flip = (bg_att >> 6) & 0x1;
         uint8_t bg_x_flip = (bg_att >> 5) & 0x1;
         uint8_t bg_bank = (bg_att >> 3) & 0x1;
@@ -267,9 +267,9 @@ void PPU::render_object() {
         if (!cgb_mode) obj_bank = 0;
 
         if (!cgb_mode && obj_priority == 1) {
-            if (bg_color > 0) return; // Bg/Window color 1-3 draw over this obj
+            if (bg_color > 0) return; // Bg / Window color 1-3 draw over this obj
         }
-        else if (cgb_mode && bg_w_priority && (cgb_bg_priority || obj_priority)) {
+        if (cgb_mode && bg_w_priority && (cgb_bg_priority || obj_priority)) {
             if (bg_color > 0) return;
         }
 
