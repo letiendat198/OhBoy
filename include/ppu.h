@@ -8,7 +8,7 @@ class PPU {
 private:
     inline static uint8_t *frame_buffer = new uint8_t[160*144*3]();
     uint8_t dmg_palette[4][3] = {{224, 248, 208}, {136, 192, 112}, {52, 104, 86}, {8, 24, 32}};
-    bool cgb_mode = true;
+    bool cgb_mode = false;
     uint8_t mode;
     uint16_t wait;
     uint16_t dots = 0;
@@ -48,7 +48,7 @@ private:
     void write_frame_buffer(uint8_t color_id, uint8_t color_palette = 0, bool is_obj = false);
 
 public:
-    void init();
+    void init(bool cgb_mode);
     static uint8_t* get_frame_buffer();
     void tick();
     uint8_t read_ly();

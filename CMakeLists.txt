@@ -31,7 +31,10 @@ add_executable(OhBoy src/main.cpp
         src/mbc5.cpp
         deps/popl/include/popl.hpp
         src/mbc3.cpp
-        src/apu.cpp)
+        src/apu.cpp
+        include/hdma.h
+        src/hdma.cpp
+)
 
 include(FetchContent)
 

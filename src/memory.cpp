@@ -68,7 +68,10 @@ void Memory::write(uint16_t addr, uint8_t data) {
     if (addr == 0xFF4F) {
         vram_bank = data & 0x1;
     }
-
+    if (addr == 0xFF70) {
+        uint8_t bank_number = data & 0x7;
+        wram_bank = bank_number?bank_number-1:0;
+    }
     if (can_write(addr)) {
         unsafe_write(addr, data);
     }
@@ -95,6 +98,9 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
     if (addr <= 0x7FFF || (0xA000 <= addr && addr <= 0xBFFF)) {
         return Cartridge::read(addr);
     }
+    if (0xD000 <= addr && addr <= 0xDFFF) {
+        return read_wram(addr, wram_bank);
+    }
     if (0x8000 <= addr && addr <= 0x9FFF) {
         return read_vram(addr, vram_bank);
     }
@@ -108,6 +114,9 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
     // Re-route
     if (addr <= 0x7FFF || (0xA000 <= addr && addr <= 0xBFFF)) {
         return Cartridge::write(addr, data);
+    }
+    if (0xD000 <= addr && addr <= 0xDFFF) {
+        return write_wram(addr, data, wram_bank);
     }
     if (0x8000 <= addr && addr <= 0x9FFF) {
         return write_vram(addr, data, vram_bank);
@@ -129,6 +138,17 @@ void Memory::write_vram(uint16_t addr, uint8_t data, uint8_t bank) { // Low leve
     // logger.get_logger()->debug("Writing to VRAM at addr: {:X}, translated to: {:X}", addr, addr - 0x8000);
     uint16_t real_addr = addr - 0x8000;
     vram[real_addr + 0x2000 * bank] = data;
+}
+
+uint8_t Memory::read_wram(uint16_t addr, uint8_t bank) { // Low level WRAM access - Won't automatically use current bank
+    uint16_t real_addr = addr - 0xD000;
+    return wram[real_addr + 0x1000 * bank];
+}
+
+void Memory::write_wram(uint16_t addr, uint8_t data, uint8_t bank) { // Low level WRAM access - Won't automatically use current bank
+    // logger.get_logger()->debug("Writing to VRAM at addr: {:X}, translated to: {:X}", addr, addr - 0x8000);
+    uint16_t real_addr = addr - 0xD000;
+    wram[real_addr + 0x1000 * bank] = data;
 }
 
 uint8_t Memory::read_bg_cram(uint8_t addr) {

@@ -90,6 +90,17 @@ void CPU::op_0F() {
     }
 } // RRCA
 void CPU::op_10() {
+    if (Cartridge::cgb_mode) {
+        uint8_t spd_switch_req = Memory::read(0xFF4D);
+        uint8_t switch_armed = spd_switch_req & 0x1;
+        uint8_t current_spd = (spd_switch_req >> 7) & 0x1;
+
+        if (switch_armed) {
+            Memory::write(0xFF04, 0); // Reset DIV
+            double_spd_mode = !current_spd;
+            Memory::write(0xFF4D, (double_spd_mode & 0x1) << 7);
+        }
+    }
     opskip = 2;
     mcycle = 1;
 } // STOP n8

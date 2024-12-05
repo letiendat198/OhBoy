@@ -26,12 +26,14 @@ private:
     inline static uint8_t max_ram_banks;
     inline static uint8_t dest_code;
     inline static uint8_t version;
+    inline static uint8_t cgb_flag;
 
     inline static MBC *mbc;
 
 public:
     inline static uint8_t *external_ram;
     inline static uint32_t external_ram_size;
+    inline static bool cgb_mode = false;
     static bool init(const char* file);
     static uint8_t read(uint16_t addr);
     static void write(uint16_t addr, uint8_t data);

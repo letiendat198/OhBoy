@@ -4,10 +4,10 @@
 #include <debugger.h>
 #include <memory.h>
 
-void PPU::init() {
+void PPU::init(bool cgb_mode) {
     wait = 0;
     dots = 0;
-    Memory::unsafe_write(0xFF40, 0b10000000);
+    this->cgb_mode = cgb_mode;
     read_lcdc();
 }
 

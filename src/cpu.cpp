@@ -12,36 +12,41 @@
 #include "interrupts.h"
 using namespace std;
 
-void CPU::init() {
-    // a = 0x01;
-    // b = 0x00;
-    // c = 0x13;
-    // d = 0x00;
-    // e = 0xD8;
-    // h = 0x01;
-    // l = 0x4D;
-    // sp = 0xFFFE;
-    // pc = 0x0100;
-    // z_flag = 1;
-    // n_flag = 0;
-    // h_flag = 1;
-    // c_flag = 1;
-
-    // CGB initial value
-    a = 0x11;
-    b = 0x00;
-    c = 0x00;
-    d = 0xFF;
-    e = 0x56;
-    h = 0x00;
-    l = 0x0D;
-    sp = 0xFFFE;
-    pc = 0x0100;
-    z_flag = 1;
-    n_flag = 0;
-    h_flag = 0;
-    c_flag = 0;
-    Cartridge::boot_off();
+void CPU::init(bool cgb_mode) {
+    // if (!cgb_mode) {
+    //     a = 0x01;
+    //     b = 0x00;
+    //     c = 0x13;
+    //     d = 0x00;
+    //     e = 0xD8;
+    //     h = 0x01;
+    //     l = 0x4D;
+    //     sp = 0xFFFE;
+    //     pc = 0x0100;
+    //     z_flag = 1;
+    //     n_flag = 0;
+    //     h_flag = 1;
+    //     c_flag = 1;
+    // }
+    // else {
+    //     // CGB initial value
+    //     a = 0x11;
+    //     b = 0x00;
+    //     c = 0x00;
+    //     d = 0xFF;
+    //     e = 0x56;
+    //     h = 0x00;
+    //     l = 0x0D;
+    //     sp = 0xFFFE;
+    //     pc = 0x0100;
+    //     z_flag = 1;
+    //     n_flag = 0;
+    //     h_flag = 0;
+    //     c_flag = 0;
+    // }
+    //
+    // Memory::unsafe_write(0xFF40, 0b10000000);
+    // Cartridge::boot_off();
 }
 
 void CPU::log_cpu() {

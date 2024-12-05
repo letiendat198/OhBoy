@@ -19,20 +19,6 @@ bool Cartridge::init(const char* file){
     std::size_t ext_delim = save_name.find_last_of('.');
     save_name = save_name.substr(0, ext_delim) + ".sav";
 
-    // Load bootrom
-    f_boot = fopen("boot.bin", "rb");
-    fseek(f_boot, 0L, SEEK_END);
-    boot_size = ftell(f_boot);
-    Debugger::log(std::format("BOOT size: {}", boot_size).c_str());
-    if(boot_size<=0) {
-        std::cerr<<"Boot ROM not found!\n";
-        return false;
-    }
-
-    boot_data = new uint8_t[0x100+1];
-    fseek(f_boot, 0L, SEEK_SET);
-    fread(boot_data, sizeof(uint8_t), 0x100 + 1, f_boot);
-
     // Load actual rom
     f = fopen(file, "rb");
     fseek(f, 0L, SEEK_END);
@@ -47,6 +33,13 @@ bool Cartridge::init(const char* file){
     rom_data = new uint8_t[rom_file_size];
     fseek(f, 0L, SEEK_SET);
     fread(rom_data, sizeof(uint8_t),rom_file_size+1, f);
+
+    // Re-calculate checksum to make sure checksum passes
+    uint8_t checksum = 0;
+    for (uint16_t address = 0x0134; address <= 0x014C; address++) {
+        checksum = checksum - rom_data[address] - 1;
+    }
+    rom_data[0x14D] = checksum;
 
     // Read cartridge metadata
     rom_title = new char[0xF + 1]; // Stub
@@ -89,6 +82,10 @@ bool Cartridge::init(const char* file){
     }
     dest_code = rom_data[0x014A];
     version = rom_data[0x014D];
+    cgb_flag = rom_data[0x143];
+    if (cgb_flag == 0x80 || cgb_flag == 0xC0) {
+        cgb_mode = true;
+    }
 
     external_ram_size = max_ram_banks?0x2000*max_ram_banks:1;
 
@@ -121,11 +118,26 @@ bool Cartridge::init(const char* file){
     std::cout<<std::format("DEST code: {:#X}", dest_code)<<"\n";
     std::cout<<std::format("VERSION: {:#X}", version)<<"\n";
 
+    // Load bootrom
+    f_boot = fopen("boot.bin", "rb");
+    if (cgb_mode) f_boot = fopen("cgb_boot.bin", "rb");
+    fseek(f_boot, 0L, SEEK_END);
+    boot_size = ftell(f_boot);
+    Debugger::log(std::format("BOOT size: {}", boot_size).c_str());
+    if(boot_size<=0) {
+        std::cerr<<"Boot ROM not found!\n";
+        return false;
+    }
+
+    boot_data = new uint8_t[boot_size];
+    fseek(f_boot, 0L, SEEK_SET);
+    fread(boot_data, sizeof(uint8_t), boot_size, f_boot);
+
     return true;
 }
 
 uint8_t Cartridge::read(uint16_t addr) {
-    if (is_boot && addr<0x100) return boot_data[addr];
+    if (is_boot && (addr < 0x100 || (cgb_mode && 0x200<=addr && addr<=0x8FF))) return boot_data[addr];
     if (addr <= 0x3FFF) {
         if (mbc_type == 0) return rom_data[addr];
         return rom_data[mbc->calculate_address(addr)];

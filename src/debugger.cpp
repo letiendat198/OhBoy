@@ -58,17 +58,27 @@ void Debugger::init(bool debug) {
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer2_Init(renderer);
 
-    cpu.init();
-    ppu.init();
+    cpu.init(Cartridge::cgb_mode);
+    ppu.init(Cartridge::cgb_mode);
 }
 
 void Debugger::tick_cpu() {
     if (!is_cpu_paused) {
-        DMA::tick();
-        for(int i=0;i<4;i++) ppu.tick();
-        timer.tick();
+        for(int i=0;i<4;i++) {
+            ppu.tick();
+            if (i==1 && cpu.double_spd_mode) {
+                DMA::tick();
+                timer.tick();
+                cpu.tick();
+            }
+        }
+
         Joypad::tick();
+
+        DMA::tick();
+        timer.tick();
         cpu.tick();
+
         uint8_t serial_data = Memory::read(0xFF01);
         if (Memory::read(0xFF02) == 0x81 && serial_data >= 32 && serial_data <= 127) {
             serial_output += serial_data;

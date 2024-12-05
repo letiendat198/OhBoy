@@ -27,19 +27,19 @@ int main(int argc , char **argv){
         return -1;
     }
 
-    debugger.init(debug_mode);
-    Debugger::log("Starting GB emulator");
-
     cout<<rom_path_option->value().c_str()<<endl;
     bool cart_init = Cartridge::init(rom_path_option->value().c_str());
     if (!cart_init) return -1;
+
+    debugger.init(debug_mode);
+    Debugger::log("Starting GB emulator");
 
     int cycle = 0;
     auto t1 = std::chrono::steady_clock::now();
     while (!debugger.done){
         cycle++;
         debugger.tick_cpu();
-        if (cycle==CYCLE_PRE_FRAME) {
+        if (cycle==CYCLE_PER_FRAME) {
             auto t2 = std::chrono::steady_clock::now(); // Capture render + cycle time
             double elapse = chrono::duration<double, std::milli>(t2-t1).count();
             if (elapse < MS_PER_FRAME) { // If still have some time left in this frame -> Sleep

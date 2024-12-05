@@ -22,10 +22,12 @@ public:
     unsigned char n_flag=0;
     unsigned char h_flag=0;
     unsigned char c_flag=0;
-    unsigned short pc=0x0100;
+    unsigned short pc=0;
     unsigned short sp=0;
     unsigned char ime=0;
     unsigned char halt=0;
+
+    bool double_spd_mode = false;
 
     bool exec_flag = false;
     bool ime_next = false;
@@ -35,7 +37,7 @@ public:
     unsigned char mcycle;
     unsigned char cycle_count = 0;
     uint8_t interrupt_cycle_count = 0;
-    void init();
+    void init(bool cgb_mode);
     void tick();
     bool handle_interrupts();
 
