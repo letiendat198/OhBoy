@@ -90,6 +90,7 @@ void CPU::op_0F() {
     }
 } // RRCA
 void CPU::op_10() {
+    mcycle = 1;
     if (Cartridge::cgb_mode) {
         uint8_t spd_switch_req = Memory::read(0xFF4D);
         uint8_t switch_armed = spd_switch_req & 0x1;
@@ -99,10 +100,11 @@ void CPU::op_10() {
             Memory::write(0xFF04, 0); // Reset DIV
             double_spd_mode = !current_spd;
             Memory::write(0xFF4D, (double_spd_mode & 0x1) << 7);
+            mcycle = 2050;
+            logger.get_logger()->debug("Speed switch requested, mode is now: {:X}", double_spd_mode);
         }
     }
     opskip = 2;
-    mcycle = 1;
 } // STOP n8
 void CPU::op_11() {
     if(exec_flag) ld16_imm(d, e, read16_mem(pc+1));

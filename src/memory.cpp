@@ -4,10 +4,13 @@
 #include <format>
 
 uint8_t Memory::read(uint16_t addr) {
+    if (addr == 0xFF55) {
+        logger.get_logger()->debug("Reading HDMA5 register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
+        return (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F);
+    }
     if (can_read(addr)) {
         return unsafe_read(addr);
     }
-    // Debugger::log(std::format("READ PROHIBITED AT ADDRESS {:#X}", addr));
     return 0xFF;
 }
 
@@ -24,6 +27,18 @@ void Memory::write(uint16_t addr, uint8_t data) {
     }
     if (addr == 0xFF46 && !dma_requested) { // Capture DMA
         dma_requested = true;
+    }
+    if (addr == 0xFF55) {
+        if (hdma_requested == false) {
+            hdma_requested = true;
+            hdma_type = (data >> 7) & 0x1;
+            logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", hdma_type, data & 0x7F);
+        }
+        else {
+            uint8_t terminate_bit = (data >> 7) & 0x1;
+            if (terminate_bit == 0) hdma_requested = false;
+            logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
+        }
     }
     if (addr == 0xFF41) { // Capture STAT change
         uint8_t prev_stat = unsafe_read(0xFF41);
@@ -175,12 +190,28 @@ void Memory::resolve_dma() {
     dma_requested = false;
 }
 
+bool Memory::check_hdma() {
+    return hdma_requested;
+}
+
+uint8_t Memory::get_hdma_type() {
+    return hdma_type;
+}
+
+void Memory::resolve_hdma() {
+    hdma_requested = false;
+}
+
 uint8_t *Memory::get_raw() {
     return memory;
 }
 
 uint8_t *Memory::get_raw_vram() {
     return vram;
+}
+
+uint8_t *Memory::get_raw_wram() {
+    return wram;
 }
 
 void Memory::lock_oam() {

@@ -47,6 +47,10 @@ void PPU::tick() {
 
     switch (mode) {
         case 0: //HBLANK
+            // if (dots < 369) {
+            //     mode = 3;
+            //     update_stat();
+            // }
             break;
         case 1: // VBLANK
             w_internal_lc = 0;

@@ -17,6 +17,8 @@ private:
     inline static bool vram_lock = false;
     inline static bool dma_lock = false;
     inline static bool dma_requested = false;
+    inline static bool hdma_requested = false;
+    inline static uint8_t hdma_type = 0; // 0 - GDMA, 1 - HDMA
     inline static bool bg_auto_inc = false;
     inline static bool obj_auto_inc = false;
     inline static Logger logger = Logger("Memory");
@@ -35,6 +37,7 @@ public:
     static void unsafe_write(uint16_t addr, uint8_t data);
     static uint8_t* get_raw();
     static uint8_t* get_raw_vram();
+    static uint8_t* get_raw_wram();
     static bool can_read(uint16_t addr);
     static bool can_write(uint16_t addr);
     static void lock_oam();
@@ -46,6 +49,9 @@ public:
     static void turnoff_boot();
     static bool check_dma();
     static void resolve_dma();
+    static bool check_hdma();
+    static uint8_t get_hdma_type();
+    static void resolve_hdma();
 };
 
 #endif

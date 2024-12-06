@@ -58,6 +58,13 @@ void CPU::tick(){
     if(cycle_count==0) {
         bool is_servicing_interrupt = handle_interrupts();
         if (halt == 1 || is_servicing_interrupt) return; // No HALT bug
+        if (Memory::check_hdma()) { // CPU halted during HDMA
+            if (Memory::get_hdma_type()==0) return;
+            else {
+                uint8_t ppu_mode = Memory::unsafe_read(0xFF41) & 0x3;
+                if (ppu_mode==0) return;
+            }
+        }
         (this->*jump_table[Memory::read(pc)])();
     }
     cycle_count++;
@@ -82,12 +89,12 @@ bool CPU::handle_interrupts() {
             halt = 0;
             interrupt_addr = Interrupts::check_and_service(ime); // Check interrupts
             if (interrupt_addr == 0) return false; // In case IME is disabled
-            logger.get_logger()->debug(std::format("Interrupt requested at {:#X}", interrupt_addr));
+            // logger.get_logger()->debug(std::format("Interrupt requested at {:#X}", interrupt_addr));
             mcycle = 5;
         }
         interrupt_cycle_count++;
         if (interrupt_cycle_count == mcycle) {
-            logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);
+            // logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);
             write8_mem(--sp, pc >> 8);
             write8_mem(--sp, pc & 0xFF);
             pc = interrupt_addr;

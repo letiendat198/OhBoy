@@ -75,9 +75,10 @@ void Debugger::tick_cpu() {
 
         Joypad::tick();
 
-        DMA::tick();
-        timer.tick();
         cpu.tick();
+        DMA::tick();
+        if (!cpu.halt || (Memory::check_hdma() && Memory::get_hdma_type()==0)) HDMA::tick();
+        timer.tick();
 
         uint8_t serial_data = Memory::read(0xFF01);
         if (Memory::read(0xFF02) == 0x81 && serial_data >= 32 && serial_data <= 127) {
@@ -112,9 +113,10 @@ void Debugger::render() {
         render_console(io);
         render_registers();
         memory_editor.ReadOnly = true;
-        memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0xFFFF+1);
+        memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0x4000);
         memory_editor.DrawWindow("External RAM", Cartridge::external_ram, Cartridge::external_ram_size);
         memory_editor.DrawWindow("Video RAM", Memory::get_raw_vram(), 0x2000*2);
+        memory_editor.DrawWindow("Work RAM 1-7", Memory::get_raw_wram(), 0x1000*7);
         memory_editor.DrawWindow("Frame Buffer", PPU::get_frame_buffer(), 160*144*3);
     }
 
