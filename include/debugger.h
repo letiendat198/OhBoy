@@ -1,6 +1,7 @@
 #ifndef DEBUGGER_H
 #define DEBUGGER_H
 
+#include <apu.h>
 #include <cpu.h>
 #include <ppu.h>
 #include <deque>
@@ -19,6 +20,7 @@ class Debugger {
 private:
     SDL_Window* window;
     SDL_Renderer* renderer;
+    SDL_AudioDeviceID audioDeviceID;
     bool is_cpu_paused=false;
     int breakpoint=0;
     std::string serial_output;
@@ -32,12 +34,14 @@ public:
     Timer timer;
     CPU cpu;
     PPU ppu;
+    APU apu;
     bool done;
     void init(bool debug);
     void render();
     void render_console(const ImGuiIO& io);
     void render_registers();
     void render_game();
+    void queue_audio();
     void tick_cpu();
     static void capture_keyboard();
     void end();

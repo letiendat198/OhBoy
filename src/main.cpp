@@ -46,6 +46,7 @@ int main(int argc , char **argv){
                 _sleep(MS_PER_FRAME - elapse);
             }
             t1 = std::chrono::steady_clock::now(); // Capture time at the start of new frame
+            debugger.queue_audio();
             debugger.render();
             cycle = 0;
         }

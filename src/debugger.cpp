@@ -11,7 +11,7 @@ void Debugger::init(bool debug) {
     is_debug = debug;
     is_cpu_paused = debug;
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
     }
@@ -37,9 +37,23 @@ void Debugger::init(bool debug) {
         SDL_Log("Error creating SDL_Renderer!");
         return;
     }
-    //SDL_RendererInfo info;
-    //SDL_GetRendererInfo(renderer, &info);
-    //SDL_Log("Current SDL_Renderer: %s", info.name);
+
+    SDL_AudioSpec spec;
+    spec.freq = 44100;
+    spec.format = AUDIO_F32;
+    spec.channels = 1;
+    spec.samples = 800;
+    spec.callback = nullptr;
+
+    SDL_AudioSpec obtained;
+    // char *audioDeviceName;
+    // if (SDL_GetDefaultAudioInfo(&audioDeviceName, &obtained, 0) != 0) {
+    //     printf("Error: %s\n", SDL_GetError());
+    // }
+    // std::cout<<audioDeviceName;
+
+    audioDeviceID = SDL_OpenAudioDevice(NULL, 0, &spec, &obtained, 0);
+    SDL_PauseAudioDevice(audioDeviceID, 0);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -60,12 +74,14 @@ void Debugger::init(bool debug) {
 
     cpu.init(Cartridge::cgb_mode);
     ppu.init(Cartridge::cgb_mode);
+    apu.init();
 }
 
 void Debugger::tick_cpu() {
     if (!is_cpu_paused) {
         for(int i=0;i<4;i++) {
             ppu.tick();
+            apu.tick();
             if (i==1 && cpu.double_spd_mode) {
                 DMA::tick();
                 timer.tick();
@@ -109,6 +125,7 @@ void Debugger::render() {
     ImGui::DockSpaceOverViewport(0, 0, ImGuiDockNodeFlags_PassthruCentralNode, 0);
 
     render_game();
+
     if (is_debug) {
         render_console(io);
         render_registers();
@@ -238,6 +255,21 @@ void Debugger::render_registers() {
     ImGui::EndChild();
     ImGui::End();
 }
+
+void Debugger::queue_audio() {
+    while (SDL_GetQueuedAudioSize(audioDeviceID) != 0) {
+        // Blocking until sample is exhausted
+    }
+    if (apu.sample_counter > 0) {
+        SDL_PauseAudioDevice(audioDeviceID, 0);
+        SDL_QueueAudio(audioDeviceID, APU::sample_buffer, 800*sizeof(float));
+        apu.clear_sample_queue();
+    }
+    else {
+        SDL_PauseAudioDevice(audioDeviceID, 1);
+    }
+}
+
 
 void Debugger::capture_keyboard() {
     memset(Joypad::key_state, 0, 8);

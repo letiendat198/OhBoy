@@ -27,7 +27,7 @@ public:
     unsigned char ime=0;
     unsigned char halt=0;
 
-    bool double_spd_mode = false;
+    inline static bool double_spd_mode = false;
 
     bool exec_flag = false;
     bool ime_next = false;
