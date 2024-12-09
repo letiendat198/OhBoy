@@ -10,16 +10,23 @@ void APU::init(){
 void APU::tick() {
     tick_div_apu();
     cycle++;
-    if (cycle % 4 == 0) {
-        channel1.tick(div_apu_cycle);
-        channel2.tick(div_apu_cycle);
+    if (cycle % 2 == 0) {
+        if (cycle % 4 == 0) {
+            channel1.tick();
+            channel2.tick();
+        }
+        channel3.tick();
     }
+
+    uint8_t nr52 = Memory::unsafe_read(0xFF26);
+    Memory::unsafe_write(0xFF26, (nr52 & 0x80) | (0 << 3 | channel3.enabled << 2 | channel2.enabled << 1 | channel1.enabled));
 
     if (cycle == 87) {
         float sample_channel1 = channel1.dac_enabled?dac(channel1.current_sample):0;
         float sample_channel2 = channel2.dac_enabled?dac(channel2.current_sample):0;
-        // logger.get_logger()->debug("Sample: {:.3f}", sample);
-        float sample = sample_channel1 + sample_channel2;
+        float sample_channel3 = channel3.dac_enabled?dac(channel3.current_sample):0;
+        // logger.get_logger()->debug("Sample channel 3: {:X}", channel3.current_sample);
+        float sample = sample_channel1 + sample_channel2 + sample_channel3;
         queue_sample(sample/100);
         cycle = 0;
     }
@@ -31,10 +38,18 @@ void APU::tick_div_apu() {
     uint8_t current_div_bit = (div >> bit_shift) & 0x1;
     if (current_div_bit == 0 && pre_div_bit == 1) {
         div_apu_cycle = (div_apu_cycle + 1) % 8;
+        if (div_apu_cycle % 2 == 0) {
+            channel1.tick_length_timer();
+            channel2.tick_length_timer();
+            channel3.tick_length_timer();
+        }
+        if (div_apu_cycle == 7) {
+            channel1.tick_volume_env();
+            channel2.tick_volume_env();
+        }
     }
     pre_div_bit = current_div_bit;
 }
-
 
 void APU::queue_sample(float sample) {
     // logger.get_logger()->debug("Queueing sample index of: {:d}", sample_counter);
@@ -55,42 +70,28 @@ Channel1::Channel1(uint8_t *square_wave) {
     this->square_wave = square_wave;
     current_step = 0;
     reset_period_counter();
+    reset_length_counter();
+    current_sample = 0;
+    uint8_t nr12 = Memory::unsafe_read(0xFF12);
+    volume = (nr12 >> 4) & 0xF;
 }
 
-void Channel1::tick(uint8_t div_apu_cycle) {
-    if (div_apu_cycle != pre_div_apu) {
-        pre_div_apu = div_apu_cycle;
-        div_apu_changed = true;
-    }
-    else div_apu_changed = false;
-
-    uint8_t nr14 = Memory::unsafe_read(0xFF14);
+void Channel1::tick() {
     uint8_t nr12 = Memory::unsafe_read(0xFF12);
-    uint8_t trigger = (nr14 >> 7) & 0x1;
-    uint8_t length_enable = (nr14 >> 6) & 0x1;
-    uint8_t sweep_pace = nr12 & 0x7;
-    uint8_t env_direction = nr12 >> 3 & 0x1;
     dac_enabled = nr12 & 0xF8;
-    if (!trigger || (length_counter > 0x3F)) {
+    if (!dac_enabled) enabled = false;
+    if (length_counter > 0x3F) enabled = false;
+    if (Memory::c1_trigger) {
         // logger.get_logger()->debug("Channel turned off. Trigger: {:X}, Length timer: {:d}", trigger, length_counter);
         reset_period_counter();
-        reset_length_counter();
+        if(length_counter > 0x3F) reset_length_counter();
         current_sample = 0;
         volume = (nr12 >> 4) & 0xF;
-        return;
+        volume_sweep_counter = 0;
+        enabled = dac_enabled;
+        Memory::c1_trigger = false;
     }
-    // TODO: Separate length timer and envelope into individual tick function and let div apu control it
-    // Avoid ticking these same speed as channel to avoid having to check if div apu has changed
-    if (length_enable && div_apu_changed && div_apu_cycle % 2 == 0) length_counter++;
-    if (sweep_pace != 0 && div_apu_changed && div_apu_cycle % 8 == 0) {
-        volume_sweep_counter = (volume_sweep_counter+1) % 8;
-        if (volume_sweep_counter % sweep_pace == 0) {
-            // logger.get_logger()->debug("Volume envelope decrease when sweep_counter: {:X}, sweep pace: {:X}", volume_sweep_counter, sweep_pace);
-            // logger.get_logger()->debug("Current volume: {:X}", volume);
-            if (env_direction == 0 && volume > 0) volume -= 1;
-            else if (env_direction == 1 && volume < 0xF) volume += 1;
-        }
-    }
+    if (!enabled) return;
 
     period_counter++;
     if (period_counter > 0x7FF) { // When period counter overflow -> Sample a step from square wave
@@ -99,6 +100,25 @@ void Channel1::tick(uint8_t div_apu_cycle) {
         current_sample = ((square_wave[nr11] >> (7-current_step)) & 0x1) * volume;
         current_step = (current_step + 1) % 8;
     }
+}
+
+void Channel1::tick_volume_env() {
+    uint8_t nr12 = Memory::unsafe_read(0xFF12);
+    uint8_t sweep_pace = nr12 & 0x7;
+    uint8_t env_direction = nr12 >> 3 & 0x1;
+    if (sweep_pace != 0) {
+        volume_sweep_counter = (volume_sweep_counter+1) % 8;
+        if (volume_sweep_counter % sweep_pace == 0) {
+            if (env_direction == 0 && volume > 0) volume -= 1;
+            else if (env_direction == 1 && volume < 0xF) volume += 1;
+        }
+    }
+}
+
+void Channel1::tick_length_timer() {
+    uint8_t nr14 = Memory::unsafe_read(0xFF14);
+    uint8_t length_enable = (nr14 >> 6) & 0x1;
+    if (length_enable) length_counter++;
 }
 
 void Channel1::reset_period_counter() {
@@ -118,29 +138,22 @@ Channel2::Channel2(uint8_t *square_wave) {
     reset_period_counter();
 }
 
-void Channel2::tick(uint8_t div_apu_cycle) {
-    uint8_t nr24 = Memory::unsafe_read(0xFF19);
+void Channel2::tick() {
     uint8_t nr22 = Memory::unsafe_read(0xFF17);
-    uint8_t trigger = (nr24 >> 7) & 0x1;
-    uint8_t length_enable = (nr24 >> 6) & 0x1;
-    uint8_t sweep_pace = nr22 & 0x7;
-    uint8_t env_direction = nr22 >> 3 & 0x1;
     dac_enabled = nr22 & 0xF8;
-    if (!trigger || (length_counter > 0x3F)) {
+    if (!dac_enabled) enabled = false;
+    if (length_counter > 0x3F) enabled = false;
+    if (Memory::c2_trigger) {
         // logger.get_logger()->debug("Channel turned off. Trigger: {:X}, Length timer: {:d}", trigger, length_counter);
         reset_period_counter();
-        reset_length_counter();
+        if(length_counter > 0x3F) reset_length_counter();
         current_sample = 0;
         volume = (nr22 >> 4) & 0xF;
-        return;
+        volume_sweep_counter = 0;
+        enabled = dac_enabled;
+        Memory::c2_trigger = false;
     }
-    if (length_enable && div_apu_cycle % 2 == 0) length_counter++;
-    if (div_apu_cycle % 8 == 0 && sweep_pace != 0) volume_sweep_counter++;
-    if (sweep_pace != 0 && volume_sweep_counter % sweep_pace == 0) {
-        volume_sweep_counter = (volume_sweep_counter+1) % 8;
-        if (env_direction == 0 && volume > 0) volume -= 1;
-        else if (env_direction == 1 && volume < 0xF) volume += 1;
-    }
+    if (!enabled) return;
 
     period_counter++;
     if (period_counter > 0x7FF) { // When period counter overflow -> Sample a step from square wave
@@ -149,6 +162,25 @@ void Channel2::tick(uint8_t div_apu_cycle) {
         current_sample = ((square_wave[nr21] >> (7-current_step)) & 0x1) * volume;
         current_step = (current_step + 1) % 8;
     }
+}
+
+void Channel2::tick_volume_env() {
+    uint8_t nr22 = Memory::unsafe_read(0xFF17);
+    uint8_t sweep_pace = nr22 & 0x7;
+    uint8_t env_direction = nr22 >> 3 & 0x1;
+    if (sweep_pace != 0) {
+        volume_sweep_counter = (volume_sweep_counter+1) % 8;
+        if (volume_sweep_counter % sweep_pace == 0) {
+            if (env_direction == 0 && volume > 0) volume -= 1;
+            else if (env_direction == 1 && volume < 0xF) volume += 1;
+        }
+    }
+}
+
+void Channel2::tick_length_timer() {
+    uint8_t nr24 = Memory::unsafe_read(0xFF19);
+    uint8_t length_enable = (nr24 >> 6) & 0x1;
+    if (length_enable) length_counter++;
 }
 
 void Channel2::reset_period_counter() {
@@ -160,4 +192,53 @@ void Channel2::reset_period_counter() {
 void Channel2::reset_length_counter() {
     uint8_t nr21 = Memory::unsafe_read(0xFF16);
     length_counter = nr21 & 0x3F;
+}
+
+void Channel3::tick() {
+    uint8_t nr32 = Memory::unsafe_read(0xFF1C);
+    dac_enabled = Memory::unsafe_read(0xFF1A) >> 7 & 0x1;
+    if (!dac_enabled) enabled = false;
+    if (length_counter > 0xFF) enabled = false;
+    if (Memory::c3_trigger) {
+        // logger.get_logger()->debug("Channel turned off. Trigger: {:X}, Length timer: {:d}", trigger, length_counter);
+        reset_period_counter();
+        if (length_counter > 0xFF) reset_length_counter();
+        current_step = 1;
+        volume = ((nr32 >> 5) & 0x3) - 1;
+        enabled = dac_enabled;
+        Memory::c3_trigger = false;
+    }
+    if (!enabled) return;
+
+    period_counter++;
+    if (period_counter > 0x7FF) { // When period counter overflow
+        reset_period_counter();
+        uint16_t wram_addr = 0xFF30;
+        uint8_t current_sample_byte = Memory::unsafe_read(wram_addr + (current_step >> 1));
+        uint8_t current_nibble = (current_sample_byte >> 4) & 0xF;
+        if (current_step % 2 == 1) current_nibble = current_sample_byte & 0xF;
+        // logger.get_logger()->debug("Current step: {:d}. Current WRAM addr: {:#X}, Current WRAM data: {:#X}, Current Nibble: {:X}",
+        //     current_step, wram_addr + (current_step >> 1),
+        //     Memory::unsafe_read(wram_addr + (current_step >> 1)),
+        //     current_nibble);
+        if (volume != 0xFF) current_sample = current_nibble >> volume;
+        else current_sample = 0;
+        current_step = (current_step + 1) % 32;
+    }
+}
+
+void Channel3::tick_length_timer() {
+    uint8_t nr34 = Memory::unsafe_read(0xFF1E);
+    uint8_t length_enable = (nr34 >> 6) & 0x1;
+    if (length_enable) length_counter++;
+}
+
+void Channel3::reset_period_counter() {
+    uint8_t nr34 = Memory::unsafe_read(0xFF1E);
+    uint8_t nr33 = Memory::unsafe_read(0xFF1D);
+    period_counter = (nr34 & 0x7) << 8| nr33;
+}
+
+void Channel3::reset_length_counter() {
+    length_counter = Memory::unsafe_read(0xFF1B);
 }

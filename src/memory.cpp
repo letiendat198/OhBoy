@@ -80,6 +80,15 @@ void Memory::write(uint16_t addr, uint8_t data) {
         write_obj_cram(palette_addr, data);
         if (obj_auto_inc) write(0xFF6A, (obpi & 0xC0) | ((palette_addr + 1) % 64));
     }
+    if (addr == 0xFF14) {
+        c1_trigger = data >> 7;
+    }
+    if (addr == 0xFF24) {
+        c2_trigger = data >> 7;
+    }
+    if (addr == 0xFF1E) {
+        c3_trigger = data >> 7;
+    }
     if (addr == 0xFF4F) {
         vram_bank = data & 0x1;
     }

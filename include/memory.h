@@ -23,6 +23,10 @@ private:
     inline static bool obj_auto_inc = false;
     inline static Logger logger = Logger("Memory");
 public:
+    inline static bool c1_trigger = false;
+    inline static bool c2_trigger = false;
+    inline static bool c3_trigger = false;
+    inline static bool c4_trigger = false;
     static uint8_t read(uint16_t addr);
     static void write(uint16_t addr, uint8_t data);
     static uint8_t read_vram(uint16_t addr, uint8_t bank);
