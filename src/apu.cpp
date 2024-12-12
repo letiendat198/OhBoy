@@ -2,9 +2,14 @@
 
 #include <cpu.h>
 #include <memory.h>
+#include <config.h>
+#include <debugger.h>
 
 void APU::init(){
-
+    blip = blip_new(SAMPLE_COUNT);
+    blip_set_rates(blip, 2*CYCLE_PER_FRAME, OUTPUT_FREQUENCY);
+    cycle_needed_per_sample = blip_clocks_needed(blip, SAMPLE_COUNT);
+    std::cout<<cycle_needed_per_sample<<"\n";
 }
 
 void APU::tick() {
@@ -43,6 +48,9 @@ void APU::tick_div_apu() {
             channel2.tick_length_timer();
             channel3.tick_length_timer();
         }
+        if (div_apu_cycle == 2 || div_apu_cycle == 6) {
+            channel1.tick_period_sweep();
+        }
         if (div_apu_cycle == 7) {
             channel1.tick_volume_env();
             channel2.tick_volume_env();
@@ -78,6 +86,9 @@ Channel1::Channel1(uint8_t *square_wave) {
 
 void Channel1::tick() {
     uint8_t nr12 = Memory::unsafe_read(0xFF12);
+    uint8_t nr10 = Memory::unsafe_read(0xFF10);
+    uint8_t sweep_pace = (nr10 >> 4) & 0x7;
+    uint8_t sweep_step = nr10 & 0x7;
     dac_enabled = nr12 & 0xF8;
     if (!dac_enabled) enabled = false;
     if (length_counter > 0x3F) enabled = false;
@@ -85,6 +96,10 @@ void Channel1::tick() {
         // logger.get_logger()->debug("Channel turned off. Trigger: {:X}, Length timer: {:d}", trigger, length_counter);
         reset_period_counter();
         if(length_counter > 0x3F) reset_length_counter();
+        shadow_period_register = period_counter;
+        period_sweep_counter = 0;
+        sweep_internal_enable = sweep_pace != 0 || sweep_step != 0;
+        if (sweep_step != 0) tick_period_sweep();
         current_sample = 0;
         volume = (nr12 >> 4) & 0xF;
         volume_sweep_counter = 0;
@@ -119,6 +134,37 @@ void Channel1::tick_length_timer() {
     uint8_t nr14 = Memory::unsafe_read(0xFF14);
     uint8_t length_enable = (nr14 >> 6) & 0x1;
     if (length_enable) length_counter++;
+}
+
+void Channel1::tick_period_sweep() {
+    uint8_t nr10 = Memory::unsafe_read(0xFF10);
+    uint8_t pace = (nr10 >> 4) & 0x7;
+    uint8_t direction = nr10 >> 3 & 0x1;
+    uint8_t step = nr10 & 0x7;
+    if (sweep_internal_enable && pace != 0) {
+        period_sweep_counter = (period_sweep_counter + 1) % 8;
+        if (period_sweep_counter % pace == 0) {
+            uint16_t temp_period;
+            if (direction == 0) temp_period = shadow_period_register + (shadow_period_register >> step);
+            else temp_period = shadow_period_register - (shadow_period_register >> step);
+            if (temp_period > 0x7FF) {
+                enabled = false;
+                return;
+            }
+            shadow_period_register = temp_period;
+            Memory::unsafe_write(0xFF13, shadow_period_register & 0xFF);
+            Memory::unsafe_write(0xFF14, (Memory::unsafe_read(0xFF14) & 0xF8) | ((shadow_period_register >> 8) & 0x7));
+            // Calculate again???
+            if (direction == 0) temp_period = shadow_period_register + (shadow_period_register >> step);
+            else temp_period = shadow_period_register - (shadow_period_register >> step);
+            if (temp_period > 0x7FF) {
+                enabled = false;
+                return;
+            }
+            shadow_period_register = temp_period;
+        }
+    }
+
 }
 
 void Channel1::reset_period_counter() {

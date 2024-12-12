@@ -1,5 +1,6 @@
 #include "../include/debugger.h"
 
+#include <config.h>
 #include <cstdio>
 #include <format>
 #include <imgui_internal.h>
@@ -10,6 +11,9 @@
 void Debugger::init(bool debug) {
     is_debug = debug;
     is_cpu_paused = debug;
+    cpu.init(Cartridge::cgb_mode);
+    ppu.init(Cartridge::cgb_mode);
+    apu.init();
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0)
     {
@@ -37,13 +41,14 @@ void Debugger::init(bool debug) {
         SDL_Log("Error creating SDL_Renderer!");
         return;
     }
+    SDL_RenderSetVSync(renderer, 0);
 
     SDL_AudioSpec spec;
-    spec.freq = 44100;
+    spec.freq = OUTPUT_FREQUENCY;
     spec.format = AUDIO_F32;
     spec.channels = 1;
-    spec.samples = 800;
-    spec.callback = nullptr;
+    spec.samples = SAMPLE_COUNT;
+    spec.callback = &audio_callback;
 
     SDL_AudioSpec obtained;
     // char *audioDeviceName;
@@ -71,10 +76,6 @@ void Debugger::init(bool debug) {
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer2_Init(renderer);
-
-    cpu.init(Cartridge::cgb_mode);
-    ppu.init(Cartridge::cgb_mode);
-    apu.init();
 }
 
 void Debugger::tick_cpu() {
@@ -268,6 +269,19 @@ void Debugger::queue_audio() {
     else {
         SDL_PauseAudioDevice(audioDeviceID, 1);
     }
+}
+
+void audio_callback(void *userdata, Uint8 *stream, int len) {
+    std::cout<<"Audio callback called\n";
+    union {
+        float float_var;
+        unsigned char float_bytes[4];
+    } float_to_bytes;
+    for(int i=0;i<len/sizeof(float);i++) {
+        float_to_bytes.float_var = APU::sample_buffer[i];
+        memcpy(stream+i*4, float_to_bytes.float_bytes, 4);
+    }
+    APU::clear_sample_queue();
 }
 
 

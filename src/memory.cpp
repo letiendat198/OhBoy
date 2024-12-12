@@ -83,7 +83,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
     if (addr == 0xFF14) {
         c1_trigger = data >> 7;
     }
-    if (addr == 0xFF24) {
+    if (addr == 0xFF19) {
         c2_trigger = data >> 7;
     }
     if (addr == 0xFF1E) {

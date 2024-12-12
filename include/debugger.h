@@ -16,11 +16,13 @@
 
 #include "timer.h"
 
+void audio_callback(void *userdata, Uint8 *stream, int len);
+
 class Debugger {
 private:
     SDL_Window* window;
     SDL_Renderer* renderer;
-    SDL_AudioDeviceID audioDeviceID;
+    inline static SDL_AudioDeviceID audioDeviceID;
     bool is_cpu_paused=false;
     int breakpoint=0;
     std::string serial_output;
@@ -31,6 +33,7 @@ private:
 
     bool is_debug = false;
 public:
+    inline static Logger logger = Logger("Debugger");
     Timer timer;
     CPU cpu;
     PPU ppu;

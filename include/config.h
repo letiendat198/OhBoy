@@ -10,4 +10,8 @@ static const float MS_PER_FRAME = 16.74;
 static const float FRAME_RATE = 59.7275;
 static const int CYCLE_PER_FRAME  = 17556;
 
+// APU CONST
+static const uint16_t SAMPLE_COUNT = 800;
+static const int OUTPUT_FREQUENCY = 48000;
+
 #endif //CONFIG_H

@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.29)
 project(OhBoy)
 
 set(CMAKE_CXX_STANDARD 20)
-#set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 add_executable(OhBoy src/main.cpp
         src/cpu.cpp
@@ -32,6 +31,7 @@ add_executable(OhBoy src/main.cpp
         deps/popl/include/popl.hpp
         src/mbc3.cpp
         src/apu.cpp
+        deps/blip_buf/blip_buf.c
 )
 
 include(FetchContent)
@@ -48,6 +48,10 @@ corrosion_import_crate(MANIFEST_PATH gui/Cargo.toml)
 
 add_dependencies(OhBoy OhBoyGUI)
 
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif ()
+
 target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2main.a)
 target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2.dll.a)
 target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog/build/libspdlog.a)
@@ -59,3 +63,4 @@ include_directories("deps/imgui/misc/cpp")
 include_directories("deps/SDL2/x86_64-w64-mingw32/include/SDL2")
 include_directories("deps/popl/include")
 include_directories("deps/spdlog/include")
+include_directories("deps/blip_buf")

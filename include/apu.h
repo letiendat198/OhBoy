@@ -2,7 +2,7 @@
 #define APU_H
 #include <cstdint>
 #include <logger.h>
-#include <SDL_audio.h>
+#include <blip_buf.h>
 
 class Channel1 {
 private:
@@ -12,6 +12,9 @@ private:
     uint16_t period_counter;
     uint8_t length_counter;
     uint8_t volume_sweep_counter = 0;
+    uint8_t period_sweep_counter = 0;
+    uint16_t shadow_period_register;
+    bool sweep_internal_enable;
     uint8_t volume = 1;
 
     void reset_period_counter();
@@ -24,6 +27,7 @@ public:
     void tick();
     void tick_volume_env();
     void tick_length_timer();
+    void tick_period_sweep();
 };
 
 class Channel2 {
@@ -72,9 +76,10 @@ class Channel4 {
 
 class APU {
 private:
-    SDL_AudioDeviceID audioDeviceID;
     Logger logger = Logger("APU");
-    uint8_t cycle = 0;
+    int cycle = 0;
+    int cycle_needed_per_sample = 0;
+    uint16_t current_sample = 0;
     uint8_t div_apu_cycle = 0;
     uint8_t pre_div_bit = 0;
 
@@ -86,13 +91,15 @@ private:
 
     float dac(uint8_t sample);
 public:
+    inline static blip_buffer_t* blip;
+    inline static short* diff_buffer = new short[800];
     inline static float *sample_buffer = new float[800]();
-    uint16_t sample_counter = 0;
+    inline static uint16_t sample_counter = 0;
     void init();
     void tick_div_apu();
     void tick();
     void queue_sample(float sample);
-    void clear_sample_queue();
+    static void clear_sample_queue();
 };
 
 #endif //APU_H
