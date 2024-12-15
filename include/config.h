@@ -12,6 +12,6 @@ static const int CYCLE_PER_FRAME  = 17556;
 
 // APU CONST
 static const uint16_t SAMPLE_COUNT = 800;
-static const int OUTPUT_FREQUENCY = 48000;
+static const int OUTPUT_FREQUENCY = 44100;
 
 #endif //CONFIG_H

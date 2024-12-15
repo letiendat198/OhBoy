@@ -45,17 +45,12 @@ void Debugger::init(bool debug) {
 
     SDL_AudioSpec spec;
     spec.freq = OUTPUT_FREQUENCY;
-    spec.format = AUDIO_F32;
+    spec.format = AUDIO_S16SYS;
     spec.channels = 1;
     spec.samples = SAMPLE_COUNT;
     spec.callback = &audio_callback;
 
     SDL_AudioSpec obtained;
-    // char *audioDeviceName;
-    // if (SDL_GetDefaultAudioInfo(&audioDeviceName, &obtained, 0) != 0) {
-    //     printf("Error: %s\n", SDL_GetError());
-    // }
-    // std::cout<<audioDeviceName;
 
     audioDeviceID = SDL_OpenAudioDevice(NULL, 0, &spec, &obtained, 0);
     SDL_PauseAudioDevice(audioDeviceID, 0);
@@ -257,29 +252,10 @@ void Debugger::render_registers() {
     ImGui::End();
 }
 
-void Debugger::queue_audio() {
-    while (SDL_GetQueuedAudioSize(audioDeviceID) != 0) {
-        // Blocking until sample is exhausted
-    }
-    if (apu.sample_counter > 0) {
-        SDL_PauseAudioDevice(audioDeviceID, 0);
-        SDL_QueueAudio(audioDeviceID, APU::sample_buffer, 800*sizeof(float));
-        apu.clear_sample_queue();
-    }
-    else {
-        SDL_PauseAudioDevice(audioDeviceID, 1);
-    }
-}
-
 void audio_callback(void *userdata, Uint8 *stream, int len) {
-    std::cout<<"Audio callback called\n";
-    union {
-        float float_var;
-        unsigned char float_bytes[4];
-    } float_to_bytes;
-    for(int i=0;i<len/sizeof(float);i++) {
-        float_to_bytes.float_var = APU::sample_buffer[i];
-        memcpy(stream+i*4, float_to_bytes.float_bytes, 4);
+    for(int i=0;i<len/sizeof(short);i++) {
+        stream[i*2] = APU::sample_buffer[i] & 0xFF;
+        stream[i*2 + 1] = (APU::sample_buffer[i] & 0xFF00) >> 8;
     }
     APU::clear_sample_queue();
 }

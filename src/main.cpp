@@ -47,7 +47,6 @@ int main(int argc , char **argv){
             }
             t1 = std::chrono::steady_clock::now(); // Capture time at the start of new frame
             debugger.render();
-            debugger.queue_audio();
             cycle = 0;
         }
     }

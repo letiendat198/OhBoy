@@ -44,7 +44,6 @@ public:
     void render_console(const ImGuiIO& io);
     void render_registers();
     void render_game();
-    void queue_audio();
     void tick_cpu();
     static void capture_keyboard();
     void end();

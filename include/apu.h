@@ -3,75 +3,84 @@
 #include <cstdint>
 #include <logger.h>
 #include <blip_buf.h>
+#include <config.h>
 
-class Channel1 {
-private:
-    Logger logger = Logger("Channel 1");
+template <class T> class AudioChannel {
+protected:
+    // Register content
+    uint8_t NRx0 = 0;
+    uint8_t NRx1 = 0;
+    uint8_t NRx2 = 0;
+    uint8_t NRx3 = 0;
+    uint8_t NRx4 = 0;
+
+    uint16_t NRx0_addr = 0;
+    uint16_t NRx1_addr = 0;
+    uint16_t NRx2_addr = 0;
+    uint16_t NRx3_addr = 0;
+    uint16_t NRx4_addr = 0;
+
+    uint8_t current_step = 0;
+    uint16_t period_counter = 0;
+    uint8_t length_counter = 0;
+    uint8_t volume = 1;
+
+    uint8_t current_sample = 0;
+
+    bool dac_enabled = false;
+    bool enabled = false;
+
+    bool *trigger_flag = nullptr;
+
+    // Only length timer and period are common features. Envelope, volume, sweep are not common at all
+    void reset_period_counter();
+    void reset_length_counter();
+
+    void update_registers_content();
+public:
+    AudioChannel(uint16_t NRx0_addr, uint16_t NRx1_addr, uint16_t NRx2_addr, uint16_t NRx3_addr, uint16_t NRx4_addr):
+    NRx0_addr(NRx0_addr), NRx1_addr(NRx1_addr), NRx2_addr(NRx2_addr), NRx3_addr(NRx3_addr), NRx4_addr(NRx4_addr) {};
+
+    void set_trigger(bool *trigger_flag);
+
+    bool is_enabled();
+    bool is_dac_enabled();
+    uint8_t get_current_sample();
+
+    void tick();
+    void tick_length_timer();
+};
+
+class SquareWaveChannel: public AudioChannel<SquareWaveChannel> {
+protected:
     uint8_t *square_wave;
-    uint8_t current_step;
-    uint16_t period_counter;
-    uint8_t length_counter;
     uint8_t volume_sweep_counter = 0;
     uint8_t period_sweep_counter = 0;
-    uint16_t shadow_period_register;
-    bool sweep_internal_enable;
-    uint8_t volume = 1;
-
-    void reset_period_counter();
-    void reset_length_counter();
+    uint16_t shadow_period_register = 0;
+    bool sweep_internal_enable = false;
 public:
-    uint8_t current_sample;
-    uint8_t dac_enabled;
-    uint8_t enabled;
-    Channel1(uint8_t *square_wave);
-    void tick();
+    SquareWaveChannel(uint8_t *square_wave, uint16_t NRx0_addr, uint16_t NRx1_addr, uint16_t NRx2_addr, uint16_t NRx3_addr, uint16_t NRx4_addr):
+    AudioChannel<SquareWaveChannel>(NRx0_addr, NRx1_addr, NRx2_addr, NRx3_addr, NRx4_addr), square_wave(square_wave) {};
+
+    uint8_t LENGTH_OVERFLOW = 0x3F;
+
+    void trigger();
+    void tick_period_timer();
     void tick_volume_env();
-    void tick_length_timer();
     void tick_period_sweep();
+    void check_dac_status();
 };
 
-class Channel2 {
-private:
-    Logger logger = Logger("Channel 2");
-    uint8_t *square_wave;
-    uint8_t current_step;
-    uint16_t period_counter;
-    uint8_t length_counter;
-    uint8_t volume_sweep_counter = 0;
-    uint8_t volume = 1;
-
-    void reset_period_counter();
-    void reset_length_counter();
+class WaveChannel: public AudioChannel<WaveChannel> {
 public:
-    uint8_t current_sample;
-    uint8_t dac_enabled;
-    uint8_t enabled;
-    Channel2(uint8_t *square_wave);
-    void tick();
-    void tick_volume_env();
-    void tick_length_timer();
-};
+    WaveChannel(uint16_t NRx0_addr, uint16_t NRx1_addr, uint16_t NRx2_addr, uint16_t NRx3_addr, uint16_t NRx4_addr):
+    AudioChannel<WaveChannel>(NRx0_addr, NRx1_addr, NRx2_addr, NRx3_addr, NRx4_addr) {};
 
-class Channel3 {
-private:
-    Logger logger = Logger("Channel 3");
-    uint8_t current_step = 1;
-    uint16_t period_counter;
-    uint16_t length_counter;
-    uint8_t volume = 1;
+    uint8_t LENGTH_OVERFLOW = 0xFF;
 
-    void reset_period_counter();
-    void reset_length_counter();
-public:
-    uint8_t current_sample;
-    uint8_t dac_enabled;
-    uint8_t enabled;
-    void tick();
-    void tick_length_timer();
-};
-
-class Channel4 {
-
+    void trigger();
+    void tick_period_timer();
+    void check_dac_status();
 };
 
 class APU {
@@ -79,26 +88,23 @@ private:
     Logger logger = Logger("APU");
     int cycle = 0;
     int cycle_needed_per_sample = 0;
-    uint16_t current_sample = 0;
+    short current_sample = 0;
     uint8_t div_apu_cycle = 0;
     uint8_t pre_div_bit = 0;
 
     uint8_t square_wave[4] = {0b00000001, 0b10000001, 0b10000111, 0b01111110};
-    Channel1 channel1 = Channel1(square_wave);
-    Channel2 channel2 = Channel2(square_wave);
-    Channel3 channel3 = Channel3();
-    Channel4 channel4;
-
-    float dac(uint8_t sample);
+    SquareWaveChannel channel1 = SquareWaveChannel(square_wave, 0xFF10, 0xFF11, 0xFF12, 0xFF13, 0xFF14);
+    SquareWaveChannel channel2 = SquareWaveChannel(square_wave, 0, 0xFF16, 0xFF17, 0xFF18, 0xFF19);
+    WaveChannel channel3 = WaveChannel(0xFF1A, 0xFF1B, 0xFF1C, 0xFF1D, 0xFF1E);
 public:
-    inline static blip_buffer_t* blip;
-    inline static short* diff_buffer = new short[800];
-    inline static float *sample_buffer = new float[800]();
+    blip_buffer_t* blip;
+    short* blip_out = new short[SAMPLE_COUNT]();
+    inline static short *sample_buffer = new short[SAMPLE_COUNT]();
     inline static uint16_t sample_counter = 0;
     void init();
     void tick_div_apu();
     void tick();
-    void queue_sample(float sample);
+    void copy_samples_to_buffer();
     static void clear_sample_queue();
 };
 
