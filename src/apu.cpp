@@ -13,6 +13,7 @@ void APU::init(){
     channel1.set_trigger(&Memory::c1_trigger);
     channel2.set_trigger(&Memory::c2_trigger);
     channel3.set_trigger(&Memory::c3_trigger);
+    channel4.set_trigger(&Memory::c4_trigger);
 }
 
 void APU::tick() {
@@ -22,16 +23,16 @@ void APU::tick() {
         if (cycle % 4 == 0) {
             channel1.tick();
             channel2.tick();
+            channel4.tick();
         }
-        // channel3.tick();
-        uint8_t nr52 = Memory::unsafe_read(0xFF26);
-        Memory::unsafe_write(0xFF26, (nr52 & 0x80) | (0 << 3 | channel3.is_enabled() << 2 | channel2.is_enabled() << 1 | channel1.is_enabled()));
+        channel3.tick();
 
         short sample1 = channel1.is_dac_enabled()?channel1.get_current_sample():0;
         short sample2 = channel2.is_dac_enabled()?channel2.get_current_sample():0;
         short sample3 = channel3.is_dac_enabled()?channel3.get_current_sample():0;
+        short sample4 = channel4.is_dac_enabled()?channel4.get_current_sample():0;
 
-        short sample = sample1 + sample2 + sample3;
+        short sample = sample1 + sample2 + sample3 + sample4;
 
         if (sample != current_sample) {
             blip_add_delta(blip, cycle/2, (sample - current_sample)*100);
@@ -45,6 +46,9 @@ void APU::tick() {
             sample_counter = 800;
             cycle = 0;
         }
+
+        uint8_t nr52 = Memory::unsafe_read(0xFF26);
+        Memory::unsafe_write(0xFF26, (nr52 & 0x80) | (0 << 3 | channel3.is_enabled() << 2 | channel2.is_enabled() << 1 | channel1.is_enabled()));
     }
 }
 
@@ -58,6 +62,7 @@ void APU::tick_div_apu() {
             channel1.tick_length_timer();
             channel2.tick_length_timer();
             channel3.tick_length_timer();
+            channel4.tick_length_timer();
         }
         if (div_apu_cycle == 2 || div_apu_cycle == 6) {
             channel1.tick_period_sweep();
@@ -65,6 +70,7 @@ void APU::tick_div_apu() {
         if (div_apu_cycle == 7) {
             channel1.tick_volume_env();
             channel2.tick_volume_env();
+            channel4.tick_volume_env();
         }
     }
     pre_div_bit = current_div_bit;
@@ -212,7 +218,7 @@ void WaveChannel::trigger() {
     if (*trigger_flag) {
         reset_period_counter();
         if (length_counter > LENGTH_OVERFLOW) reset_length_counter();
-        current_step = 1;
+        current_step = 0;
         volume = ((NRx2 >> 5) & 0x3) - 1;
         enabled = dac_enabled;
         *trigger_flag = false;
@@ -237,3 +243,53 @@ void WaveChannel::check_dac_status() { // Should be same across channels
     dac_enabled = NRx0 >> 7;
     if (!dac_enabled) enabled = false;
 }
+
+void NoiseChannel::trigger() {
+    if (*trigger_flag) {
+        lfsr = 0;
+        if(length_counter > LENGTH_OVERFLOW) reset_length_counter();
+        volume = (NRx2 >> 4) & 0xF;
+        volume_sweep_counter = 0;
+        enabled = dac_enabled;
+        *trigger_flag = false;
+    }
+}
+
+void NoiseChannel::tick_period_timer() {
+    period_counter++;
+    uint8_t shift = (NRx3 >> 4) & 0xF;
+    uint8_t divider = NRx3 & 0x7;
+    if (period_counter > (divider_lookup[divider] << shift)) {
+        period_counter = 0;
+        tick_lfsr();
+        current_sample = (lfsr & 0x1) * volume;
+    }
+}
+
+void NoiseChannel::tick_lfsr() {
+    uint8_t lfsr_width = (NRx3 >> 3) & 0x1;
+    uint8_t temp = ~((lfsr & 0x1) ^ ((lfsr >> 1) & 0x1));
+    lfsr = lfsr & 0x7FFF | (temp << 15);
+    if (lfsr_width == 1) lfsr = (lfsr & 0xFF7F) | (temp << 7);
+    lfsr = lfsr >> 1;
+}
+
+
+void NoiseChannel::tick_volume_env() {
+    uint8_t sweep_pace = NRx2 & 0x7;
+    uint8_t env_direction = NRx2 >> 3 & 0x1;
+    if (sweep_pace != 0) {
+        volume_sweep_counter = (volume_sweep_counter+1) % 8;
+        if (volume_sweep_counter % sweep_pace == 0) {
+            if (env_direction == 0 && volume > 0) volume -= 1;
+            else if (env_direction == 1 && volume < 0xF) volume += 1;
+        }
+    }
+}
+
+void NoiseChannel::check_dac_status() {
+    dac_enabled = NRx2 & 0xF8;
+    if (!dac_enabled) enabled = false;
+}
+
+

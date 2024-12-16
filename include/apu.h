@@ -83,6 +83,24 @@ public:
     void check_dac_status();
 };
 
+class NoiseChannel: public AudioChannel<NoiseChannel> {
+protected:
+    uint8_t volume_sweep_counter = 0;
+    uint16_t lfsr = 0;
+    uint8_t divider_lookup[8] = {8, 16, 32, 48, 64, 80, 96, 112};
+public:
+    NoiseChannel(uint16_t NRx0_addr, uint16_t NRx1_addr, uint16_t NRx2_addr, uint16_t NRx3_addr, uint16_t NRx4_addr):
+    AudioChannel<NoiseChannel>(NRx0_addr, NRx1_addr, NRx2_addr, NRx3_addr, NRx4_addr) {};
+
+    uint8_t LENGTH_OVERFLOW = 0x3F;
+
+    void trigger();
+    void tick_period_timer();
+    void tick_lfsr();
+    void tick_volume_env();
+    void check_dac_status();
+};
+
 class APU {
 private:
     Logger logger = Logger("APU");
@@ -96,6 +114,7 @@ private:
     SquareWaveChannel channel1 = SquareWaveChannel(square_wave, 0xFF10, 0xFF11, 0xFF12, 0xFF13, 0xFF14);
     SquareWaveChannel channel2 = SquareWaveChannel(square_wave, 0, 0xFF16, 0xFF17, 0xFF18, 0xFF19);
     WaveChannel channel3 = WaveChannel(0xFF1A, 0xFF1B, 0xFF1C, 0xFF1D, 0xFF1E);
+    NoiseChannel channel4 = NoiseChannel(0, 0xFF20, 0xFF21, 0xFF22, 0xFF23);
 public:
     blip_buffer_t* blip;
     short* blip_out = new short[SAMPLE_COUNT]();
