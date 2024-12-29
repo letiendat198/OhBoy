@@ -14,6 +14,7 @@
 #include <iostream>
 #include <vector>
 
+#include "scheduler.h"
 #include "timer.h"
 
 void audio_callback(void *userdata, Uint8 *stream, int len);
@@ -22,33 +23,28 @@ class Debugger {
 private:
     SDL_Window* window;
     SDL_Renderer* renderer;
-    inline static SDL_AudioDeviceID audioDeviceID;
-    bool is_cpu_paused=false;
-    int breakpoint=0;
-    std::string serial_output;
-    inline static std::deque<std::string> debug_buffer;
-    inline static MemoryEditor memory_editor;
-    SDL_Texture* used_textures[127] = {nullptr};
+    SDL_AudioDeviceID audioDeviceID;
+
+    MemoryEditor memory_editor;
     SDL_Texture* old_game_texture = nullptr;
 
     bool is_debug = false;
+    uint8_t scale = 3;
+
+    Scheduler *scheduler = nullptr;
+    CPU cpu = scheduler->cpu;
+    PPU ppu = scheduler->ppu;
+    APU apu  = scheduler->apu;
 public:
     inline static Logger logger = Logger("Debugger");
-    Timer timer;
-    CPU cpu;
-    PPU ppu;
-    APU apu;
-    bool done;
-    void init(bool debug);
-    void render();
-    void render_console(const ImGuiIO& io);
-    void render_registers();
-    void render_game();
-    void tick_cpu();
-    static void capture_keyboard();
-    void end();
+    bool done = false;
 
-    static void log(std::string);
+    Debugger(Scheduler *scheduler, bool debug);
+    void render();
+    void render_registers(const ImGuiIO& io);
+    void render_game();
+    void capture_keyboard();
+    void end();
 };
 
 #endif //DEBUGGER_H

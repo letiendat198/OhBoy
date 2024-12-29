@@ -2,11 +2,10 @@
 
 #include <cpu.h>
 #include <memory.h>
-#include <debugger.h>
 
-void APU::init(){
+APU::APU(){
     blip = blip_new(SAMPLE_COUNT*10);
-    blip_set_rates(blip, MASTER_CLOCK_FREQ/2, OUTPUT_FREQUENCY);
+    blip_set_rates(blip, 2106720, OUTPUT_FREQUENCY);
     cycle_needed_per_sample = blip_clocks_needed(blip, SAMPLE_COUNT);
     std::cout<<cycle_needed_per_sample<<"\n";
 
@@ -38,17 +37,18 @@ void APU::tick() {
             blip_add_delta(blip, cycle/2, (sample - current_sample)*100);
             current_sample = sample;
         }
-        if (cycle/2 == cycle_needed_per_sample - 1) {
+        if (cycle/2 == cycle_needed_per_sample) {
             blip_end_frame(blip, cycle/2);
             logger.get_logger()->debug("Frame ended, sample available: {:d}", blip_samples_avail(blip));
             blip_read_samples(blip, blip_out, SAMPLE_COUNT, 0);
-            copy_samples_to_buffer();
-            sample_counter = 800;
+            while(blip_samples_avail(blip)) {
+                blip_read_samples(blip, blip_out+SAMPLE_COUNT, blip_samples_avail(blip), 0); // blip_out can hold SAMPLE+100
+            }
             cycle = 0;
         }
 
         uint8_t nr52 = Memory::unsafe_read(0xFF26);
-        Memory::unsafe_write(0xFF26, (nr52 & 0x80) | (0 << 3 | channel3.is_enabled() << 2 | channel2.is_enabled() << 1 | channel1.is_enabled()));
+        Memory::unsafe_write(0xFF26, (nr52 & 0x80) | (channel4.is_enabled() << 3 | channel3.is_enabled() << 2 | channel2.is_enabled() << 1 | channel1.is_enabled()));
     }
 }
 
@@ -74,15 +74,6 @@ void APU::tick_div_apu() {
         }
     }
     pre_div_bit = current_div_bit;
-}
-
-void APU::copy_samples_to_buffer() {
-    logger.get_logger()->debug("Copy out samples");
-    memcpy(sample_buffer, blip_out, SAMPLE_COUNT*sizeof(short));
-}
-
-void APU::clear_sample_queue() {
-    sample_counter = 0;
 }
 
 template<class T>

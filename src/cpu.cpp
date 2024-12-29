@@ -12,95 +12,44 @@
 #include "interrupts.h"
 using namespace std;
 
-void CPU::init(bool cgb_mode) {
-    // if (!cgb_mode) {
-    //     a = 0x01;
-    //     b = 0x00;
-    //     c = 0x13;
-    //     d = 0x00;
-    //     e = 0xD8;
-    //     h = 0x01;
-    //     l = 0x4D;
-    //     sp = 0xFFFE;
-    //     pc = 0x0100;
-    //     z_flag = 1;
-    //     n_flag = 0;
-    //     h_flag = 1;
-    //     c_flag = 1;
-    // }
-    // else {
-    //     // CGB initial value
-    //     a = 0x11;
-    //     b = 0x00;
-    //     c = 0x00;
-    //     d = 0xFF;
-    //     e = 0x56;
-    //     h = 0x00;
-    //     l = 0x0D;
-    //     sp = 0xFFFE;
-    //     pc = 0x0100;
-    //     z_flag = 1;
-    //     n_flag = 0;
-    //     h_flag = 0;
-    //     c_flag = 0;
-    // }
-    //
-    // Memory::unsafe_write(0xFF40, 0b10000000);
-    // Cartridge::boot_off();
-}
-
 void CPU::log_cpu() {
     uint8_t f = z_flag<<7 | n_flag << 6 | h_flag << 5 | c_flag<<4;
     logger.get_logger()->debug("A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}", a, f, b, c, d, e, h, l, sp, pc, read8_mem(pc), read8_mem(pc+1), read8_mem(pc+2), read8_mem(pc+3));
 }
 
-void CPU::tick(){
-    if(cycle_count==0) {
-        bool is_servicing_interrupt = handle_interrupts();
-        if (halt == 1 || is_servicing_interrupt) return; // No HALT bug
-        if (Memory::check_hdma()) { // CPU halted during HDMA
-            if (Memory::get_hdma_type()==0) return;
-            else {
-                uint8_t ppu_mode = Memory::unsafe_read(0xFF41) & 0x3;
-                if (ppu_mode==0) return;
-            }
+uint8_t CPU::tick(){
+    if (handle_interrupts()) return mcycle;
+    if (halt == 1) return 1; // No HALT bug
+    if (Memory::check_hdma()) { // CPU halted during HDMA
+        if (Memory::get_hdma_type()==0) return 1;
+        else {
+            uint8_t ppu_mode = Memory::unsafe_read(0xFF41) & 0x3;
+            if (ppu_mode==0) return 1;
         }
-        (this->*jump_table[Memory::read(pc)])();
     }
-    cycle_count++;
 
-    if (mcycle == 1 || cycle_count == mcycle) {
-        if (ime_next) {
-            ime = 1;
-            ime_next = false;
-        } // EI is delayed by 1 instr
-        exec_flag = true;
-        // log_cpu();
-        (this->*jump_table[Memory::read(pc)])();
-        pc+=opskip;
-        exec_flag = false;
-        cycle_count = 0;
-    }
+    if (ime_next) {
+        ime = 1;
+        ime_next = false;
+    } // EI is delayed by 1 instr
+
+    (this->*jump_table[Memory::read(pc)])();
+    pc+=opskip;
+
+    return mcycle;
 }
 
 bool CPU::handle_interrupts() {
-    if (Interrupts::is_pending() || interrupt_addr != 0) {
-        if (interrupt_cycle_count == 0) {
-            halt = 0;
-            interrupt_addr = Interrupts::check_and_service(ime); // Check interrupts
-            if (interrupt_addr == 0) return false; // In case IME is disabled
-            // logger.get_logger()->debug(std::format("Interrupt requested at {:#X}", interrupt_addr));
-            mcycle = 5;
-        }
-        interrupt_cycle_count++;
-        if (interrupt_cycle_count == mcycle) {
-            // logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);
-            write8_mem(--sp, pc >> 8);
-            write8_mem(--sp, pc & 0xFF);
-            pc = interrupt_addr;
-            interrupt_addr = 0;
-            interrupt_cycle_count = 0;
-        }
+    if (Interrupts::is_pending()) {
+        halt = 0;
+        uint8_t interrupt_addr = Interrupts::check_and_service(ime); // Check interrupts
+        if (interrupt_addr == 0) return false; // In case IME is disabled
+        mcycle = 5;
+
+        // logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);
+        write8_mem(--sp, pc >> 8);
+        write8_mem(--sp, pc & 0xFF);
+        pc = interrupt_addr;
         return true;
     }
     return false;

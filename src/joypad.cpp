@@ -1,13 +1,10 @@
 #include "joypad.h"
 
-#include <debugger.h>
 #include <memory.h>
-#include <string.h>
 
 void Joypad::tick() {
     uint8_t joypad_control = (Memory::unsafe_read(0xFF00) >> 4) & 0x3;
     uint8_t joypad_state = 0;
-    Debugger::capture_keyboard();
     if ((joypad_control & 0x1) == 0) { // Select dpad
         // std::cout<<"Reading from DPAD\n";
         for (uint8_t i = 0;i<=3;i++) {

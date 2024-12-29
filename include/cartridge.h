@@ -8,6 +8,7 @@
 
 class Cartridge{
 private:
+    inline static Logger logger = Logger("Cartridge");
     inline static FILE *f;
     inline static std::string save_name;
     inline static FILE *f_boot;

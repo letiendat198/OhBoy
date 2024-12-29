@@ -24,7 +24,7 @@ bool Cartridge::init(const char* file){
     fseek(f, 0L, SEEK_END);
     rom_file_size = ftell(f);
     std::cout<<"ROM file size: "<<rom_file_size<<"\n";
-    Debugger::log(std::format("ROM size: {}", rom_file_size).c_str());
+    logger.get_logger()->debug(std::format("ROM size: {}", rom_file_size).c_str());
     if(rom_file_size<=0) {
         std::cerr<<"ROM file not found!\n";
         return false;
@@ -123,7 +123,7 @@ bool Cartridge::init(const char* file){
     if (cgb_mode) f_boot = fopen("cgb_boot.bin", "rb");
     fseek(f_boot, 0L, SEEK_END);
     boot_size = ftell(f_boot);
-    Debugger::log(std::format("BOOT size: {}", boot_size).c_str());
+    logger.get_logger()->debug(std::format("BOOT size: {}", boot_size).c_str());
     if(boot_size<=0) {
         std::cerr<<"Boot ROM not found!\n";
         return false;

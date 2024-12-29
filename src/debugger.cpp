@@ -8,12 +8,9 @@
 #include "dma.h"
 #include "joypad.h"
 
-void Debugger::init(bool debug) {
+Debugger::Debugger(Scheduler *scheduler, bool debug) {
     is_debug = debug;
-    is_cpu_paused = debug;
-    cpu.init(Cartridge::cgb_mode);
-    ppu.init(Cartridge::cgb_mode);
-    apu.init();
+    this->scheduler = scheduler;
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0)
     {
@@ -23,8 +20,8 @@ void Debugger::init(bool debug) {
     // Create window with SDL_Renderer graphics context
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 
-    int width = 160*3 + 18;
-    int height = 144*3 + 18;
+    int width = 160*scale + 18;
+    int height = 144*scale + 18;
     if (is_debug) {
         width = 1280;
         height = 720;
@@ -49,6 +46,7 @@ void Debugger::init(bool debug) {
     spec.channels = 1;
     spec.samples = SAMPLE_COUNT;
     spec.callback = &audio_callback;
+    spec.userdata = &apu;
 
     SDL_AudioSpec obtained;
 
@@ -73,36 +71,6 @@ void Debugger::init(bool debug) {
     ImGui_ImplSDLRenderer2_Init(renderer);
 }
 
-void Debugger::tick_cpu() {
-    if (!is_cpu_paused) {
-        for(int i=0;i<4;i++) {
-            ppu.tick();
-            apu.tick();
-            if (i==1 && cpu.double_spd_mode) {
-                DMA::tick();
-                timer.tick();
-                cpu.tick();
-            }
-        }
-
-        Joypad::tick();
-
-        cpu.tick();
-        DMA::tick();
-        if (!cpu.halt || (Memory::check_hdma() && Memory::get_hdma_type()==0)) HDMA::tick();
-        timer.tick();
-
-        uint8_t serial_data = Memory::read(0xFF01);
-        if (Memory::read(0xFF02) == 0x81 && serial_data >= 32 && serial_data <= 127) {
-            serial_output += serial_data;
-            Memory::write(0xFF02, 0x01);
-        }
-    }
-    if ((breakpoint != 0 && cpu.pc == breakpoint)) {
-            is_cpu_paused = true;
-    }
-}
-
 void Debugger::render() {
     ImGuiIO& io = ImGui::GetIO(); (void) io;
     SDL_Event event;
@@ -112,6 +80,11 @@ void Debugger::render() {
         done = true;
     if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
         done = true;
+    if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED && event.window.windowID == SDL_GetWindowID(window)) {
+        int x = event.window.data1;
+        int y = event.window.data2;
+        scale = std::min(x / 160, y / 144);
+    }
 
     // Start the Dear ImGui frame
     ImGui_ImplSDLRenderer2_NewFrame();
@@ -123,8 +96,7 @@ void Debugger::render() {
     render_game();
 
     if (is_debug) {
-        render_console(io);
-        render_registers();
+        render_registers(io);
         memory_editor.ReadOnly = true;
         memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0x4000);
         memory_editor.DrawWindow("External RAM", Cartridge::external_ram, Cartridge::external_ram_size);
@@ -163,41 +135,29 @@ void Debugger::render_game() {
     }
     old_game_texture = texture;
 
-    ImGui::Image((ImTextureID)(intptr_t)texture, ImVec2((float)160*3, (float)144*3));
+    ImGui::Image((ImTextureID)(intptr_t)texture, ImVec2((float)160*scale, (float)144*scale));
     ImGui::End();
 }
 
-void Debugger::render_console(const ImGuiIO& io) {
-    ImGui::Begin("Debug Info");
+void Debugger::render_registers(const ImGuiIO& io) {
+    ImGui::Begin("Registers");
+
+    // if (ImGui::Button("Pause")) is_cpu_paused = true;
+    // ImGui::SameLine();
+    // if (ImGui::Button("Step")) cpu.tick();
+    // ImGui::SameLine();
+    // if (ImGui::Button("Continue")) {
+    //     is_cpu_paused = false;
+    // }
+
+    // ImGui::InputInt("Breakpoint", &breakpoint);
+    // if (cpu.pc == breakpoint) {
+    //     ImGui::TextColored(ImVec4(255,255,0,255), "Breakpoint hit!");
+    // }
+
     ImGui::Text("Frame rate:");
     ImGui::SameLine();
     ImGui::Text(std::to_string(io.Framerate).c_str());
-    // if(ImGui::Button("Flush log")) {
-    //     cpu.logger.flush();
-    // }
-    ImGui::SeparatorText("Debug Console");
-    ImGui::BeginChild("Debug Console");
-    for(std::string i: debug_buffer) {
-        ImGui::Text(i.c_str());
-    }
-    ImGui::EndChild();
-    ImGui::End();
-}
-
-void Debugger::render_registers() {
-    ImGui::Begin("Registers");
-
-    if (ImGui::Button("Pause")) is_cpu_paused = true;
-    ImGui::SameLine();
-    if (ImGui::Button("Step")) cpu.tick();
-    ImGui::SameLine();
-    if (ImGui::Button("Continue")) {
-        is_cpu_paused = false;
-    }
-    ImGui::InputInt("Breakpoint", &breakpoint);
-    if (cpu.pc == breakpoint) {
-        ImGui::TextColored(ImVec4(255,255,0,255), "Breakpoint hit!");
-    }
 
     ImGui::Text(std::format("A: {:02X}", cpu.a).c_str());
     ImGui::SameLine();
@@ -244,20 +204,11 @@ void Debugger::render_registers() {
     ImGui::Text(std::format("STAT: {:08b}", Memory::read(0xFF41)).c_str());
 
     ImGui::Text(std::format("LYC: {}", Memory::read(0xFF45)).c_str());
-
-    ImGui::SeparatorText("Serial Output");
-    ImGui::BeginChild("Serial");
-        ImGui::TextWrapped(serial_output.c_str());
-    ImGui::EndChild();
-    ImGui::End();
 }
 
 void audio_callback(void *userdata, Uint8 *stream, int len) {
-    for(int i=0;i<len/sizeof(short);i++) {
-        stream[i*2] = APU::sample_buffer[i] & 0xFF;
-        stream[i*2 + 1] = (APU::sample_buffer[i] & 0xFF00) >> 8;
-    }
-    APU::clear_sample_queue();
+    // blip_read_samples(static_cast<APU*>(userdata)->blip, reinterpret_cast<short *>(stream), len / sizeof(short), 0);
+    memcpy(stream, static_cast<APU*>(userdata)->blip_out, len);
 }
 
 
@@ -272,15 +223,8 @@ void Debugger::capture_keyboard() {
     if(key[SDL_SCANCODE_W]) Joypad::key_state[5]=1;
     if(key[SDL_SCANCODE_A]) Joypad::key_state[6]=1;
     if(key[SDL_SCANCODE_D]) Joypad::key_state[7]=1;
+    Joypad::tick();
 }
-
-void Debugger::log(std::string s) {
-   if (debug_buffer.size() >= 1000) {
-       debug_buffer.pop_front();
-   }
-    debug_buffer.push_back(s);
-}
-
 
 void Debugger::end() {
     ImGui_ImplSDLRenderer2_Shutdown();

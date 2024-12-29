@@ -117,14 +117,11 @@ private:
     NoiseChannel channel4 = NoiseChannel(0, 0xFF20, 0xFF21, 0xFF22, 0xFF23);
 public:
     blip_buffer_t* blip;
-    short* blip_out = new short[SAMPLE_COUNT]();
-    inline static short *sample_buffer = new short[SAMPLE_COUNT]();
-    inline static uint16_t sample_counter = 0;
-    void init();
+    short* blip_out = new short[SAMPLE_COUNT+100]();
+    APU();
     void tick_div_apu();
     void tick();
-    void copy_samples_to_buffer();
-    static void clear_sample_queue();
+    void clear_sample_queue();
 };
 
 #endif //APU_H

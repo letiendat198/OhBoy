@@ -32,6 +32,8 @@ add_executable(OhBoy src/main.cpp
         src/mbc3.cpp
         src/apu.cpp
         deps/blip_buf/blip_buf.c
+        src/scheduler.cpp
+        include/scheduler.h
 )
 
 include(FetchContent)

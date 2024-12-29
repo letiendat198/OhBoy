@@ -29,16 +29,12 @@ public:
 
     inline static bool double_spd_mode = false;
 
-    bool exec_flag = false;
+    bool exec_flag = true;
     bool ime_next = false;
-    uint8_t interrupt_addr;
 
     unsigned char opskip;
     unsigned char mcycle;
-    unsigned char cycle_count = 0;
-    uint8_t interrupt_cycle_count = 0;
-    void init(bool cgb_mode);
-    void tick();
+    uint8_t tick();
     bool handle_interrupts();
 
     void log_cpu();

@@ -1,7 +1,6 @@
 #ifndef JOYPAD_H
 #define JOYPAD_H
 #include <cstdint>
-#include <types.h>
 
 class Joypad {
 public:

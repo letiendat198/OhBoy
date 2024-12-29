@@ -11,7 +11,7 @@ static const float FRAME_RATE = 59.7275;
 static const int CYCLE_PER_FRAME  = 17556;
 
 // APU CONST
-static const uint16_t SAMPLE_COUNT = 800;
+static const uint16_t SAMPLE_COUNT = 2048;
 static const int OUTPUT_FREQUENCY = 44100;
 
 #endif //CONFIG_H

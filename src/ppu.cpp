@@ -4,13 +4,6 @@
 #include <debugger.h>
 #include <memory.h>
 
-void PPU::init(bool cgb_mode) {
-    wait = 0;
-    dots = 0;
-    this->cgb_mode = cgb_mode;
-    read_lcdc();
-}
-
 void PPU::tick() {
     read_lcdc();
     if (enable == 0) {
