@@ -46,7 +46,7 @@ Debugger::Debugger(Scheduler *scheduler, bool debug) {
     spec.channels = 1;
     spec.samples = SAMPLE_COUNT;
     spec.callback = &audio_callback;
-    spec.userdata = &apu;
+    spec.userdata = &scheduler->apu;
 
     SDL_AudioSpec obtained;
 
@@ -102,7 +102,7 @@ void Debugger::render() {
         memory_editor.DrawWindow("External RAM", Cartridge::external_ram, Cartridge::external_ram_size);
         memory_editor.DrawWindow("Video RAM", Memory::get_raw_vram(), 0x2000*2);
         memory_editor.DrawWindow("Work RAM 1-7", Memory::get_raw_wram(), 0x1000*7);
-        memory_editor.DrawWindow("Frame Buffer", PPU::get_frame_buffer(), 160*144*3);
+        memory_editor.DrawWindow("Frame Buffer", scheduler->ppu.frame_buffer, 160*144*3);
     }
 
     ImGui::Render();
@@ -120,7 +120,7 @@ void Debugger::render_game() {
         ImGui::SetNextWindowClass(&window_class);
     }
     ImGui::Begin("Game");
-    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)ppu.get_frame_buffer(), 160, 144, 24, 160*3, 0x0, 0x0, 0x0, 0x0);
+    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)scheduler->ppu.frame_buffer, 160, 144, 24, 160*3, 0x0, 0x0, 0x0, 0x0);
     if (surface == nullptr) {
         fprintf(stderr, "Failed to create SDL surface: %s\n", SDL_GetError());
     }
@@ -158,6 +158,8 @@ void Debugger::render_registers(const ImGuiIO& io) {
     ImGui::Text("Frame rate:");
     ImGui::SameLine();
     ImGui::Text(std::to_string(io.Framerate).c_str());
+
+    CPU cpu = scheduler->cpu;
 
     ImGui::Text(std::format("A: {:02X}", cpu.a).c_str());
     ImGui::SameLine();
@@ -204,6 +206,8 @@ void Debugger::render_registers(const ImGuiIO& io) {
     ImGui::Text(std::format("STAT: {:08b}", Memory::read(0xFF41)).c_str());
 
     ImGui::Text(std::format("LYC: {}", Memory::read(0xFF45)).c_str());
+
+    ImGui::End();
 }
 
 void audio_callback(void *userdata, Uint8 *stream, int len) {

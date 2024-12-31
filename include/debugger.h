@@ -32,9 +32,6 @@ private:
     uint8_t scale = 3;
 
     Scheduler *scheduler = nullptr;
-    CPU cpu = scheduler->cpu;
-    PPU ppu = scheduler->ppu;
-    APU apu  = scheduler->apu;
 public:
     inline static Logger logger = Logger("Debugger");
     bool done = false;

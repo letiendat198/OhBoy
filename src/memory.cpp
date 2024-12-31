@@ -40,24 +40,24 @@ void Memory::write(uint16_t addr, uint8_t data) {
             logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
         }
     }
-    if (addr == 0xFF41) { // Capture STAT change
-        uint8_t prev_stat = unsafe_read(0xFF41);
-        uint8_t changes = prev_stat ^ data;
-        unsafe_write(addr, data);
-        for(uint8_t i = 0; i < 7; i++) {
-            uint8_t is_bit_changed = (changes >> i) & 0x1;
-            if (!is_bit_changed) continue;
-            if (i == 2 || i == 6) {
-                PPU::check_and_req_lyc_stat();
-            }
-            else {
-                PPU::check_and_req_mode0_stat();
-                PPU::check_and_req_mode1_stat();
-                PPU::check_and_req_mode2_stat();
-            }
-        }
-        return;
-    }
+    // if (addr == 0xFF41) { // Capture STAT change
+    //     uint8_t prev_stat = unsafe_read(0xFF41);
+    //     uint8_t changes = prev_stat ^ data;
+    //     unsafe_write(addr, data);
+    //     for(uint8_t i = 0; i < 7; i++) {
+    //         uint8_t is_bit_changed = (changes >> i) & 0x1;
+    //         if (!is_bit_changed) continue;
+    //         if (i == 2 || i == 6) {
+    //             PPU::check_and_req_lyc_stat();
+    //         }
+    //         else {
+    //             PPU::check_and_req_mode0_stat();
+    //             PPU::check_and_req_mode1_stat();
+    //             PPU::check_and_req_mode2_stat();
+    //         }
+    //     }
+    //     return;
+    // }
     if (addr == 0xFF68) { // Capture BGPI change event
         bg_auto_inc = data >> 7;
         uint8_t palette_addr = data & 0x3F;

@@ -12,6 +12,22 @@
 #include "interrupts.h"
 using namespace std;
 
+CPU::CPU() {
+    a = 0x01;
+    b = 0x00;
+    c = 0x13;
+    d = 0x00;
+    e = 0xD8;
+    h = 0x01;
+    l = 0x4D;
+    sp = 0xFFFE;
+    pc = 0x0100;
+    z_flag = 1;
+    n_flag = 0;
+    h_flag = 1;
+    c_flag = 1;
+}
+
 void CPU::log_cpu() {
     uint8_t f = z_flag<<7 | n_flag << 6 | h_flag << 5 | c_flag<<4;
     logger.get_logger()->debug("A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}", a, f, b, c, d, e, h, l, sp, pc, read8_mem(pc), read8_mem(pc+1), read8_mem(pc+2), read8_mem(pc+3));

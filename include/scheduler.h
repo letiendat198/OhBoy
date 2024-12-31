@@ -6,9 +6,11 @@
 #include <set>
 #include <timer.h>
 #include <config.h>
+#include <queue>
 
 enum SchedulerEvent {
     // PPU
+    NEW_LINE,
     HBLANK,
     VBLANK,
     OAM_SCAN,
@@ -28,30 +30,31 @@ enum SchedulerEvent {
 
 struct SchedulerEventInfo {
     SchedulerEvent event;
-    int cycle;
+    uint16_t cycle;
+    bool operator < (SchedulerEventInfo a) const {
+        if (cycle == a.cycle) return event < a.event; // If 2 event occur on same cycle, sort by priority
+        return cycle < a.cycle;
+    }
 };
 
 class Scheduler {
 private:
-    struct cmp {
-        bool operator() (SchedulerEventInfo a, SchedulerEventInfo b) const {
-            return a.cycle < b.cycle;
-        }
-    };
-
-    inline static std::set<SchedulerEventInfo, cmp> event_queue;
-    inline static SchedulerEventInfo next_event;
+    inline static std::set<SchedulerEventInfo> event_queue;
 
     Timer timer;
 public:
+    inline static Logger logger = Logger("Scheduler");
     CPU cpu;
     PPU ppu;
     APU apu;
 
-    int current_cycle = 0;
+    inline static uint16_t current_cycle = 0;
 
-    static void schedule(SchedulerEvent, int cycle);
-    SchedulerEvent progress();
+    Scheduler();
+    static void schedule(SchedulerEvent event, uint16_t cycle);
+    static void remove_schedule(SchedulerEvent event);
+    static void reschedule(SchedulerEvent event, uint16_t cycle);
+    SchedulerEventInfo progress();
     void tick_frame();
 };
 

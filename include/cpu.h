@@ -34,6 +34,7 @@ public:
 
     unsigned char opskip;
     unsigned char mcycle;
+    CPU();
     uint8_t tick();
     bool handle_interrupts();
 
