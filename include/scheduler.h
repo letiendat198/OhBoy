@@ -30,7 +30,7 @@ enum SchedulerEvent {
 
 struct SchedulerEventInfo {
     SchedulerEvent event;
-    uint16_t cycle;
+    uint32_t cycle;
     bool operator < (SchedulerEventInfo a) const {
         if (cycle == a.cycle) return event < a.event; // If 2 event occur on same cycle, sort by priority
         return cycle < a.cycle;
@@ -48,12 +48,12 @@ public:
     PPU ppu;
     APU apu;
 
-    inline static uint16_t current_cycle = 0;
+    inline static uint32_t current_cycle = 0;
 
     Scheduler();
-    static void schedule(SchedulerEvent event, uint16_t cycle);
+    static void schedule(SchedulerEvent event, uint32_t cycle);
     static void remove_schedule(SchedulerEvent event);
-    static void reschedule(SchedulerEvent event, uint16_t cycle);
+    static void reschedule(SchedulerEvent event, uint32_t cycle);
     SchedulerEventInfo progress();
     void tick_frame();
 };

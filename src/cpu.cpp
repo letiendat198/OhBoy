@@ -13,19 +13,20 @@
 using namespace std;
 
 CPU::CPU() {
-    a = 0x01;
-    b = 0x00;
-    c = 0x13;
-    d = 0x00;
-    e = 0xD8;
-    h = 0x01;
-    l = 0x4D;
-    sp = 0xFFFE;
-    pc = 0x0100;
-    z_flag = 1;
-    n_flag = 0;
-    h_flag = 1;
-    c_flag = 1;
+    // a = 0x01;
+    // b = 0x00;
+    // c = 0x13;
+    // d = 0x00;
+    // e = 0xD8;
+    // h = 0x01;
+    // l = 0x4D;
+    // sp = 0xFFFE;
+    // pc = 0x0100;
+    // z_flag = 1;
+    // n_flag = 0;
+    // h_flag = 1;
+    // c_flag = 1;
+    // Cartridge::boot_off();
 }
 
 void CPU::log_cpu() {

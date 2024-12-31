@@ -1,3 +1,4 @@
+#include <interrupts.h>
 #include <scheduler.h>
 
 Scheduler::Scheduler() {
@@ -5,8 +6,8 @@ Scheduler::Scheduler() {
     schedule(SchedulerEvent::NEW_LINE, 114);
 }
 
-void Scheduler::schedule(SchedulerEvent event, uint16_t cycle_to_go) {
-    SchedulerEventInfo event_info{event, static_cast<uint16_t>(cycle_to_go + current_cycle)};
+void Scheduler::schedule(SchedulerEvent event, uint32_t cycle_to_go) {
+    SchedulerEventInfo event_info{event, cycle_to_go + current_cycle};
     event_queue.insert(event_info);
     // logger.get_logger()->debug("Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
 }
@@ -20,7 +21,7 @@ void Scheduler::remove_schedule(SchedulerEvent event) {
     }
 }
 
-void Scheduler::reschedule(SchedulerEvent event, uint16_t cycle) {
+void Scheduler::reschedule(SchedulerEvent event, uint32_t cycle) {
     remove_schedule(event);
     schedule(event, cycle);
 }
@@ -39,26 +40,32 @@ SchedulerEventInfo Scheduler::progress() {
 void Scheduler::tick_frame() {
     while (current_cycle < CYCLE_PER_FRAME && event_queue.begin()->cycle <= CYCLE_PER_FRAME) {
         SchedulerEventInfo event_info = this->progress();
-        uint16_t cycle_backup = current_cycle;
+        uint32_t cycle_backup = current_cycle;
         current_cycle = event_info.cycle; // Set cycle context to the cycle event supposed to happen
         switch (event_info.event) {
             case OAM_SCAN:
                 ppu.oam_scan();
+                ppu.update_stat();
                 ppu.schedule_next_mode(2);
                 break;
             case DRAW:
+                ppu.update_stat();
                 ppu.schedule_next_mode(3);
                 break;
             case HBLANK:
                 ppu.draw_scanline();
+                ppu.update_stat();
                 ppu.schedule_next_mode(0);
                 break;
             case VBLANK:
                 ppu.window_ly = 0;
+                Interrupts::set_interrupt_flag(0);
+                ppu.update_stat();
                 ppu.schedule_next_mode(1);
                 break;
             case NEW_LINE:
                 ppu.update_ly();
+                ppu.update_stat();
                 schedule(NEW_LINE, 114);
                 break;
             default:
@@ -68,11 +75,12 @@ void Scheduler::tick_frame() {
     }
 
     current_cycle = 0;
-    for(auto iter = event_queue.begin(); iter!=event_queue.end(); ++iter) { // May be buggy
-        SchedulerEventInfo event_info = event_queue.extract(iter).value();
+    std::set<SchedulerEventInfo> temp;
+    for(auto event_info : event_queue) {
         event_info.cycle -= CYCLE_PER_FRAME;
-        event_queue.insert(event_info);
+        temp.insert(event_info);
     }
+    event_queue.swap(temp);
 }
 
 

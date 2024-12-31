@@ -14,30 +14,86 @@ uint16_t fetch_tile_data(uint8_t x, uint8_t y, uint16_t tile_map_region, uint16_
     return tile_data;
 }
 
+uint16_t fetch_obj_tile_data(ObjAttribute obj, LCDC lcdc, uint8_t ly) {
+    uint8_t tile_index = obj.tile_index;
+    if (lcdc.obj_size == 16) {
+        if ((ly-obj.y_pos+16)%16 < 8) tile_index = tile_index & 0xFE;
+        else tile_index = tile_index | 0x01;
+
+        if (obj.y_flip == 1) tile_index ^= 0x01;
+    }
+
+    uint16_t tile_data_region = 0x8000;
+    if (tile_index > 127) tile_data_region = 0x8800;
+
+    uint16_t line_offset = ((ly - obj.y_pos + 16) % 8)*2;
+    if(obj.y_flip == 1) line_offset = (7 - ((ly - obj.y_pos + 16) % 8))*2;
+
+    uint16_t tile_data_addr = tile_data_region + ((tile_index % 128) * 16) + line_offset;
+    uint16_t tile_data = Memory::read_vram(tile_data_addr, obj.bank);
+    tile_data |= Memory::read_vram(tile_data_addr + 1, obj.bank) << 8;
+    return tile_data;
+}
+
 void PPU::draw_scanline() {
     Scroll scroll = read_scroll();
     LCDC lcdc = read_lcdc();
+
+    uint16_t tile_data = 0;
+    uint16_t tile_map_region = lcdc.bg_tile_map;
+
+    uint8_t fill_table[160] = {0};
     for(uint8_t i=0;i<160;i++) {
+        if (lcdc.bg_window_priority == 0) break;
         uint8_t x = (scroll.scx + i) % 256;
         uint8_t y = (scroll.scy + ly) % 256;
-        uint16_t tile_map_region = lcdc.bg_tile_map;
-        // if (lcdc.window_enable && ly >= scroll.wy && i >= scroll.wx) {
-        //     x = i - (scroll.wx - 7);
-        //     y = window_ly++;
-        //     tile_map_region = lcdc.window_tile_map;
-        // }
 
-        uint16_t tile_data = fetch_tile_data(x, y, tile_map_region, lcdc.tile_data_area);
+        if (lcdc.window_enable && (i  >= (scroll.wx - 7) && ly >= scroll.wy)) {
+            x = i - (scroll.wx - 7);
+            y = window_ly;
+            tile_map_region = lcdc.window_tile_map;
+        }
+
+        tile_data = fetch_tile_data(x, y, tile_map_region, lcdc.tile_data_area);
 
         uint8_t pixel_offset = 7 - (x % 8);
         uint8_t p1 = tile_data & 0xFF;
         uint8_t p2 = tile_data >> 8;
 
         uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
-        write_frame_buffer(parse_palette(color, 0xFF47));
-
-        frame_buffer_index = (frame_buffer_index + 1) % (160*144);
+        fill_table[i] = color;
+        write_frame_buffer(i, ly, parse_palette(color, 0xFF47));
     }
+
+    for(uint8_t i=0;i<obj_queue_index;i++) {
+        if (lcdc.obj_enable == 0) break;
+        ObjAttribute obj = obj_queue[i];
+
+        if (obj.x_pos == 0 || obj.x_pos >= 168) continue; // No need to render, object hidden
+
+        tile_data = fetch_obj_tile_data(obj, lcdc, ly);
+
+        for (uint8_t x = obj.x_pos - 8; x<obj.x_pos;x++) {
+            if (x >= 160) continue; // If x < 8 -> x - 8 > 160 cause wrap around so invalidate. Same for x >= 160
+            if (obj.priority == 1 && fill_table[x] != 0) continue;
+            if (fill_table[x] == 0xFF) continue;
+
+            uint8_t pixel_offset = 7 - ((x - obj.x_pos + 8) % 8);
+            if (obj.x_flip == 1) pixel_offset = (x - obj.x_pos + 8) % 8;
+            uint8_t p1 = tile_data & 0xFF;
+            uint8_t p2 = tile_data >> 8;
+
+            uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
+            uint16_t palette_addr = obj.dmg_palette ? 0xFF49 : 0xFF48;
+            if (color > 0) {
+                fill_table[x] = 0xFF; // Set to 0xFF to indicate an obj already show on this pixel
+                if (true) write_frame_buffer(x, ly, parse_palette(color, palette_addr));
+                // else write_frame_buffer(color, obj_cgb_palette, true);
+            }
+        }
+    }
+
+    if (lcdc.window_enable && scroll.wx <= 166 && scroll.wy <= 143 && ly >= scroll.wy) window_ly++;
 }
 
 void PPU::oam_scan() {
@@ -47,55 +103,50 @@ void PPU::oam_scan() {
         if (obj_queue_index == 10) break;
 
         ObjAttribute obj = read_obj(addr);
-        uint8_t size = lcdc.obj_size ? 16 : 8;
-        if ((obj.y_pos - 16) <= ly && ly < (obj.y_pos - 16 + size)) {
+        if ((obj.y_pos - 16) <= ly && ly < (obj.y_pos - 16 + lcdc.obj_size)) {
             obj_queue[obj_queue_index++] = obj;
         }
     }
     std::stable_sort(obj_queue, obj_queue + obj_queue_index);
 }
 
-uint32_t min(uint32_t a, uint32_t b) {
-    return a<b?a:b;
-}
-
-void PPU::write_frame_buffer(uint8_t color_id, uint8_t color_palette, bool is_obj) { // color_palette not used in DMG mode
-    int index = frame_buffer_index * 3;
+void PPU::write_frame_buffer(uint8_t x, uint8_t y, uint8_t color_id, uint8_t color_palette, bool is_obj) { // color_palette not used in DMG mode
+    int index = (y * 160 + x) * 3;
     if (true) { // SDL uses BGR
         frame_buffer[index] = dmg_palette[color_id][2];
         frame_buffer[index+1] = dmg_palette[color_id][1];
         frame_buffer[index+2] = dmg_palette[color_id][0];
     }
     else {
-        uint8_t color_addr = color_palette * 8 + (color_id * 2);
-        uint8_t r;
-        uint8_t g;
-        uint8_t b;
-        if (!is_obj) {
-            r = Memory::read_bg_cram(color_addr) & 0x1F;
-            g = ((Memory::read_bg_cram(color_addr) >> 5) & 0x07) | (Memory::read_bg_cram(color_addr+1) & 0x03) << 3;;
-            b = (Memory::read_bg_cram(color_addr+1) >> 2) & 0x1F;
-        }
-        else {
-            r = Memory::read_obj_cram(color_addr) & 0x1F;
-            g = ((Memory::read_obj_cram(color_addr) >> 5) & 0x07) | (Memory::read_obj_cram(color_addr+1) & 0x03) << 3;
-            b = (Memory::read_obj_cram(color_addr+1) >> 2) & 0x1F;
-        }
-
-        // b = b << 3 | b >> 2;
-        // r = r << 3 | r >> 2;
-        // g = g << 3 | g >> 2;
-
-        uint32_t R = (r * 26 + g *  4 + b *  2);
-        uint32_t G = (         g * 24 + b *  8);
-        uint32_t B = (r *  6 + g *  4 + b * 22);
-        R = min(960, R) >> 2;
-        G = min(960, G) >> 2;
-        B = min(960, B) >> 2;
-
-        frame_buffer[index] = B & 0xFF;
-        frame_buffer[index+1] = G & 0xFF;
-        frame_buffer[index+2] = R & 0xFF;
+        // uint8_t color_addr = color_palette * 8 + (color_id * 2);
+        // uint8_t r;
+        // uint8_t g;
+        // uint8_t b;
+        // if (!is_obj) {
+        //     r = Memory::read_bg_cram(color_addr) & 0x1F;
+        //     g = ((Memory::read_bg_cram(color_addr) >> 5) & 0x07) | (Memory::read_bg_cram(color_addr+1) & 0x03) << 3;;
+        //     b = (Memory::read_bg_cram(color_addr+1) >> 2) & 0x1F;
+        // }
+        // else {
+        //     r = Memory::read_obj_cram(color_addr) & 0x1F;
+        //     g = ((Memory::read_obj_cram(color_addr) >> 5) & 0x07) | (Memory::read_obj_cram(color_addr+1) & 0x03) << 3;
+        //     b = (Memory::read_obj_cram(color_addr+1) >> 2) & 0x1F;
+        // }
+        //
+        // // b = b << 3 | b >> 2;
+        // // r = r << 3 | r >> 2;
+        // // g = g << 3 | g >> 2;
+        //
+        // uint32_t R = (r * 26 + g *  4 + b *  2);
+        // uint32_t G = (         g * 24 + b *  8);
+        // uint32_t B = (r *  6 + g *  4 + b * 22);
+        // R = min(960, R) >> 2;
+        // G = min(960, G) >> 2;
+        // B = min(960, B) >> 2;
+        //
+        // frame_buffer[index] = B & 0xFF;
+        // frame_buffer[index+1] = G & 0xFF;
+        // frame_buffer[index+2] = R & 0xFF;
     }
 }
 
@@ -123,6 +174,17 @@ void PPU::schedule_next_mode(uint8_t current_mode) {
     }
 }
 
+void PPU::update_stat() {
+    uint8_t prev_stat = Memory::unsafe_read(0xFF41);
+    uint8_t lyc = Memory::unsafe_read(0xFF45);
+    uint8_t write_data = (lyc == ly) << 2 |  mode;
+    uint8_t new_stat = (prev_stat & 0xF8) | write_data;
+    // spdlog::info("Current mode: {}", mode);
+    // spdlog::info("Current LYC and LY: {} {}", lyc, read_ly());
+    // spdlog::info("New stat: {:08b}", new_stat);
+    Memory::write(0xFF41, new_stat);
+}
+
 ObjAttribute PPU::read_obj(uint16_t addr) {
     ObjAttribute obj{};
     obj.y_pos = Memory::read(addr);
@@ -146,7 +208,7 @@ LCDC PPU::read_lcdc() {
     lcdc.window_enable = reg >> 5 & 0x1;
     lcdc.tile_data_area = (reg >> 4 & 0x1) ? 0x8000 : 0x9000;
     lcdc.bg_tile_map = reg >> 3 & 0x1 ? 0x9C00 : 0x9800;
-    lcdc.obj_size = reg >> 2 & 0x1;
+    lcdc.obj_size = reg >> 2 & 0x1 ? 16 : 8;
     lcdc.obj_enable = reg >> 1 & 0x1;
     lcdc.bg_window_priority = reg & 0x1;
     return lcdc;
@@ -160,7 +222,6 @@ Scroll PPU::read_scroll() {
     scroll.wx = Memory::read(0xFF4B);
     return scroll;
 }
-
 
 void PPU::update_ly() {
     ly = (ly + 1) % 154;

@@ -2,6 +2,7 @@
 
 #include <debugger.h>
 #include <format>
+#include <interrupts.h>
 
 uint8_t Memory::read(uint16_t addr) {
     if (addr == 0xFF55) {
@@ -40,24 +41,29 @@ void Memory::write(uint16_t addr, uint8_t data) {
             logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
         }
     }
-    // if (addr == 0xFF41) { // Capture STAT change
-    //     uint8_t prev_stat = unsafe_read(0xFF41);
-    //     uint8_t changes = prev_stat ^ data;
-    //     unsafe_write(addr, data);
-    //     for(uint8_t i = 0; i < 7; i++) {
-    //         uint8_t is_bit_changed = (changes >> i) & 0x1;
-    //         if (!is_bit_changed) continue;
-    //         if (i == 2 || i == 6) {
-    //             PPU::check_and_req_lyc_stat();
-    //         }
-    //         else {
-    //             PPU::check_and_req_mode0_stat();
-    //             PPU::check_and_req_mode1_stat();
-    //             PPU::check_and_req_mode2_stat();
-    //         }
-    //     }
-    //     return;
-    // }
+    if (addr == 0xFF45) { // LYC
+        uint8_t prev_stat = unsafe_read(0xFF41);
+        uint8_t lyc_eq = data == unsafe_read(0xFF44);
+        uint8_t new_stat = (prev_stat & 0xFB) | (lyc_eq << 2);
+        write(0xFF41, new_stat);
+    }
+    if (addr == 0xFF41) { // Capture STAT change
+        uint8_t prev_stat = unsafe_read(0xFF41);
+        uint8_t changes = prev_stat ^ data;
+        unsafe_write(addr, data);
+        if (changes != 0) {
+            uint8_t mode = data & 0x3;
+            uint8_t lyc_eq = data >> 2 & 0x1;
+            for(int i=3;i<=6;i++) {
+                uint8_t select_flag = data >> i & 0x1;
+                if (select_flag == 1 && ((i < 6 && mode == i-3) || (i == 6 && lyc_eq == 1))) {
+                    Interrupts::set_interrupt_flag(1);
+                    break;
+                }
+            }
+        }
+        return;
+    }
     if (addr == 0xFF68) { // Capture BGPI change event
         bg_auto_inc = data >> 7;
         uint8_t palette_addr = data & 0x3F;
