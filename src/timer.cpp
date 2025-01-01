@@ -3,15 +3,18 @@
 #include <memory.h>
 
 #include "interrupts.h"
+#include "scheduler.h"
 
-void Timer::tick() {
-    set_timer_control();
-    cycle++;
-    if (cycle % 64 == 0) {
-        uint8_t div = (Memory::read(0xFF04) + 1) % 0x100;
-        Memory::unsafe_write(0xFF04, div);
-    }
-    if (cycle % inc_delay == 0 && enable) {
+void Timer::tick_div() {
+    uint8_t div = (Memory::read(0xFF04) + 1) % 0x100;
+    Memory::unsafe_write(0xFF04, div);
+    Scheduler::schedule(DIV_TICK, 64);
+}
+
+
+void Timer::tick_tima() {
+    TimerControl tac = read_tac();
+    if (tac.enable) {
         uint8_t tima = (Memory::read(0xFF05) + 1) % 0x100;
         if (tima == 0) {
             Interrupts::set_interrupt_flag(2);
@@ -19,27 +22,29 @@ void Timer::tick() {
         }
         Memory::write(0xFF05, tima);
     }
-    if (cycle == 256) cycle = 0;
+    Scheduler::schedule(TIMA_TICK, tac.increment_freq); // Timer won't reshedule until it tick again -> Shit implementation
 }
 
 
-void Timer::set_timer_control() {
+TimerControl Timer::read_tac() {
+    TimerControl control{};
     uint8_t tac = Memory::read(0xFF07);
-    enable = (tac  & 0x4) >> 2;
+    control.enable = (tac  & 0x4) >> 2;
     uint8_t clock_select = tac & 0x3;
     switch (clock_select) {
         case 0:
-            inc_delay = 256;
+            control.increment_freq = 256;
             break;
         case 1:
-            inc_delay = 4;
+            control.increment_freq = 4;
             break;
         case 2:
-            inc_delay = 16;
+            control.increment_freq = 16;
             break;
         case 3:
-            inc_delay = 64;
+            control.increment_freq = 64;
             break;
     }
+    return control;
 }
 

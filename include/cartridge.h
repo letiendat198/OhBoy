@@ -6,43 +6,53 @@
 
 #include "mbc.h"
 
+struct RomMetadata {
+    uint8_t mbc_type;
+    char *rom_title;
+    uint16_t rom_size;
+    uint16_t max_rom_banks;
+    uint16_t max_rom_bank_bit = 0;
+    uint16_t ram_size;
+    uint16_t max_ram_bank_bit;
+    uint8_t max_ram_banks;
+    uint8_t dest_code;
+    uint8_t version;
+    uint8_t cgb_flag;
+};
+
 class Cartridge{
 private:
-    inline static Logger logger = Logger("Cartridge");
-    inline static FILE *f;
-    inline static std::string save_name;
-    inline static FILE *f_boot;
-    inline static uint8_t *rom_data;
-    inline static uint8_t *boot_data;
-    inline static bool is_boot = true;
-    inline static int rom_file_size;
-    inline static int boot_size;
-    inline static uint8_t mbc_type;
-    inline static char *rom_title;
-    inline static uint16_t rom_size;
-    inline static uint16_t max_rom_banks;
-    inline static uint16_t max_rom_bank_bit = 0;
-    inline static uint16_t ram_size;
-    inline static uint16_t max_ram_bank_bit;
-    inline static uint8_t max_ram_banks;
-    inline static uint8_t dest_code;
-    inline static uint8_t version;
-    inline static uint8_t cgb_flag;
+    Logger logger = Logger("Cartridge");
+    FILE *f;
+    std::string save_name;
+    FILE *f_boot;
+    uint8_t *rom_data;
+    uint8_t *boot_data;
+    bool is_boot = true;
+    int rom_file_size;
+    int boot_size;
 
-    inline static MBC *mbc;
+    MBC *mbc;
 
+    bool read_rom(const char* file);
+    RomMetadata read_rom_metadata();
+
+    bool load_boot(bool is_cgb);
 public:
-    inline static uint8_t *external_ram;
-    inline static uint32_t external_ram_size;
-    inline static bool cgb_mode = false;
-    static bool init(const char* file);
-    static uint8_t read(uint16_t addr);
-    static void write(uint16_t addr, uint8_t data);
-    static void mbc1_register_handler(uint16_t addr, uint8_t data);
-    static void boot_off();
-    static void save_sram();
-    static void load_save();
-    static void close();
+    uint8_t *external_ram;
+    uint32_t external_ram_size;
+
+    bool cgb_mode = false;
+    uint8_t mbc_type = 0;
+
+    bool init(const char* file);
+
+    uint8_t read(uint16_t addr);
+    void write(uint16_t addr, uint8_t data);
+    void boot_off();
+    void save_sram();
+    void load_save();
+    void close();
 };
 
 #endif

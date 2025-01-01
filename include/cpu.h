@@ -33,9 +33,9 @@ public:
     bool ime_next = false;
 
     unsigned char opskip;
-    unsigned char mcycle;
+    uint32_t mcycle;
     CPU();
-    uint8_t tick();
+    uint32_t tick();
     bool handle_interrupts();
 
     void log_cpu();

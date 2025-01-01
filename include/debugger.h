@@ -40,7 +40,7 @@ public:
     void render();
     void render_registers(const ImGuiIO& io);
     void render_game();
-    void capture_keyboard();
+    static void capture_keyboard();
     void end();
 };
 

@@ -2,22 +2,18 @@
 
 #include <debugger.h>
 
-void DMA::tick() {
-    if (cycle == 0) {
-        bool dma_requested = Memory::check_dma();
-        if (!dma_requested) return;
-        dma_addr = Memory::read(0xFF46);
-        // Memory::lock_dma(); // DMA locking causes a lot of glitch. Disable for now
-    }
+void DMA::transfer() {
+    dma_addr = Memory::read(0xFF46);
     uint16_t dest = 0xFE00;
     uint16_t src = dma_addr*0x100;
     Memory::unsafe_write(dest+cycle, Memory::unsafe_read(src+cycle));
     cycle++;
     if(cycle == 160) {
         cycle = 0;
-        Memory::resolve_dma();
-        Memory::unlock_dma();
+        // Memory::unlock_dma();
+        return;
     }
+    Scheduler::schedule(DMA_TRANSFER, 1);
 }
 
 void HDMA::tick() {

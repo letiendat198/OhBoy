@@ -23,6 +23,7 @@ private:
     inline static bool obj_auto_inc = false;
     inline static Logger logger = Logger("Memory");
 public:
+    inline static Cartridge cartridge;
     inline static bool c1_trigger = false;
     inline static bool c2_trigger = false;
     inline static bool c3_trigger = false;
@@ -39,6 +40,13 @@ public:
     static void write_obj_cram(uint8_t addr, uint8_t data);
     static uint8_t unsafe_read(uint16_t addr);
     static void unsafe_write(uint16_t addr, uint8_t data);
+
+    static bool init_cartridge(const char* file);
+
+    static bool is_cartridge_cgb();
+
+    static void close_cartridge();
+
     static uint8_t* get_raw();
     static uint8_t* get_raw_vram();
     static uint8_t* get_raw_wram();
@@ -51,8 +59,6 @@ public:
     static void lock_dma();
     static void unlock_dma();
     static void turnoff_boot();
-    static bool check_dma();
-    static void resolve_dma();
     static bool check_hdma();
     static uint8_t get_hdma_type();
     static void resolve_hdma();

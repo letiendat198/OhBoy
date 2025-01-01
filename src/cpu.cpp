@@ -13,20 +13,20 @@
 using namespace std;
 
 CPU::CPU() {
-    // a = 0x01;
+    // a = 0x11;
     // b = 0x00;
-    // c = 0x13;
-    // d = 0x00;
-    // e = 0xD8;
-    // h = 0x01;
-    // l = 0x4D;
+    // c = 0x00;
+    // d = 0xFF;
+    // e = 0x56;
+    // h = 0x00;
+    // l = 0x0D;
     // sp = 0xFFFE;
     // pc = 0x0100;
     // z_flag = 1;
     // n_flag = 0;
-    // h_flag = 1;
-    // c_flag = 1;
-    // Cartridge::boot_off();
+    // h_flag = 0;
+    // c_flag = 0;
+    // Memory::cartridge.boot_off();
 }
 
 void CPU::log_cpu() {
@@ -34,16 +34,16 @@ void CPU::log_cpu() {
     logger.get_logger()->debug("A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}", a, f, b, c, d, e, h, l, sp, pc, read8_mem(pc), read8_mem(pc+1), read8_mem(pc+2), read8_mem(pc+3));
 }
 
-uint8_t CPU::tick(){
+uint32_t CPU::tick(){
     if (handle_interrupts()) return mcycle;
     if (halt == 1) return 1; // No HALT bug
-    if (Memory::check_hdma()) { // CPU halted during HDMA
-        if (Memory::get_hdma_type()==0) return 1;
-        else {
-            uint8_t ppu_mode = Memory::unsafe_read(0xFF41) & 0x3;
-            if (ppu_mode==0) return 1;
-        }
-    }
+    // if (Memory::check_hdma()) { // CPU halted during HDMA
+    //     if (Memory::get_hdma_type()==0) return 1;
+    //     else {
+    //         uint8_t ppu_mode = Memory::unsafe_read(0xFF41) & 0x3;
+    //         if (ppu_mode==0) return 1;
+    //     }
+    // }
 
     if (ime_next) {
         ime = 1;

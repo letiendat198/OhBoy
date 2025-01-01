@@ -24,10 +24,10 @@ void Memory::write(uint16_t addr, uint8_t data) {
         return;
     }
     if (addr == 0xFF50) {  // Write to this turn off boot
-        Cartridge::boot_off();
+        cartridge.boot_off();
     }
     if (addr == 0xFF46 && !dma_requested) { // Capture DMA
-        dma_requested = true;
+        Scheduler::schedule(DMA_TRANSFER, 0);
     }
     if (addr == 0xFF55) {
         if (hdma_requested == false) {
@@ -126,7 +126,7 @@ bool Memory::can_read(unsigned short addr) {
 
 uint8_t Memory::unsafe_read(uint16_t addr) {
     if (addr <= 0x7FFF || (0xA000 <= addr && addr <= 0xBFFF)) {
-        return Cartridge::read(addr);
+        return cartridge.read(addr);
     }
     if (0xD000 <= addr && addr <= 0xDFFF) {
         return read_wram(addr, wram_bank);
@@ -143,7 +143,7 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
 void Memory::unsafe_write(uint16_t addr, uint8_t data) {
     // Re-route
     if (addr <= 0x7FFF || (0xA000 <= addr && addr <= 0xBFFF)) {
-        return Cartridge::write(addr, data);
+        return cartridge.write(addr, data);
     }
     if (0xD000 <= addr && addr <= 0xDFFF) {
         return write_wram(addr, data, wram_bank);
@@ -157,6 +157,18 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
     }
 
     *(memory+addr - 0xC000) = data;
+}
+
+bool Memory::init_cartridge(const char* file) {
+    return cartridge.init(file);
+}
+
+bool Memory::is_cartridge_cgb() {
+    return cartridge.cgb_mode;
+}
+
+void Memory::close_cartridge() {
+    cartridge.close();
 }
 
 uint8_t Memory::read_vram(uint16_t addr, uint8_t bank) { // Low level VRAM access - Won't automatically use current bank
@@ -195,14 +207,6 @@ uint8_t Memory::read_obj_cram(uint8_t addr) {
 
 void Memory::write_obj_cram(uint8_t addr, uint8_t data) {
     obj_cram[addr] = data;
-}
-
-bool Memory::check_dma() {
-    return dma_requested;
-}
-
-void Memory::resolve_dma() {
-    dma_requested = false;
 }
 
 bool Memory::check_hdma() {

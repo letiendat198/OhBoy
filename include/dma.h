@@ -8,7 +8,7 @@ private:
     inline static uint8_t cycle = 0;
     inline static Logger logger = Logger("DMA");
 public:
-    static void tick();
+    static void transfer();
 };
 
 class HDMA {

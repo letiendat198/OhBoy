@@ -1,6 +1,7 @@
 #define SDL_MAIN_HANDLED
 #include <iostream>
 #include <chrono>
+#include <joypad.h>
 #include <popl.hpp>
 #include "debugger.h"
 #include "config.h"
@@ -26,10 +27,11 @@ int main(int argc , char **argv){
     }
 
     cout<<rom_path_option->value().c_str()<<endl;
-    bool cart_init = Cartridge::init(rom_path_option->value().c_str());
+    bool cart_init = Memory::init_cartridge(rom_path_option->value().c_str());
     if (!cart_init) return -1;
 
     Scheduler scheduler;
+    scheduler.ppu.set_cgb_mode(Memory::is_cartridge_cgb());
     Debugger debugger(&scheduler, debug_mode);
 
     auto t1 = std::chrono::steady_clock::now();
@@ -45,6 +47,6 @@ int main(int argc , char **argv){
         debugger.capture_keyboard();
     }
     debugger.end();
-    Cartridge::close();
+    Memory::close_cartridge();
     return 0;
 }

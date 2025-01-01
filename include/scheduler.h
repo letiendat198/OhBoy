@@ -21,11 +21,9 @@ enum SchedulerEvent {
     GDMA_TRANSFER,
     HDMA_TRANSFER,
 
-    // INTERRUPT
-    SERIAL_INTR,
-    TIMER_INTR,
-    STAT_INTR,
-    VBLANK_INTR
+    // TIMER
+    DIV_TICK,
+    TIMA_TICK
 };
 
 struct SchedulerEventInfo {
@@ -49,6 +47,8 @@ public:
     APU apu;
 
     inline static uint32_t current_cycle = 0;
+
+    bool pause = false;
 
     Scheduler();
     static void schedule(SchedulerEvent event, uint32_t cycle);

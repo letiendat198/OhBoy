@@ -99,7 +99,7 @@ void Debugger::render() {
         render_registers(io);
         memory_editor.ReadOnly = true;
         memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0x4000);
-        memory_editor.DrawWindow("External RAM", Cartridge::external_ram, Cartridge::external_ram_size);
+        memory_editor.DrawWindow("External RAM", Memory::cartridge.external_ram, Memory::cartridge.external_ram_size);
         memory_editor.DrawWindow("Video RAM", Memory::get_raw_vram(), 0x2000*2);
         memory_editor.DrawWindow("Work RAM 1-7", Memory::get_raw_wram(), 0x1000*7);
         memory_editor.DrawWindow("Frame Buffer", scheduler->ppu.frame_buffer, 160*144*3);
@@ -161,6 +161,12 @@ void Debugger::render_registers(const ImGuiIO& io) {
 
     CPU cpu = scheduler->cpu;
 
+    if (ImGui::Button("Pause")) scheduler->pause = true;
+    ImGui::SameLine();
+    if (ImGui::Button("Step")) scheduler->cpu.tick();
+    ImGui::SameLine();
+    if (ImGui::Button("Continue")) scheduler->pause = false;
+
     ImGui::Text(std::format("A: {:02X}", cpu.a).c_str());
     ImGui::SameLine();
     ImGui::Text(std::format("B: {:02X}", cpu.b).c_str());
@@ -207,6 +213,7 @@ void Debugger::render_registers(const ImGuiIO& io) {
 
     ImGui::Text(std::format("LYC: {}", Memory::read(0xFF45)).c_str());
 
+    if (cpu.halt) ImGui::Text("CPU HALTED!");
     ImGui::End();
 }
 
@@ -227,7 +234,6 @@ void Debugger::capture_keyboard() {
     if(key[SDL_SCANCODE_W]) Joypad::key_state[5]=1;
     if(key[SDL_SCANCODE_A]) Joypad::key_state[6]=1;
     if(key[SDL_SCANCODE_D]) Joypad::key_state[7]=1;
-    Joypad::tick();
 }
 
 void Debugger::end() {
