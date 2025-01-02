@@ -13,8 +13,6 @@ private:
     uint8_t max_ram_banks;
     uint32_t rtc_offset;
 
-    Cartridge *cartridge;
-
     uint8_t rom_bank=1;
     uint8_t ram_bank = 0;
     uint8_t latch_reg = 1;
@@ -25,7 +23,7 @@ private:
     uint64_t read_stored_timestamp();
     void write_timestamp(uint64_t timestamp);
 public:
-    MBC3(Cartridge *cartridge, uint16_t max_rom_banks, uint16_t max_rom_bank_bit, uint8_t max_ram_bank, uint8_t max_ram_bank_bit);
+    MBC3(uint16_t max_rom_banks, uint16_t max_rom_bank_bit, uint8_t max_ram_bank, uint8_t max_ram_bank_bit);
     void update_registers(uint16_t addr, uint8_t data) override;
     uint32_t calculate_address(uint16_t addr) override;
 };

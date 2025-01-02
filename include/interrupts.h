@@ -1,11 +1,12 @@
 #ifndef INTERRUPTS_H
 #define INTERRUPTS_H
 #include <cstdint>
+#include <logger.h>
 #include <types.h>
 
 class Interrupts {
 private:
-
+    inline static Logger logger = Logger("Interrupt");
 public:
     static uint16_t check_and_service(uint8_t &ime);
     static void set_interrupt_flag(uint8_t bit);

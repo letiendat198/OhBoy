@@ -39,6 +39,14 @@ uint16_t fetch_obj_tile_data(ObjAttribute obj, LCDC lcdc, uint8_t ly) {
 void PPU::draw_scanline() {
     Scroll scroll = read_scroll();
     LCDC lcdc = read_lcdc();
+    if (lcdc.lcd_enable == false) {
+        ly = 0;
+        update_ly();
+        update_stat(0); // STAT update won't work if not enable
+        enable = false;
+        return;
+    }
+    else enable = true;
 
     uint16_t tile_data = 0;
     BgAttribute tile_bg_attribute{};
@@ -113,6 +121,7 @@ void PPU::draw_scanline() {
 }
 
 void PPU::oam_scan() {
+    if (!enable) return;
     LCDC lcdc = read_lcdc();
     obj_queue_index = 0;
     for (uint16_t addr=0xFE00; addr<=0xFE9F; addr+=4) {
@@ -190,7 +199,8 @@ void PPU::schedule_next_mode(uint8_t current_mode) {
     }
 }
 
-void PPU::update_stat() {
+void PPU::update_stat(uint8_t mode) {
+    if (!enable) return;
     uint8_t prev_stat = Memory::unsafe_read(0xFF41);
     uint8_t lyc = Memory::unsafe_read(0xFF45);
     uint8_t write_data = (lyc == ly) << 2 |  mode;

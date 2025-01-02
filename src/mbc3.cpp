@@ -4,12 +4,11 @@
 #include <chrono>
 #include <debugger.h>
 
-MBC3::MBC3(Cartridge * cartridge, uint16_t max_rom_banks, uint16_t max_rom_bank_bit, uint8_t max_ram_banks, uint8_t max_ram_bank_bit) {
+MBC3::MBC3(uint16_t max_rom_banks, uint16_t max_rom_bank_bit, uint8_t max_ram_banks, uint8_t max_ram_bank_bit) {
     this->max_ram_banks = max_ram_banks;
     this->max_ram_bank_bit = max_ram_bank_bit;
     this->max_rom_banks = max_rom_banks;
     this->max_rom_bank_bit = max_rom_bank_bit;
-    this->cartridge = cartridge;
     rtc_offset = 0x2000 * max_ram_banks;
 }
 
@@ -87,14 +86,14 @@ void MBC3::tick_rtc() {
 uint64_t MBC3::read_stored_timestamp() {
     uint64_t stored_timestamp = 0;
     for (int i=12;i>=5;i--) {
-        stored_timestamp = (stored_timestamp << 8 ) | cartridge->external_ram[rtc_offset + i] ;
+        stored_timestamp = (stored_timestamp << 8 ) | Cartridge::external_ram[rtc_offset + i] ;
     }
     return stored_timestamp;
 }
 
 void MBC3::write_timestamp(uint64_t timestamp) {
     for (int i=5;i<13;i++) {
-        cartridge->external_ram[rtc_offset+i] = (timestamp >> ((i-5)*8)) & 0xFF;
+        Cartridge::external_ram[rtc_offset+i] = (timestamp >> ((i-5)*8)) & 0xFF;
     }
 }
 
@@ -102,10 +101,10 @@ uint64_t MBC3::read_stored_rtc() {
     uint32_t to_sec[4] = {1, 60, 3600, 3600*24};
     uint64_t stored_sec = 0;
     for (int i=0;i<4;i++) {
-        if (i!=3) stored_sec += cartridge->external_ram[rtc_offset+i] * to_sec[i];
+        if (i!=3) stored_sec += Cartridge::external_ram[rtc_offset+i] * to_sec[i];
         else {
-            uint8_t day_low = cartridge->external_ram[rtc_offset+i];
-            uint8_t day_high = cartridge->external_ram[rtc_offset+i+1] & 0x1;
+            uint8_t day_low = Cartridge::external_ram[rtc_offset+i];
+            uint8_t day_high = Cartridge::external_ram[rtc_offset+i+1] & 0x1;
             // std::cout<<"Day low: "<<(int) day_low<<"\n";
             // std::cout<<"Day high: "<<(int) day_high<<"\n";
             stored_sec += ( day_low | (day_high << 8)) * to_sec[i];
@@ -115,13 +114,12 @@ uint64_t MBC3::read_stored_rtc() {
 }
 
 void MBC3::write_to_rtc(uint64_t sec) {
-    cartridge->external_ram[rtc_offset] = sec % 60;
-    cartridge->external_ram[rtc_offset + 1] = (sec / 60) % 60;
-    cartridge->external_ram[rtc_offset + 2] = (sec / 3600) % 24;
+    Cartridge::external_ram[rtc_offset] = sec % 60;
+    Cartridge::external_ram[rtc_offset + 1] = (sec / 60) % 60;
+    Cartridge::external_ram[rtc_offset + 2] = (sec / 3600) % 24;
     uint32_t day = sec / (3600*24);
-    cartridge->external_ram[rtc_offset + 3] = day % 0x100;
-    uint8_t day_high_reg = cartridge->external_ram[rtc_offset + 4];
-    cartridge->external_ram[rtc_offset + 4] = (day_high_reg & 0xFE) |  ((day & 0x100) >> 8); // Set high day bit
-    if (day > 0x1FF) cartridge->external_ram[rtc_offset + 4] |= 0x80; // Set carry bit
+    Cartridge::external_ram[rtc_offset + 3] = day % 0x100;
+    uint8_t day_high_reg = Cartridge::external_ram[rtc_offset + 4];
+    Cartridge::external_ram[rtc_offset + 4] = (day_high_reg & 0xFE) |  ((day & 0x100) >> 8); // Set high day bit
+    if (day > 0x1FF) Cartridge::external_ram[rtc_offset + 4] |= 0x80; // Set carry bit
 }
-

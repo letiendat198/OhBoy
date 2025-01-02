@@ -55,32 +55,28 @@ void Scheduler::tick_frame() {
         current_cycle = event_info.cycle; // Set cycle context to the cycle event supposed to happen
         switch (event_info.event) {
             case OAM_SCAN:
-                ppu.mode = 2;
                 ppu.oam_scan();
-                ppu.update_stat();
+                ppu.update_stat(2);
                 ppu.schedule_next_mode(2);
                 break;
             case DRAW:
-                ppu.mode = 3;
-                ppu.update_stat();
+                ppu.update_stat(3);
                 ppu.schedule_next_mode(3);
                 break;
             case HBLANK:
-                ppu.mode = 0;
                 ppu.draw_scanline();
-                ppu.update_stat();
+                ppu.update_stat(0);
                 ppu.schedule_next_mode(0);
                 break;
             case VBLANK:
-                ppu.mode = 1;
                 ppu.window_ly = 0;
                 Interrupts::set_interrupt_flag(0);
-                ppu.update_stat();
+                ppu.update_stat(1);
                 ppu.schedule_next_mode(1);
                 break;
             case NEW_LINE:
                 ppu.update_ly();
-                ppu.update_stat();
+                // ppu.update_stat(0);
                 schedule(NEW_LINE, 114);
                 break;
             case DMA_TRANSFER:

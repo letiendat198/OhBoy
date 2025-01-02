@@ -9,24 +9,22 @@
 #include "mbc3.h"
 #include "mbc5.h"
 
-
-std::string get_save_file_name(std::string file_name) {
-    std::size_t delim = file_name.find_last_of('/');
+bool Cartridge::init(const char* file){
+    save_name = std::string(file);
+    std::size_t delim = save_name.find_last_of('/');
     if (delim == std::string::npos) {
-        delim = file_name.find_last_of('\\');
+        delim = save_name.find_last_of('\\');
     }
-    if (delim != std::string::npos) file_name = file_name.substr(delim+1);
-    std::size_t ext_delim = file_name.find_last_of('.');
-    file_name = file_name.substr(0, ext_delim) + ".sav";
-    return file_name;
-}
+    if (delim != std::string::npos) save_name = save_name.substr(delim+1);
+    std::size_t ext_delim = save_name.find_last_of('.');
+    save_name = save_name.substr(0, ext_delim) + ".sav";
 
-bool Cartridge::read_rom(const char* file) {
     // Load actual rom
     f = fopen(file, "rb");
     fseek(f, 0L, SEEK_END);
     rom_file_size = ftell(f);
-
+    std::cout<<"ROM file size: "<<rom_file_size<<"\n";
+    // Debugger::log(std::format("ROM size: {}", rom_file_size).c_str());
     if(rom_file_size<=0) {
         std::cerr<<"ROM file not found!\n";
         return false;
@@ -35,59 +33,97 @@ bool Cartridge::read_rom(const char* file) {
     rom_data = new uint8_t[rom_file_size];
     fseek(f, 0L, SEEK_SET);
     fread(rom_data, sizeof(uint8_t),rom_file_size+1, f);
-    return true;
-}
 
-RomMetadata Cartridge::read_rom_metadata() {
-    RomMetadata metadata{};
-    metadata.rom_title = new char[0xF + 1]; // Stub
-    strncpy(metadata.rom_title, reinterpret_cast<const char *>(rom_data+0x0134), 16);
+    // Re-calculate checksum to make sure checksum passes
+    uint8_t checksum = 0;
+    for (uint16_t address = 0x0134; address <= 0x014C; address++) {
+        checksum = checksum - rom_data[address] - 1;
+    }
+    rom_data[0x14D] = checksum;
 
-    metadata.mbc_type = rom_data[0x0147];
-    metadata.rom_size = (32 * (1<<rom_data[0x0148]));
-    metadata.max_rom_banks = metadata.rom_size / 16;
-    uint8_t temp_size = metadata.max_rom_banks - 1;
+    // Read cartridge metadata
+    rom_title = new char[0xF + 1]; // Stub
+    strncpy(rom_title, reinterpret_cast<const char *>(rom_data+0x0134), 16);
+
+    mbc_type = rom_data[0x0147];
+    rom_size = (32 * (1<<rom_data[0x0148]));
+    max_rom_banks = rom_size / 16;
+    uint8_t temp_size = max_rom_banks - 1;
     while (temp_size!=0) {
         temp_size = temp_size>>1;
-        metadata.max_rom_bank_bit++;
+        max_rom_bank_bit++;
     }
-    metadata.ram_size = rom_data[0x0149];
-    switch (metadata.ram_size) {
+    ram_size = rom_data[0x0149];
+    switch (ram_size) {
         case 0x0:
+            max_ram_bank_bit = 0;
+            max_ram_banks = 0;
+            break;
         case 0x1:
-            metadata.max_ram_bank_bit = 0;
-            metadata.max_ram_banks = 0;
+            max_ram_bank_bit = 0;
+            max_ram_banks = 0;
             break;
         case 0x2:
-            metadata.max_ram_bank_bit = 1;
-            metadata.max_ram_banks = 1;
+            max_ram_bank_bit = 1;
+            max_ram_banks = 1;
             break;
         case 0x3:
-            metadata.max_ram_bank_bit = 2;
-            metadata.max_ram_banks = 4;
+            max_ram_bank_bit = 2;
+            max_ram_banks = 4;
             break;
         case 0x4:
-            metadata.max_ram_bank_bit = 4;
-            metadata.max_ram_banks = 16;
+            max_ram_bank_bit = 4;
+            max_ram_banks = 16;
             break;
         case 0x5:
-            metadata.max_ram_bank_bit = 3;
-            metadata.max_ram_banks = 8;
+            max_ram_bank_bit = 3;
+            max_ram_banks = 8;
             break;
     }
-    metadata.dest_code = rom_data[0x014A];
-    metadata.version = rom_data[0x014D];
-    metadata.cgb_flag = rom_data[0x143];
+    dest_code = rom_data[0x014A];
+    version = rom_data[0x014D];
+    cgb_flag = rom_data[0x143];
+    if (cgb_flag == 0x80 || cgb_flag == 0xC0) {
+        cgb_mode = true;
+    }
 
-    return metadata;
-}
+    external_ram_size = max_ram_banks?0x2000*max_ram_banks:1;
 
-bool Cartridge::load_boot (bool is_cgb) {
+    if (0x1 <= mbc_type && mbc_type <= 0x3) {
+        mbc = new MBC1(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
+    }
+    else if (0x0F <= mbc_type && mbc_type <= 0x13) {
+        mbc = new MBC3(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
+        external_ram_size += 14;
+    }
+    else if (0x19 <= mbc_type && mbc_type <= 0x1E) {
+        mbc = new MBC5(max_rom_banks, max_rom_bank_bit, max_ram_banks, max_ram_bank_bit);
+    }
+
+    if (mbc_type != 0 && mbc == nullptr) {
+        std::cerr<<"Unsupported MBC type\n";
+        return false;
+    }
+
+    external_ram = new uint8_t[external_ram_size]();
+    load_save();
+
+    std::cout<<"ROM title: "<<rom_title<<"\n";
+    std::cout<<std::format("MBC type: {:#X}", mbc_type)<<"\n";
+    std::cout<<std::format("ROM banks: {}", max_rom_banks)<<"\n";
+    std::cout<<std::format("ROM bank addressing bit needed: {}", max_rom_bank_bit)<<"\n";
+    std::cout<<std::format("RAM types: {:#X}", ram_size)<<"\n";
+    std::cout<<std::format("RAM banks: {}", max_ram_banks)<<"\n";
+    std::cout<<std::format("RAM bank addressing bit needed: {}", max_ram_bank_bit)<<"\n";
+    std::cout<<std::format("DEST code: {:#X}", dest_code)<<"\n";
+    std::cout<<std::format("VERSION: {:#X}", version)<<"\n";
+
+    // Load bootrom
     f_boot = fopen("boot.bin", "rb");
-    if (is_cgb) f_boot = fopen("cgb_boot.bin", "rb");
+    if (cgb_mode) f_boot = fopen("cgb_boot.bin", "rb");
     fseek(f_boot, 0L, SEEK_END);
     boot_size = ftell(f_boot);
-    logger.get_logger()->debug(std::format("BOOT size: {}", boot_size).c_str());
+    // Debugger::log(std::format("BOOT size: {}", boot_size).c_str());
     if(boot_size<=0) {
         std::cerr<<"Boot ROM not found!\n";
         return false;
@@ -96,52 +132,7 @@ bool Cartridge::load_boot (bool is_cgb) {
     boot_data = new uint8_t[boot_size];
     fseek(f_boot, 0L, SEEK_SET);
     fread(boot_data, sizeof(uint8_t), boot_size, f_boot);
-    return true;
-}
 
-void log_metadata(RomMetadata metadata) {
-    std::cout<<"ROM title: "<<metadata.rom_title<<"\n";
-    std::cout<<std::format("MBC type: {:#X}", metadata.mbc_type)<<"\n";
-    std::cout<<std::format("ROM banks: {}", metadata.max_rom_banks)<<"\n";
-    std::cout<<std::format("ROM bank addressing bit needed: {}", metadata.max_rom_bank_bit)<<"\n";
-    std::cout<<std::format("RAM types: {:#X}", metadata.ram_size)<<"\n";
-    std::cout<<std::format("RAM banks: {}", metadata.max_ram_banks)<<"\n";
-    std::cout<<std::format("RAM bank addressing bit needed: {}", metadata.max_ram_bank_bit)<<"\n";
-    std::cout<<std::format("DEST code: {:#X}", metadata.dest_code)<<"\n";
-    std::cout<<std::format("VERSION: {:#X}", metadata.version)<<"\n";
-}
-
-bool Cartridge::init(const char* file) {
-    bool read_file_success = read_rom(file);
-    save_name = get_save_file_name(file);
-    if (!read_file_success) return false;
-    RomMetadata metadata = read_rom_metadata();
-    if (metadata.cgb_flag == 0x80 || metadata.cgb_flag == 0xC0) cgb_mode = true;
-    else cgb_mode = false;
-    mbc_type = metadata.mbc_type;
-    bool read_boot_success = load_boot(cgb_mode);
-    if (!read_boot_success) return false;
-
-    external_ram_size = metadata.max_ram_banks?0x2000*metadata.max_ram_banks:1;
-
-    if (0x1 <= metadata.mbc_type && metadata.mbc_type <= 0x3) {
-        mbc = new MBC1(metadata.max_rom_banks, metadata.max_rom_bank_bit, metadata.max_ram_banks, metadata.max_ram_bank_bit);
-    }
-    else if (0x0F <= metadata.mbc_type && metadata.mbc_type <= 0x13) {
-        mbc = new MBC3(this, metadata.max_rom_banks, metadata.max_rom_bank_bit, metadata.max_ram_banks, metadata.max_ram_bank_bit);
-        external_ram_size += 14;
-    }
-    else if (0x19 <= metadata.mbc_type && metadata.mbc_type <= 0x1E) {
-        mbc = new MBC5(metadata.max_rom_banks, metadata.max_rom_bank_bit, metadata.max_ram_banks, metadata.max_ram_bank_bit);
-    }
-
-    if (metadata.mbc_type != 0 && mbc == nullptr) {
-        std::cerr<<"Unsupported MBC type\n";
-        return false;
-    }
-
-    external_ram = new uint8_t[external_ram_size]();
-    load_save();
     return true;
 }
 
@@ -161,7 +152,6 @@ uint8_t Cartridge::read(uint16_t addr) {
         return external_ram[mbc->calculate_address(addr)];
     }
     std::cout<<"Trying to read VRAM from cartridge. This should not happen\n";
-    return 0xFF;
 }
 
 void Cartridge::write(uint16_t addr, uint8_t data) {
@@ -171,7 +161,7 @@ void Cartridge::write(uint16_t addr, uint8_t data) {
         return;
     }
     if (0xA000 <= addr && addr <= 0xBFFF) { // Write to External RAM
-        if (mbc_type == 0) external_ram[addr - 0xA000] = data;
+        if (mbc_type == 0) return;
         if (!mbc->ram_enable) return;
         external_ram[mbc->calculate_address(addr)] = data;
         return;
@@ -205,4 +195,3 @@ void Cartridge::close() {
     save_sram();
     fclose(f);
 }
-

@@ -51,15 +51,19 @@ void Memory::write(uint16_t addr, uint8_t data) {
         uint8_t prev_stat = unsafe_read(0xFF41);
         uint8_t changes = prev_stat ^ data;
         unsafe_write(addr, data);
-        if (changes != 0) {
-            uint8_t mode = data & 0x3;
-            uint8_t lyc_eq = data >> 2 & 0x1;
-            for(int i=3;i<=6;i++) {
-                uint8_t select_flag = data >> i & 0x1;
-                if (select_flag == 1 && ((i < 6 && mode == i-3) || (i == 6 && lyc_eq == 1))) {
-                    Interrupts::set_interrupt_flag(1);
-                    break;
-                }
+        uint8_t mode = data & 0x3;
+        uint8_t lyc_eq = data >> 2 & 0x1;
+        for(uint8_t i = 0; i < 7; i++) {
+            uint8_t is_bit_changed = (changes >> i) & 0x1;
+            if (!is_bit_changed) continue;
+            if (i == 2 || i == 6) {
+                if ((data >> 6 & 0x1) == 1 && lyc_eq == 1) Interrupts::set_interrupt_flag(1);
+            }
+            else {
+                // if (((data >> (mode+3)) & 0x1) == 1) Interrupts::set_interrupt_flag(1); // WILL SOMEHOW CAUSE CATASTROPHIC ERROR
+                if ((data >> 3 & 0x1) == 1 && mode == 0) Interrupts::set_interrupt_flag(1);
+                else if ((data >> 4 & 0x1) == 1 && mode == 1) Interrupts::set_interrupt_flag(1);
+                else if ((data >> 5 & 0x1) == 1 && mode == 2) Interrupts::set_interrupt_flag(1);
             }
         }
         return;

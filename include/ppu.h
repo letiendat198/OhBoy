@@ -62,13 +62,13 @@ public:
 
     uint8_t ly = 0;
     uint8_t window_ly = 0;
-    uint8_t mode = 0;
+    bool enable = true;
 
     void oam_scan();
     void draw_scanline();
     void schedule_next_mode(uint8_t current_mode);
     void update_ly();
-    void update_stat();
+    void update_stat(uint8_t mode);
     void set_cgb_mode(bool is_cgb);
 
     ObjAttribute read_obj(uint16_t addr);
