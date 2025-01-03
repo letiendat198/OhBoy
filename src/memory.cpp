@@ -1,6 +1,7 @@
 #include "memory.h"
 
 #include <debugger.h>
+#include <dma.h>
 #include <format>
 #include <interrupts.h>
 
@@ -34,10 +35,14 @@ void Memory::write(uint16_t addr, uint8_t data) {
             hdma_requested = true;
             hdma_type = (data >> 7) & 0x1;
             logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", hdma_type, data & 0x7F);
+            if (hdma_type == 0) Scheduler::schedule(GDMA_TRANSFER, 0);
         }
         else {
             uint8_t terminate_bit = (data >> 7) & 0x1;
-            if (terminate_bit == 0) hdma_requested = false;
+            if (terminate_bit == 0) {
+                hdma_requested = false;
+                HDMA::reset_hdma();
+            }
             logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
         }
     }

@@ -64,6 +64,7 @@ void Scheduler::tick_frame() {
                 ppu.schedule_next_mode(3);
                 break;
             case HBLANK:
+                if (Memory::check_hdma() && Memory::get_hdma_type() == 1) schedule(HDMA_TRANSFER, 0);
                 ppu.draw_scanline();
                 ppu.update_stat(0);
                 ppu.schedule_next_mode(0);
@@ -80,13 +81,19 @@ void Scheduler::tick_frame() {
                 schedule(NEW_LINE, 114);
                 break;
             case DMA_TRANSFER:
-                DMA::transfer();
+                DMA::transfer_dma();
                 break;
             case DIV_TICK:
                 timer.tick_div();
                 break;
             case TIMA_TICK:
                 timer.tick_tima();
+                break;
+            case GDMA_TRANSFER:
+                HDMA::transfer_gdma();
+                break;
+            case HDMA_TRANSFER:
+                HDMA::transfer_hdma();
                 break;
             default:
                 logger.get_logger()->debug("Not yet implemented event");
