@@ -96,10 +96,10 @@ void PPU::draw_scanline() {
 
         tile_data = fetch_obj_tile_data(obj, lcdc, ly);
 
-        for (int x = obj.x_pos - 8; x<obj.x_pos;x++) {
+        for (int x = obj.x_pos - 8; x<obj.x_pos;x++) { // Signed is important
             if (x<0 || x >= 160) continue; // If x < 8 -> x - 8 > 160 cause wrap around so invalidate. Same for x >= 160
             if (!is_cgb && obj.priority == 1 && fill_table[x] != 0) continue;
-            if (fill_table[x] == 0xFF) continue;
+            if (fill_table[x] == 0xFF) continue; // Current pixel already have a higher priority obj -> Skip
             if (is_cgb && lcdc.bg_window_priority && (fill_table[x] >= 0xF0 || obj.priority) && (fill_table[x] & 0xF)>0) continue;
 
             uint8_t pixel_offset = 7 - ((x - obj.x_pos + 8) % 8);

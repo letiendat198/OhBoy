@@ -29,6 +29,7 @@ enum SchedulerEvent {
 struct SchedulerEventInfo {
     SchedulerEvent event;
     uint32_t cycle;
+    bool double_spd_affected;
     bool operator < (SchedulerEventInfo a) const {
         if (cycle == a.cycle) return event < a.event; // If 2 event occur on same cycle, sort by priority
         return cycle < a.cycle;

@@ -7,11 +7,13 @@ Scheduler::Scheduler() {
     schedule(SchedulerEvent::OAM_SCAN, 0);
     schedule(SchedulerEvent::NEW_LINE, 114);
     schedule(SchedulerEvent::DIV_TICK, 64);
-    schedule(SchedulerEvent::TIMA_TICK, 0); // Probably wrong
+    schedule(SchedulerEvent::TIMA_TICK, 256); // Probably wrong
 }
 
 void Scheduler::schedule(SchedulerEvent event, uint32_t cycle_to_go) {
-    SchedulerEventInfo event_info{event, cycle_to_go + current_cycle};
+    // if (static_cast<int>(event)>=5 && CPU::double_spd_mode) cycle_to_go /= 4;
+    // else cycle_to_go /= 2;
+    SchedulerEventInfo event_info{event, cycle_to_go + current_cycle, static_cast<int>(event)>=5};
     event_queue.insert(event_info);
     // logger.get_logger()->debug("Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
 }
@@ -36,7 +38,10 @@ SchedulerEventInfo Scheduler::progress() {
     }
     logger.get_logger()->debug("Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
     while(current_cycle < event_queue.begin()->cycle) {
-        if (!pause) current_cycle += cpu.tick();
+        if (!pause) {
+            current_cycle += cpu.tick();
+            if (CPU::double_spd_mode) cpu.tick(); // Don't know why this work
+        }
         else {
             current_cycle += 100;
         }
@@ -64,7 +69,7 @@ void Scheduler::tick_frame() {
                 ppu.schedule_next_mode(3);
                 break;
             case HBLANK:
-                if (Memory::check_hdma() && Memory::get_hdma_type() == 1) schedule(HDMA_TRANSFER, 0);
+                if (Memory::check_hdma() && Memory::get_hdma_type() == 1 && !cpu.halt) schedule(HDMA_TRANSFER, 0);
                 ppu.draw_scanline();
                 ppu.update_stat(0);
                 ppu.schedule_next_mode(0);

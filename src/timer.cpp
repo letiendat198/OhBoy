@@ -11,11 +11,11 @@ void Timer::tick_div() {
     Scheduler::schedule(DIV_TICK, 64);
 }
 
-
 void Timer::tick_tima() {
     TimerControl tac = read_tac();
     if (tac.enable) {
         uint8_t tima = (Memory::read(0xFF05) + 1) % 0x100;
+        // logger.get_logger()->debug("TIMA increased. Now: {:d}, rate: {:d}", tima, tac.increment_freq);
         if (tima == 0) {
             Interrupts::set_interrupt_flag(2);
             tima = Memory::read(0xFF06);

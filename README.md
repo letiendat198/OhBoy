@@ -1,6 +1,6 @@
 # OhBoy
 
-An M-Cycle accurate Game Boy/Game Boy Color emulator
+A Game Boy/Game Boy Color emulator
 
 The emulator core was written in C/C++ and the GUI was written in Rust (because C++ GUI libraries
 are either big or ugly)
@@ -34,6 +34,9 @@ Keyboard:
 - Download pre-built [SDL2](https://github.com/libsdl-org/SDL/releases/tag/release-2.30.8) (the devel-mingw variant), 
 rename it SDL2 then put it inside `deps` folder
 ```
+# Clone this repository and its dependencies
+git clone --recurse-submodules https://github.com/letiendat198/OhBoy.git
+
 # My Rust setup uses MSVC by default so I need to target it to build for MinGW
 # If your Rust setup is using MinGW already then skip this
 rustup target add --toolchain stable-x86_64-pc-windows-msvc x86_64-pc-windows-gnu

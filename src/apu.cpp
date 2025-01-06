@@ -53,7 +53,7 @@ void APU::tick() {
 }
 
 void APU::tick_div_apu() {
-    uint8_t bit_shift = CPU::double_spd_mode?5:4;
+    uint8_t bit_shift = 4;//CPU::double_spd_mode?5:4;
     uint8_t div = Memory::unsafe_read(0xFF04);
     uint8_t current_div_bit = (div >> bit_shift) & 0x1;
     if (current_div_bit == 0 && pre_div_bit == 1) {

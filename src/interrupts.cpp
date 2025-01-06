@@ -20,6 +20,7 @@ uint16_t Interrupts::check_and_service(uint8_t &ime){
                 case 1:
                     return 0x48;
                 case 2:
+                    logger.get_logger()->debug("Timer interrupt called");
                     return 0x50;
                 case 3:
                     return 0x58;
