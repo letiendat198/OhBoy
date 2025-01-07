@@ -36,6 +36,7 @@ public:
     uint32_t mcycle;
     CPU();
     uint32_t tick();
+    uint32_t fetch_next_length();
     bool handle_interrupts();
 
     void log_cpu();
@@ -154,40 +155,40 @@ public:
     void op_CBF0(); void op_CBF1(); void op_CBF2(); void op_CBF3(); void op_CBF4(); void op_CBF5(); void op_CBF6(); void op_CBF7(); void op_CBF8(); void op_CBF9(); void op_CBFA(); void op_CBFB(); void op_CBFC(); void op_CBFD(); void op_CBFE(); void op_CBFF();
 
     void (CPU::*jump_table[0xFF+1])() =
-        {CPU::op_00, CPU::op_01, CPU::op_02, CPU::op_03, CPU::op_04, CPU::op_05, CPU::op_06, CPU::op_07, CPU::op_08, CPU::op_09, CPU::op_0A, CPU::op_0B, CPU::op_0C, CPU::op_0D, CPU::op_0E, CPU::op_0F,
-        CPU::op_10, CPU::op_11, CPU::op_12, CPU::op_13, CPU::op_14, CPU::op_15, CPU::op_16, CPU::op_17, CPU::op_18, CPU::op_19, CPU::op_1A, CPU::op_1B, CPU::op_1C, CPU::op_1D, CPU::op_1E, CPU::op_1F,
-        CPU::op_20, CPU::op_21, CPU::op_22, CPU::op_23, CPU::op_24, CPU::op_25, CPU::op_26, CPU::op_27, CPU::op_28, CPU::op_29, CPU::op_2A, CPU::op_2B, CPU::op_2C, CPU::op_2D, CPU::op_2E, CPU::op_2F,
-        CPU::op_30, CPU::op_31, CPU::op_32, CPU::op_33, CPU::op_34, CPU::op_35, CPU::op_36, CPU::op_37, CPU::op_38, CPU::op_39, CPU::op_3A, CPU::op_3B, CPU::op_3C, CPU::op_3D, CPU::op_3E, CPU::op_3F,
-        CPU::op_40, CPU::op_41, CPU::op_42, CPU::op_43, CPU::op_44, CPU::op_45, CPU::op_46, CPU::op_47, CPU::op_48, CPU::op_49, CPU::op_4A, CPU::op_4B, CPU::op_4C, CPU::op_4D, CPU::op_4E, CPU::op_4F,
-        CPU::op_50, CPU::op_51, CPU::op_52, CPU::op_53, CPU::op_54, CPU::op_55, CPU::op_56, CPU::op_57, CPU::op_58, CPU::op_59, CPU::op_5A, CPU::op_5B, CPU::op_5C, CPU::op_5D, CPU::op_5E, CPU::op_5F,
-        CPU::op_60, CPU::op_61, CPU::op_62, CPU::op_63, CPU::op_64, CPU::op_65, CPU::op_66, CPU::op_67, CPU::op_68, CPU::op_69, CPU::op_6A, CPU::op_6B, CPU::op_6C, CPU::op_6D, CPU::op_6E, CPU::op_6F,
-        CPU::op_70, CPU::op_71, CPU::op_72, CPU::op_73, CPU::op_74, CPU::op_75, CPU::op_76, CPU::op_77, CPU::op_78, CPU::op_79, CPU::op_7A, CPU::op_7B, CPU::op_7C, CPU::op_7D, CPU::op_7E, CPU::op_7F,
-        CPU::op_80, CPU::op_81, CPU::op_82, CPU::op_83, CPU::op_84, CPU::op_85, CPU::op_86, CPU::op_87, CPU::op_88, CPU::op_89, CPU::op_8A, CPU::op_8B, CPU::op_8C, CPU::op_8D, CPU::op_8E, CPU::op_8F,
-        CPU::op_90, CPU::op_91, CPU::op_92, CPU::op_93, CPU::op_94, CPU::op_95, CPU::op_96, CPU::op_97, CPU::op_98, CPU::op_99, CPU::op_9A, CPU::op_9B, CPU::op_9C, CPU::op_9D, CPU::op_9E, CPU::op_9F,
-        CPU::op_A0, CPU::op_A1, CPU::op_A2, CPU::op_A3, CPU::op_A4, CPU::op_A5, CPU::op_A6, CPU::op_A7, CPU::op_A8, CPU::op_A9, CPU::op_AA, CPU::op_AB, CPU::op_AC, CPU::op_AD, CPU::op_AE, CPU::op_AF,
-        CPU::op_B0, CPU::op_B1, CPU::op_B2, CPU::op_B3, CPU::op_B4, CPU::op_B5, CPU::op_B6, CPU::op_B7, CPU::op_B8, CPU::op_B9, CPU::op_BA, CPU::op_BB, CPU::op_BC, CPU::op_BD, CPU::op_BE, CPU::op_BF,
-        CPU::op_C0, CPU::op_C1, CPU::op_C2, CPU::op_C3, CPU::op_C4, CPU::op_C5, CPU::op_C6, CPU::op_C7, CPU::op_C8, CPU::op_C9, CPU::op_CA, CPU::op_CB, CPU::op_CC, CPU::op_CD, CPU::op_CE, CPU::op_CF,
-        CPU::op_D0, CPU::op_D1, CPU::op_D2, CPU::op_D3, CPU::op_D4, CPU::op_D5, CPU::op_D6, CPU::op_D7, CPU::op_D8, CPU::op_D9, CPU::op_DA, CPU::op_DB, CPU::op_DC, CPU::op_DD, CPU::op_DE, CPU::op_DF,
-        CPU::op_E0, CPU::op_E1, CPU::op_E2, CPU::op_E3, CPU::op_E4, CPU::op_E5, CPU::op_E6, CPU::op_E7, CPU::op_E8, CPU::op_E9, CPU::op_EA, CPU::op_EB, CPU::op_EC, CPU::op_ED, CPU::op_EE, CPU::op_EF,
-        CPU::op_F0, CPU::op_F1, CPU::op_F2, CPU::op_F3, CPU::op_F4, CPU::op_F5, CPU::op_F6, CPU::op_F7, CPU::op_F8, CPU::op_F9, CPU::op_FA, CPU::op_FB, CPU::op_FC, CPU::op_FD, CPU::op_FE, CPU::op_FF};
+        {&CPU::op_00, &CPU::op_01, &CPU::op_02, &CPU::op_03, &CPU::op_04, &CPU::op_05, &CPU::op_06, &CPU::op_07, &CPU::op_08, &CPU::op_09, &CPU::op_0A, &CPU::op_0B, &CPU::op_0C, &CPU::op_0D, &CPU::op_0E, &CPU::op_0F,
+        &CPU::op_10, &CPU::op_11, &CPU::op_12, &CPU::op_13, &CPU::op_14, &CPU::op_15, &CPU::op_16, &CPU::op_17, &CPU::op_18, &CPU::op_19, &CPU::op_1A, &CPU::op_1B, &CPU::op_1C, &CPU::op_1D, &CPU::op_1E, &CPU::op_1F,
+        &CPU::op_20, &CPU::op_21, &CPU::op_22, &CPU::op_23, &CPU::op_24, &CPU::op_25, &CPU::op_26, &CPU::op_27, &CPU::op_28, &CPU::op_29, &CPU::op_2A, &CPU::op_2B, &CPU::op_2C, &CPU::op_2D, &CPU::op_2E, &CPU::op_2F,
+        &CPU::op_30, &CPU::op_31, &CPU::op_32, &CPU::op_33, &CPU::op_34, &CPU::op_35, &CPU::op_36, &CPU::op_37, &CPU::op_38, &CPU::op_39, &CPU::op_3A, &CPU::op_3B, &CPU::op_3C, &CPU::op_3D, &CPU::op_3E, &CPU::op_3F,
+        &CPU::op_40, &CPU::op_41, &CPU::op_42, &CPU::op_43, &CPU::op_44, &CPU::op_45, &CPU::op_46, &CPU::op_47, &CPU::op_48, &CPU::op_49, &CPU::op_4A, &CPU::op_4B, &CPU::op_4C, &CPU::op_4D, &CPU::op_4E, &CPU::op_4F,
+        &CPU::op_50, &CPU::op_51, &CPU::op_52, &CPU::op_53, &CPU::op_54, &CPU::op_55, &CPU::op_56, &CPU::op_57, &CPU::op_58, &CPU::op_59, &CPU::op_5A, &CPU::op_5B, &CPU::op_5C, &CPU::op_5D, &CPU::op_5E, &CPU::op_5F,
+        &CPU::op_60, &CPU::op_61, &CPU::op_62, &CPU::op_63, &CPU::op_64, &CPU::op_65, &CPU::op_66, &CPU::op_67, &CPU::op_68, &CPU::op_69, &CPU::op_6A, &CPU::op_6B, &CPU::op_6C, &CPU::op_6D, &CPU::op_6E, &CPU::op_6F,
+        &CPU::op_70, &CPU::op_71, &CPU::op_72, &CPU::op_73, &CPU::op_74, &CPU::op_75, &CPU::op_76, &CPU::op_77, &CPU::op_78, &CPU::op_79, &CPU::op_7A, &CPU::op_7B, &CPU::op_7C, &CPU::op_7D, &CPU::op_7E, &CPU::op_7F,
+        &CPU::op_80, &CPU::op_81, &CPU::op_82, &CPU::op_83, &CPU::op_84, &CPU::op_85, &CPU::op_86, &CPU::op_87, &CPU::op_88, &CPU::op_89, &CPU::op_8A, &CPU::op_8B, &CPU::op_8C, &CPU::op_8D, &CPU::op_8E, &CPU::op_8F,
+        &CPU::op_90, &CPU::op_91, &CPU::op_92, &CPU::op_93, &CPU::op_94, &CPU::op_95, &CPU::op_96, &CPU::op_97, &CPU::op_98, &CPU::op_99, &CPU::op_9A, &CPU::op_9B, &CPU::op_9C, &CPU::op_9D, &CPU::op_9E, &CPU::op_9F,
+        &CPU::op_A0, &CPU::op_A1, &CPU::op_A2, &CPU::op_A3, &CPU::op_A4, &CPU::op_A5, &CPU::op_A6, &CPU::op_A7, &CPU::op_A8, &CPU::op_A9, &CPU::op_AA, &CPU::op_AB, &CPU::op_AC, &CPU::op_AD, &CPU::op_AE, &CPU::op_AF,
+        &CPU::op_B0, &CPU::op_B1, &CPU::op_B2, &CPU::op_B3, &CPU::op_B4, &CPU::op_B5, &CPU::op_B6, &CPU::op_B7, &CPU::op_B8, &CPU::op_B9, &CPU::op_BA, &CPU::op_BB, &CPU::op_BC, &CPU::op_BD, &CPU::op_BE, &CPU::op_BF,
+        &CPU::op_C0, &CPU::op_C1, &CPU::op_C2, &CPU::op_C3, &CPU::op_C4, &CPU::op_C5, &CPU::op_C6, &CPU::op_C7, &CPU::op_C8, &CPU::op_C9, &CPU::op_CA, &CPU::op_CB, &CPU::op_CC, &CPU::op_CD, &CPU::op_CE, &CPU::op_CF,
+        &CPU::op_D0, &CPU::op_D1, &CPU::op_D2, &CPU::op_D3, &CPU::op_D4, &CPU::op_D5, &CPU::op_D6, &CPU::op_D7, &CPU::op_D8, &CPU::op_D9, &CPU::op_DA, &CPU::op_DB, &CPU::op_DC, &CPU::op_DD, &CPU::op_DE, &CPU::op_DF,
+        &CPU::op_E0, &CPU::op_E1, &CPU::op_E2, &CPU::op_E3, &CPU::op_E4, &CPU::op_E5, &CPU::op_E6, &CPU::op_E7, &CPU::op_E8, &CPU::op_E9, &CPU::op_EA, &CPU::op_EB, &CPU::op_EC, &CPU::op_ED, &CPU::op_EE, &CPU::op_EF,
+        &CPU::op_F0, &CPU::op_F1, &CPU::op_F2, &CPU::op_F3, &CPU::op_F4, &CPU::op_F5, &CPU::op_F6, &CPU::op_F7, &CPU::op_F8, &CPU::op_F9, &CPU::op_FA, &CPU::op_FB, &CPU::op_FC, &CPU::op_FD, &CPU::op_FE, &CPU::op_FF};
 
     void (CPU::*jump_table_prefixed[0xFF+1])() =
-        {CPU::op_CB00, CPU::op_CB01, CPU::op_CB02, CPU::op_CB03, CPU::op_CB04, CPU::op_CB05, CPU::op_CB06, CPU::op_CB07, CPU::op_CB08, CPU::op_CB09, CPU::op_CB0A, CPU::op_CB0B, CPU::op_CB0C, CPU::op_CB0D, CPU::op_CB0E, CPU::op_CB0F,
-        CPU::op_CB10, CPU::op_CB11, CPU::op_CB12, CPU::op_CB13, CPU::op_CB14, CPU::op_CB15, CPU::op_CB16, CPU::op_CB17, CPU::op_CB18, CPU::op_CB19, CPU::op_CB1A, CPU::op_CB1B, CPU::op_CB1C, CPU::op_CB1D, CPU::op_CB1E, CPU::op_CB1F,
-        CPU::op_CB20, CPU::op_CB21, CPU::op_CB22, CPU::op_CB23, CPU::op_CB24, CPU::op_CB25, CPU::op_CB26, CPU::op_CB27, CPU::op_CB28, CPU::op_CB29, CPU::op_CB2A, CPU::op_CB2B, CPU::op_CB2C, CPU::op_CB2D, CPU::op_CB2E, CPU::op_CB2F,
-        CPU::op_CB30, CPU::op_CB31, CPU::op_CB32, CPU::op_CB33, CPU::op_CB34, CPU::op_CB35, CPU::op_CB36, CPU::op_CB37, CPU::op_CB38, CPU::op_CB39, CPU::op_CB3A, CPU::op_CB3B, CPU::op_CB3C, CPU::op_CB3D, CPU::op_CB3E, CPU::op_CB3F,
-        CPU::op_CB40, CPU::op_CB41, CPU::op_CB42, CPU::op_CB43, CPU::op_CB44, CPU::op_CB45, CPU::op_CB46, CPU::op_CB47, CPU::op_CB48, CPU::op_CB49, CPU::op_CB4A, CPU::op_CB4B, CPU::op_CB4C, CPU::op_CB4D, CPU::op_CB4E, CPU::op_CB4F,
-        CPU::op_CB50, CPU::op_CB51, CPU::op_CB52, CPU::op_CB53, CPU::op_CB54, CPU::op_CB55, CPU::op_CB56, CPU::op_CB57, CPU::op_CB58, CPU::op_CB59, CPU::op_CB5A, CPU::op_CB5B, CPU::op_CB5C, CPU::op_CB5D, CPU::op_CB5E, CPU::op_CB5F,
-        CPU::op_CB60, CPU::op_CB61, CPU::op_CB62, CPU::op_CB63, CPU::op_CB64, CPU::op_CB65, CPU::op_CB66, CPU::op_CB67, CPU::op_CB68, CPU::op_CB69, CPU::op_CB6A, CPU::op_CB6B, CPU::op_CB6C, CPU::op_CB6D, CPU::op_CB6E, CPU::op_CB6F,
-        CPU::op_CB70, CPU::op_CB71, CPU::op_CB72, CPU::op_CB73, CPU::op_CB74, CPU::op_CB75, CPU::op_CB76, CPU::op_CB77, CPU::op_CB78, CPU::op_CB79, CPU::op_CB7A, CPU::op_CB7B, CPU::op_CB7C, CPU::op_CB7D, CPU::op_CB7E, CPU::op_CB7F,
-        CPU::op_CB80, CPU::op_CB81, CPU::op_CB82, CPU::op_CB83, CPU::op_CB84, CPU::op_CB85, CPU::op_CB86, CPU::op_CB87, CPU::op_CB88, CPU::op_CB89, CPU::op_CB8A, CPU::op_CB8B, CPU::op_CB8C, CPU::op_CB8D, CPU::op_CB8E, CPU::op_CB8F,
-        CPU::op_CB90, CPU::op_CB91, CPU::op_CB92, CPU::op_CB93, CPU::op_CB94, CPU::op_CB95, CPU::op_CB96, CPU::op_CB97, CPU::op_CB98, CPU::op_CB99, CPU::op_CB9A, CPU::op_CB9B, CPU::op_CB9C, CPU::op_CB9D, CPU::op_CB9E, CPU::op_CB9F,
-        CPU::op_CBA0, CPU::op_CBA1, CPU::op_CBA2, CPU::op_CBA3, CPU::op_CBA4, CPU::op_CBA5, CPU::op_CBA6, CPU::op_CBA7, CPU::op_CBA8, CPU::op_CBA9, CPU::op_CBAA, CPU::op_CBAB, CPU::op_CBAC, CPU::op_CBAD, CPU::op_CBAE, CPU::op_CBAF,
-        CPU::op_CBB0, CPU::op_CBB1, CPU::op_CBB2, CPU::op_CBB3, CPU::op_CBB4, CPU::op_CBB5, CPU::op_CBB6, CPU::op_CBB7, CPU::op_CBB8, CPU::op_CBB9, CPU::op_CBBA, CPU::op_CBBB, CPU::op_CBBC, CPU::op_CBBD, CPU::op_CBBE, CPU::op_CBBF,
-        CPU::op_CBC0, CPU::op_CBC1, CPU::op_CBC2, CPU::op_CBC3, CPU::op_CBC4, CPU::op_CBC5, CPU::op_CBC6, CPU::op_CBC7, CPU::op_CBC8, CPU::op_CBC9, CPU::op_CBCA, CPU::op_CBCB, CPU::op_CBCC, CPU::op_CBCD, CPU::op_CBCE, CPU::op_CBCF,
-        CPU::op_CBD0, CPU::op_CBD1, CPU::op_CBD2, CPU::op_CBD3, CPU::op_CBD4, CPU::op_CBD5, CPU::op_CBD6, CPU::op_CBD7, CPU::op_CBD8, CPU::op_CBD9, CPU::op_CBDA, CPU::op_CBDB, CPU::op_CBDC, CPU::op_CBDD, CPU::op_CBDE, CPU::op_CBDF,
-        CPU::op_CBE0, CPU::op_CBE1, CPU::op_CBE2, CPU::op_CBE3, CPU::op_CBE4, CPU::op_CBE5, CPU::op_CBE6, CPU::op_CBE7, CPU::op_CBE8, CPU::op_CBE9, CPU::op_CBEA, CPU::op_CBEB, CPU::op_CBEC, CPU::op_CBED, CPU::op_CBEE, CPU::op_CBEF,
-        CPU::op_CBF0, CPU::op_CBF1, CPU::op_CBF2, CPU::op_CBF3, CPU::op_CBF4, CPU::op_CBF5, CPU::op_CBF6, CPU::op_CBF7, CPU::op_CBF8, CPU::op_CBF9, CPU::op_CBFA, CPU::op_CBFB, CPU::op_CBFC, CPU::op_CBFD, CPU::op_CBFE, CPU::op_CBFF};
+        {&CPU::op_CB00, &CPU::op_CB01, &CPU::op_CB02, &CPU::op_CB03, &CPU::op_CB04, &CPU::op_CB05, &CPU::op_CB06, &CPU::op_CB07, &CPU::op_CB08, &CPU::op_CB09, &CPU::op_CB0A, &CPU::op_CB0B, &CPU::op_CB0C, &CPU::op_CB0D, &CPU::op_CB0E, &CPU::op_CB0F,
+        &CPU::op_CB10, &CPU::op_CB11, &CPU::op_CB12, &CPU::op_CB13, &CPU::op_CB14, &CPU::op_CB15, &CPU::op_CB16, &CPU::op_CB17, &CPU::op_CB18, &CPU::op_CB19, &CPU::op_CB1A, &CPU::op_CB1B, &CPU::op_CB1C, &CPU::op_CB1D, &CPU::op_CB1E, &CPU::op_CB1F,
+        &CPU::op_CB20, &CPU::op_CB21, &CPU::op_CB22, &CPU::op_CB23, &CPU::op_CB24, &CPU::op_CB25, &CPU::op_CB26, &CPU::op_CB27, &CPU::op_CB28, &CPU::op_CB29, &CPU::op_CB2A, &CPU::op_CB2B, &CPU::op_CB2C, &CPU::op_CB2D, &CPU::op_CB2E, &CPU::op_CB2F,
+        &CPU::op_CB30, &CPU::op_CB31, &CPU::op_CB32, &CPU::op_CB33, &CPU::op_CB34, &CPU::op_CB35, &CPU::op_CB36, &CPU::op_CB37, &CPU::op_CB38, &CPU::op_CB39, &CPU::op_CB3A, &CPU::op_CB3B, &CPU::op_CB3C, &CPU::op_CB3D, &CPU::op_CB3E, &CPU::op_CB3F,
+        &CPU::op_CB40, &CPU::op_CB41, &CPU::op_CB42, &CPU::op_CB43, &CPU::op_CB44, &CPU::op_CB45, &CPU::op_CB46, &CPU::op_CB47, &CPU::op_CB48, &CPU::op_CB49, &CPU::op_CB4A, &CPU::op_CB4B, &CPU::op_CB4C, &CPU::op_CB4D, &CPU::op_CB4E, &CPU::op_CB4F,
+        &CPU::op_CB50, &CPU::op_CB51, &CPU::op_CB52, &CPU::op_CB53, &CPU::op_CB54, &CPU::op_CB55, &CPU::op_CB56, &CPU::op_CB57, &CPU::op_CB58, &CPU::op_CB59, &CPU::op_CB5A, &CPU::op_CB5B, &CPU::op_CB5C, &CPU::op_CB5D, &CPU::op_CB5E, &CPU::op_CB5F,
+        &CPU::op_CB60, &CPU::op_CB61, &CPU::op_CB62, &CPU::op_CB63, &CPU::op_CB64, &CPU::op_CB65, &CPU::op_CB66, &CPU::op_CB67, &CPU::op_CB68, &CPU::op_CB69, &CPU::op_CB6A, &CPU::op_CB6B, &CPU::op_CB6C, &CPU::op_CB6D, &CPU::op_CB6E, &CPU::op_CB6F,
+        &CPU::op_CB70, &CPU::op_CB71, &CPU::op_CB72, &CPU::op_CB73, &CPU::op_CB74, &CPU::op_CB75, &CPU::op_CB76, &CPU::op_CB77, &CPU::op_CB78, &CPU::op_CB79, &CPU::op_CB7A, &CPU::op_CB7B, &CPU::op_CB7C, &CPU::op_CB7D, &CPU::op_CB7E, &CPU::op_CB7F,
+        &CPU::op_CB80, &CPU::op_CB81, &CPU::op_CB82, &CPU::op_CB83, &CPU::op_CB84, &CPU::op_CB85, &CPU::op_CB86, &CPU::op_CB87, &CPU::op_CB88, &CPU::op_CB89, &CPU::op_CB8A, &CPU::op_CB8B, &CPU::op_CB8C, &CPU::op_CB8D, &CPU::op_CB8E, &CPU::op_CB8F,
+        &CPU::op_CB90, &CPU::op_CB91, &CPU::op_CB92, &CPU::op_CB93, &CPU::op_CB94, &CPU::op_CB95, &CPU::op_CB96, &CPU::op_CB97, &CPU::op_CB98, &CPU::op_CB99, &CPU::op_CB9A, &CPU::op_CB9B, &CPU::op_CB9C, &CPU::op_CB9D, &CPU::op_CB9E, &CPU::op_CB9F,
+        &CPU::op_CBA0, &CPU::op_CBA1, &CPU::op_CBA2, &CPU::op_CBA3, &CPU::op_CBA4, &CPU::op_CBA5, &CPU::op_CBA6, &CPU::op_CBA7, &CPU::op_CBA8, &CPU::op_CBA9, &CPU::op_CBAA, &CPU::op_CBAB, &CPU::op_CBAC, &CPU::op_CBAD, &CPU::op_CBAE, &CPU::op_CBAF,
+        &CPU::op_CBB0, &CPU::op_CBB1, &CPU::op_CBB2, &CPU::op_CBB3, &CPU::op_CBB4, &CPU::op_CBB5, &CPU::op_CBB6, &CPU::op_CBB7, &CPU::op_CBB8, &CPU::op_CBB9, &CPU::op_CBBA, &CPU::op_CBBB, &CPU::op_CBBC, &CPU::op_CBBD, &CPU::op_CBBE, &CPU::op_CBBF,
+        &CPU::op_CBC0, &CPU::op_CBC1, &CPU::op_CBC2, &CPU::op_CBC3, &CPU::op_CBC4, &CPU::op_CBC5, &CPU::op_CBC6, &CPU::op_CBC7, &CPU::op_CBC8, &CPU::op_CBC9, &CPU::op_CBCA, &CPU::op_CBCB, &CPU::op_CBCC, &CPU::op_CBCD, &CPU::op_CBCE, &CPU::op_CBCF,
+        &CPU::op_CBD0, &CPU::op_CBD1, &CPU::op_CBD2, &CPU::op_CBD3, &CPU::op_CBD4, &CPU::op_CBD5, &CPU::op_CBD6, &CPU::op_CBD7, &CPU::op_CBD8, &CPU::op_CBD9, &CPU::op_CBDA, &CPU::op_CBDB, &CPU::op_CBDC, &CPU::op_CBDD, &CPU::op_CBDE, &CPU::op_CBDF,
+        &CPU::op_CBE0, &CPU::op_CBE1, &CPU::op_CBE2, &CPU::op_CBE3, &CPU::op_CBE4, &CPU::op_CBE5, &CPU::op_CBE6, &CPU::op_CBE7, &CPU::op_CBE8, &CPU::op_CBE9, &CPU::op_CBEA, &CPU::op_CBEB, &CPU::op_CBEC, &CPU::op_CBED, &CPU::op_CBEE, &CPU::op_CBEF,
+        &CPU::op_CBF0, &CPU::op_CBF1, &CPU::op_CBF2, &CPU::op_CBF3, &CPU::op_CBF4, &CPU::op_CBF5, &CPU::op_CBF6, &CPU::op_CBF7, &CPU::op_CBF8, &CPU::op_CBF9, &CPU::op_CBFA, &CPU::op_CBFB, &CPU::op_CBFC, &CPU::op_CBFD, &CPU::op_CBFE, &CPU::op_CBFF};
 };
 
 #endif

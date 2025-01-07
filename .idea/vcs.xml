@@ -3,6 +3,6 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/deps/imgui" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/gameboy-doctor" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/out/build/x64-Debug/_deps/corrosion-src" vcs="Git" />
   </component>
 </project>

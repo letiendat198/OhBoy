@@ -1,4 +1,5 @@
 #include <ppu.h>
+#include <algorithm>
 
 #include "scheduler.h"
 

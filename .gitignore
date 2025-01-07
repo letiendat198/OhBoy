@@ -1,9 +1,11 @@
+.vs
 cmake-build-debug
 cmake-build-release
-gameboy-doctor
+out
 venv
 roms
 deps/SDL2
+deps/SDL2-VC
 gui/target
 gui/*.ini
 gui/*.log

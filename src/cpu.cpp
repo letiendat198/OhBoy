@@ -35,7 +35,7 @@ void CPU::log_cpu() {
 }
 
 uint32_t CPU::tick(){
-    if (handle_interrupts()) return mcycle;
+    // if (handle_interrupts()) return mcycle;
     if (halt == 1) return 1; // No HALT bug
     // if (Memory::check_hdma()) { // CPU halted during HDMA
     //     if (Memory::get_hdma_type()==0) return 1;
@@ -50,9 +50,16 @@ uint32_t CPU::tick(){
         ime_next = false;
     } // EI is delayed by 1 instr
 
+    exec_flag = true;
     (this->*jump_table[Memory::read(pc)])();
     pc+=opskip;
 
+    return mcycle;
+}
+
+uint32_t CPU::fetch_next_length() {
+    exec_flag = false;
+    (this->*jump_table[Memory::read(pc)])();
     return mcycle;
 }
 

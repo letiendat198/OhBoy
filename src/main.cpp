@@ -40,7 +40,7 @@ int main(int argc , char **argv){
         auto t2 = std::chrono::steady_clock::now(); // Capture render + cycle time
         double elapse = chrono::duration<double, std::milli>(t2-t1).count();
         if (elapse < MS_PER_FRAME) { // If still have some time left in this frame -> Sleep
-            _sleep(MS_PER_FRAME - elapse);
+            std::this_thread::sleep_for(chrono::duration<double, milli>(MS_PER_FRAME - elapse));
         }
         t1 = std::chrono::steady_clock::now(); // Capture time at the start of new frame
         debugger.render();

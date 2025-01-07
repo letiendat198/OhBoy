@@ -32,22 +32,23 @@ void Scheduler::reschedule(SchedulerEvent event, uint32_t cycle) {
     schedule(event, cycle);
 }
 
+bool interrupt_already_fired = false;
+
 SchedulerEventInfo Scheduler::progress() {
     if (event_queue.begin() == event_queue.end()) {
         logger.get_logger()->debug("Event queue empty!");
     }
     logger.get_logger()->debug("Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
-    while(current_cycle < event_queue.begin()->cycle) {
-        if (!pause) {
-            current_cycle += cpu.tick();
-            if (CPU::double_spd_mode) cpu.tick(); // Don't know why this work
-        }
-        else {
-            current_cycle += 100;
-        }
-        // Joypad need to tick every cycle because game will read and reset register value
-        // Actual keyboard update can be done once per frame. Can probably optimize by tick per joypad register read
+    while (true) {
         Joypad::tick();
+        if (current_cycle + cpu.fetch_next_length() > event_queue.begin()->cycle) {
+            cpu.handle_interrupts();
+            interrupt_already_fired = true;
+            break;
+        }
+        if (!interrupt_already_fired) cpu.handle_interrupts();
+        current_cycle += cpu.tick();
+        interrupt_already_fired = false;
     }
     return event_queue.extract(event_queue.begin()).value();
 }
