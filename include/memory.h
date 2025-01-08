@@ -9,18 +9,25 @@ private:
     inline static uint8_t* memory = new uint8_t[0x3FFF+1]();
     inline static uint8_t* vram = new uint8_t[0x2000*2]();
     inline static uint8_t* wram = new uint8_t[0x1000*7]();
+
     inline static uint8_t* bg_cram = new uint8_t[64]();
     inline static uint8_t* obj_cram = new uint8_t[64]();
+    inline static bool bg_auto_inc = false;
+    inline static bool obj_auto_inc = false;
+
     inline static uint8_t vram_bank = 0;
     inline static uint8_t wram_bank = 0;
+
     inline static bool oam_lock = false;
     inline static bool vram_lock = false;
     inline static bool dma_lock = false;
+
     inline static bool dma_requested = false;
     inline static bool hdma_requested = false;
     inline static uint8_t hdma_type = 0; // 0 - GDMA, 1 - HDMA
-    inline static bool bg_auto_inc = false;
-    inline static bool obj_auto_inc = false;
+
+    inline static bool is_boot = true;
+
     inline static Logger logger = Logger("Memory");
 public:
     inline static Cartridge cartridge;

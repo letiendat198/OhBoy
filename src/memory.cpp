@@ -28,30 +28,9 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF50:  // Write to this turn off boot
         {
-            cartridge.boot_off();
+            is_boot = false;
             break;
         }
-        // case 0xFF05:  // TAC
-        // {
-        //     uint8_t clk_select = data & 0x3;
-        //     uint16_t inc_step;
-        //     switch (clk_select) {
-        //         case 0:
-        //             inc_step = 256;
-        //         break;
-        //         case 1:
-        //             inc_step = 4;
-        //         break;
-        //         case 2:
-        //             inc_step = 16;
-        //         break;
-        //         case 3:
-        //             inc_step = 64;
-        //         break;
-        //     }
-        //     Scheduler::reschedule(TIMA_TICK, inc_step);
-        //     break;
-        // }
         case 0xFF46: // Capture DMA
         {
             if (!dma_requested) Scheduler::schedule(DMA_TRANSFER, 0);
@@ -178,8 +157,16 @@ bool Memory::can_read(unsigned short addr) {
 }
 
 uint8_t Memory::unsafe_read(uint16_t addr) {
-    if (addr <= 0x7FFF || (0xA000 <= addr && addr <= 0xBFFF)) {
-        return cartridge.read(addr);
+    if (addr <= 0x3FFF) {
+        if (addr < 0x100 && is_boot) return *(cartridge.boot_data + addr);
+        return *(cartridge.rom_data + addr);
+    }
+    if (0x4000 <= addr && addr <= 0x7FFF) {
+        return *(cartridge.rom_data + (addr - 0x4000) + cartridge.rom_bank*0x4000);
+    }
+    if (0xA000 <= addr && addr <= 0xBFFF) {
+        if (cartridge.ram_enable) return *(cartridge.rom_data + (addr - 0xA000) + cartridge.ram_bank*0x2000);
+        else return 0xFF;
     }
     if (0xD000 <= addr && addr <= 0xDFFF) {
         return read_wram(addr, wram_bank);
@@ -195,8 +182,13 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
 
 void Memory::unsafe_write(uint16_t addr, uint8_t data) {
     // Re-route
-    if (addr <= 0x7FFF || (0xA000 <= addr && addr <= 0xBFFF)) {
-        return cartridge.write(addr, data);
+    if (addr <= 0x7FFF) {
+        cartridge.mbc.update_registers(addr, data);
+        return;
+    }
+     if (0xA000 <= addr && addr <= 0xBFFF) {
+        if (cartridge.ram_enable) *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000) = data;
+        return;
     }
     if (0xD000 <= addr && addr <= 0xDFFF) {
         return write_wram(addr, data, wram_bank);
@@ -217,11 +209,11 @@ bool Memory::init_cartridge(const char* file) {
 }
 
 bool Memory::is_cartridge_cgb() {
-    return cartridge.cgb_mode;
+    return cartridge.is_cgb;
 }
 
 void Memory::close_cartridge() {
-    cartridge.close();
+    // cartridge.close();
 }
 
 uint8_t Memory::read_vram(uint16_t addr, uint8_t bank) { // Low level VRAM access - Won't automatically use current bank

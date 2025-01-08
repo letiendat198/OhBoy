@@ -27,14 +27,12 @@ add_executable(OhBoy src/main.cpp
         src/timer.cpp
         src/dma.cpp
         src/joypad.cpp
-        src/mbc1.cpp
-        src/mbc5.cpp
         deps/popl/include/popl.hpp
-        src/mbc3.cpp
         src/apu.cpp
         deps/blip_buf/blip_buf.c
         src/scheduler.cpp
         include/scheduler.h
+        src/mbc.cpp
 )
 
 include(FetchContent)
