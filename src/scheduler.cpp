@@ -1,3 +1,4 @@
+#include <debugger.h>
 #include <dma.h>
 #include <interrupts.h>
 #include <joypad.h>
@@ -38,7 +39,7 @@ SchedulerEventInfo Scheduler::progress() {
     if (event_queue.begin() == event_queue.end()) {
         logger.get_logger()->debug("Event queue empty!");
     }
-    logger.get_logger()->debug("Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
+    // logger.get_logger()->debug("Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
     while (true) {
         Joypad::tick();
         if (current_cycle + cpu.fetch_next_length() > event_queue.begin()->cycle) {
@@ -80,6 +81,7 @@ void Scheduler::tick_frame() {
                 Interrupts::set_interrupt_flag(0);
                 ppu.update_stat(1);
                 ppu.schedule_next_mode(1);
+                debugger->render();
                 break;
             case NEW_LINE:
                 ppu.update_ly();
@@ -106,7 +108,7 @@ void Scheduler::tick_frame() {
         }
         current_cycle = cycle_backup; // Restore context
     }
-    logger.get_logger()->debug("Turn around at cycle: {:d}", current_cycle);
+    // logger.get_logger()->debug("Turn around at cycle: {:d}", current_cycle);
     current_cycle -= CYCLE_PER_FRAME;
     std::set<SchedulerEventInfo> temp;
     for(auto event_info : event_queue) {
@@ -115,6 +117,10 @@ void Scheduler::tick_frame() {
         temp.insert(event_info);
     }
     event_queue.swap(temp);
+}
+
+void Scheduler::set_render_callback(Debugger *debugger) {
+    this->debugger = debugger;
 }
 
 

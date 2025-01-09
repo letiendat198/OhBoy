@@ -28,7 +28,6 @@ add_executable(OhBoy src/main.cpp
         src/dma.cpp
         src/joypad.cpp
         deps/popl/include/popl.hpp
-        src/apu.cpp
         deps/blip_buf/blip_buf.c
         src/scheduler.cpp
         include/scheduler.h

@@ -13,10 +13,12 @@ enum MBC_TYPES {
 
 class MBC {
 private:
+    Logger logger = Logger("MBC");
     Cartridge *cartridge;
 
     uint8_t rom_bank_low = 1;
     uint8_t rom_bank_high = 0;
+    uint8_t ram_bank = 0;
     uint8_t bank_mode = 0;
 public:
     MBC_TYPES mbc_type{};

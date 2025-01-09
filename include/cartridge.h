@@ -24,9 +24,11 @@ public:
     uint8_t *boot_data = nullptr;
     uint8_t *rom_data = nullptr;
     uint8_t *external_ram = nullptr;
-    uint16_t rom_bank = 1;
-    uint16_t ram_bank = 0;
+    uint32_t rom_bank = 1;
+    uint32_t ram_bank = 0;
     bool ram_enable = false;
+
+    uint32_t external_ram_size = 0;
 
     bool is_cgb = false;
     MBC mbc = MBC(this);

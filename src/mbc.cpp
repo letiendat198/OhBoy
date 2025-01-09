@@ -21,7 +21,7 @@ void MBC::update_registers(uint16_t addr, uint8_t data) {
             else if (0x4000 <= addr && addr <= 0x5FFF) {
                 uint8_t ram_bank_request = data & 0x3;
                 if (cartridge->header.ram_banks > 0) {
-                    cartridge->ram_bank = ram_bank_request % cartridge->header.ram_banks;
+                    ram_bank = ram_bank_request % cartridge->header.ram_banks;
                 }
                 rom_bank_high = ram_bank_request;
             }
@@ -29,6 +29,8 @@ void MBC::update_registers(uint16_t addr, uint8_t data) {
                 bank_mode = data & 0x1;
             }
             cartridge->rom_bank = ((rom_bank_high << 5) | rom_bank_low) % cartridge->header.rom_banks;
+            if (bank_mode == 1) cartridge->ram_bank = ram_bank;
+            else cartridge->ram_bank = 0;
             break;
         }
         case MBC3: {

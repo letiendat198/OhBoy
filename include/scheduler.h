@@ -8,6 +8,8 @@
 #include <config.h>
 #include <queue>
 
+class Debugger;
+
 enum SchedulerEvent {
     // PPU
     NEW_LINE,
@@ -39,13 +41,13 @@ struct SchedulerEventInfo {
 class Scheduler {
 private:
     inline static std::set<SchedulerEventInfo> event_queue;
-
     Timer timer;
+
+    Debugger *debugger = nullptr;
 public:
     inline static Logger logger = Logger("Scheduler");
     CPU cpu;
     PPU ppu;
-    APU apu;
 
     inline static uint32_t current_cycle = 0;
 
@@ -57,6 +59,8 @@ public:
     static void reschedule(SchedulerEvent event, uint32_t cycle);
     SchedulerEventInfo progress();
     void tick_frame();
+
+    void set_render_callback(Debugger *debugger);
 };
 
 #endif //SCHEDULER_H

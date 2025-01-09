@@ -6,14 +6,13 @@
 #include <interrupts.h>
 
 uint8_t Memory::read(uint16_t addr) {
-    if (addr == 0xFF55) {
-        logger.get_logger()->debug("Reading HDMA5 register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
-        return (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F);
+    switch (addr) {
+        case 0xFF55: {
+            logger.get_logger()->debug("Reading HDMA5 register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
+            return (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F);
+        }
     }
-    if (can_read(addr)) {
-        return unsafe_read(addr);
-    }
-    return 0xFF;
+    return unsafe_read(addr);
 }
 
 void Memory::write(uint16_t addr, uint8_t data) {
@@ -33,7 +32,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF46: // Capture DMA
         {
-            if (!dma_requested) Scheduler::schedule(DMA_TRANSFER, 0);
+            Scheduler::schedule(DMA_TRANSFER, 0);
             break;
         }
         case 0xFF55: {
@@ -111,62 +110,34 @@ void Memory::write(uint16_t addr, uint8_t data) {
             if (obj_auto_inc) write(0xFF6A, (obpi & 0xC0) | ((palette_addr + 1) % 64));
             break;
         }
-        case 0xFF14: {
-            c1_trigger = data >> 7;
-            break;
-        }
-        case 0xFF19: {
-            c2_trigger = data >> 7;
-            break;
-        }
-        case 0xFF1E: {
-            c3_trigger = data >> 7;
-            break;
-        }
         case 0xFF4F: {
             vram_bank = data & 0x1;
             break;
         }
         case 0xFF70: {
             uint8_t bank_number = data & 0x7;
-            wram_bank = bank_number?bank_number-1:0;
+            wram_bank = bank_number?bank_number:1;
             break;
         }
     }
 
-    if (can_write(addr)) {
-        unsafe_write(addr, data);
-    }
-}
-
-bool Memory::can_write(uint16_t addr) {
-    if ((0xE000 <= addr && addr <= 0xFDFF) || (0xFEA0 <= addr && addr <= 0xFEFF)) {
-        return false;
-    }
-    if (oam_lock && (0xFE00 <= addr && addr <= 0xFE9F)) return false;
-    if (vram_lock && (0x8000 <= addr && addr <= 0x9FFF)) return false;
-    if (dma_lock && (addr < 0xFF80 || addr > 0xFFFE)) return false;
-    return true;
-}
-
-bool Memory::can_read(unsigned short addr) {
-    if (oam_lock && (0xFE00 <= addr && addr <= 0xFE9F)) return false;
-    if (vram_lock && (0x8000 <= addr && addr <= 0x9FFF)) return false;
-    if (dma_lock && (addr < 0xFF80 || addr > 0xFFFE)) return false;
-    return true;
+    unsafe_write(addr, data);
 }
 
 uint8_t Memory::unsafe_read(uint16_t addr) {
     if (addr <= 0x3FFF) {
-        if (addr < 0x100 && is_boot) return *(cartridge.boot_data + addr);
+        if (is_boot && (addr < 0x100 || (cartridge.is_cgb && 0x200<=addr && addr<=0x8FF))) return *(cartridge.boot_data + addr);
         return *(cartridge.rom_data + addr);
     }
     if (0x4000 <= addr && addr <= 0x7FFF) {
         return *(cartridge.rom_data + (addr - 0x4000) + cartridge.rom_bank*0x4000);
     }
     if (0xA000 <= addr && addr <= 0xBFFF) {
-        if (cartridge.ram_enable) return *(cartridge.rom_data + (addr - 0xA000) + cartridge.ram_bank*0x2000);
+        if (cartridge.ram_enable) return *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000);
         else return 0xFF;
+    }
+    if (0xC000 <= addr && addr <= 0xCFFF) {
+        return read_wram(addr, 0);
     }
     if (0xD000 <= addr && addr <= 0xDFFF) {
         return read_wram(addr, wram_bank);
@@ -174,10 +145,7 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
     if (0x8000 <= addr && addr <= 0x9FFF) {
         return read_vram(addr, vram_bank);
     }
-    if (0xE000 <= addr && addr <= 0xFDFF) { // Echo RAM
-        return memory[addr - 0xC000 - 0x2000];
-    }
-    return memory[addr - 0xC000];
+    return memory[addr - 0xE000];
 }
 
 void Memory::unsafe_write(uint16_t addr, uint8_t data) {
@@ -190,19 +158,33 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
         if (cartridge.ram_enable) *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000) = data;
         return;
     }
+    if (0xC000 <= addr && addr <= 0xCFFF) {
+        return write_wram(addr, data, 0);
+    }
     if (0xD000 <= addr && addr <= 0xDFFF) {
         return write_wram(addr, data, wram_bank);
     }
     if (0x8000 <= addr && addr <= 0x9FFF) {
         return write_vram(addr, data, vram_bank);
     }
-    if (0xE000 <= addr && addr <= 0xFDFF) { // Echo RAM
-        *(memory+addr - 0xC000 - 0x2000) = data;
-        return;
-    }
 
-    *(memory+addr - 0xC000) = data;
+    *(memory+addr - 0xE000) = data;
 }
+
+void Memory::memcpy(uint16_t dest_addr, uint16_t src_addr, uint16_t length) {
+    uint16_t fragment_points[7] = {0x3FFF, 0x7FFF, 0x9FFF, 0xBFFF, 0xCFFF, 0xDFFF, 0xFFFF};
+    uint8_t *fragment_ptr[7] = {cartridge.rom_data, cartridge.rom_data + cartridge.rom_bank*0x4000,
+        vram + vram_bank*0x2000, cartridge.external_ram + cartridge.ram_bank*0x2000,
+        wram, wram + wram_bank*0x1000, memory};
+
+    uint8_t src_blk = 0;
+    uint8_t dest_blk = 0;
+    for(;src_blk<7;src_blk++) if (fragment_points[src_blk] >= src_addr) break;
+    for(;dest_blk<7;dest_blk++) if (fragment_points[dest_blk] >= dest_addr) break;
+
+
+}
+
 
 bool Memory::init_cartridge(const char* file) {
     return cartridge.init(file);
@@ -276,28 +258,4 @@ uint8_t *Memory::get_raw_vram() {
 
 uint8_t *Memory::get_raw_wram() {
     return wram;
-}
-
-void Memory::lock_oam() {
-    oam_lock = true;
-}
-
-void Memory::unlock_oam() {
-    oam_lock = false;
-}
-
-void Memory::lock_vram() {
-    vram_lock = true;
-}
-
-void Memory::unlock_vram() {
-    vram_lock = false;
-}
-
-void Memory::lock_dma() {
-    dma_lock = true;
-}
-
-void Memory::unlock_dma() {
-    dma_lock = false;
 }

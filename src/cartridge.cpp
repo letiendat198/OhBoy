@@ -36,25 +36,8 @@ CartridgeHeader read_cartridge_header(uint8_t *rom_data) {
     metadata.mbc_type = rom_data[0x0147];
     metadata.rom_size = (32 * (1<<rom_data[0x0148]));
     metadata.rom_banks = metadata.rom_size / 16;
-    uint8_t ram_size = rom_data[0x0149];
-    switch (ram_size) {
-        case 0x0:
-        case 0x1:
-            metadata.ram_banks = 0;
-            break;
-        case 0x2:
-            metadata.ram_banks = 1;
-            break;
-        case 0x3:
-            metadata.ram_banks = 4;
-            break;
-        case 0x4:
-            metadata.ram_banks = 16;
-            break;
-        case 0x5:
-            metadata.ram_banks = 8;
-            break;
-    }
+    uint8_t ram_bank_lookup[6] = {0, 0, 1, 4, 16, 8};
+    metadata.ram_banks = ram_bank_lookup[rom_data[0x0149]];
     metadata.dest_code = rom_data[0x014A];
     metadata.version = rom_data[0x014D];
     metadata.cgb_flag = rom_data[0x143];
@@ -68,6 +51,10 @@ bool Cartridge::init(const char *file) {
     if (!rom_result) return false;
 
     header = read_cartridge_header(rom_data);
+
+    logger.get_logger()->debug("MBC type: {:#X}", header.mbc_type);
+    logger.get_logger()->debug("ROM banks: {:d}", header.rom_banks);
+    logger.get_logger()->debug("RAM banks: {:d}", header.ram_banks);
 
     if (header.cgb_flag == 0x80 || header.cgb_flag == 0xC0) is_cgb = true;
     else is_cgb = false;
@@ -86,6 +73,8 @@ bool Cartridge::init(const char *file) {
         return false;
     }
 
-    external_ram = new uint8_t[0x2000*header.ram_banks];
+    external_ram_size = 0x2000*header.ram_banks;
+    external_ram = new uint8_t[external_ram_size]();
+
     return true;
 }

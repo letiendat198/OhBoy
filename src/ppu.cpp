@@ -53,28 +53,47 @@ void PPU::draw_scanline() {
     BgAttribute tile_bg_attribute{};
     uint16_t tile_map_region = lcdc.bg_tile_map;
 
-    // Render background/window
     uint8_t fill_table[160] = {};
-    for(uint8_t i=0;i<160;i++) {
-        uint8_t x = (scroll.scx + i) % 256;
-        uint8_t y = (scroll.scy + ly) % 256;
+    bool window_region = false;
 
+    // Render background/window
+    for(uint8_t i=0;i<160;i++) {
         if (!is_cgb && lcdc.bg_window_priority == 0) { // In DMG mode, if bg lose priority -> white line
-            write_frame_buffer(x, y, 0);
-            fill_table[x] = 0;
+            write_frame_buffer(i, ly, 0);
+            fill_table[i] = 0;
             continue;
         }
 
-        if (lcdc.window_enable && (i  >= (scroll.wx - 7) && ly >= scroll.wy)) {
+        uint8_t x = 0;
+        uint8_t y = 0;
+        if (!window_region) {
+            x = (scroll.scx + i) % 256;
+            y = (scroll.scy + ly) % 256;
+        }
+        else {
+            x = i - (scroll.wx - 7);
+            y = window_ly;
+        }
+
+        // Check if should switch to rendering window
+        if (!window_region && lcdc.window_enable && (i  >= (scroll.wx - 7) && ly >= scroll.wy)) {
             x = i - (scroll.wx - 7);
             y = window_ly;
             tile_map_region = lcdc.window_tile_map;
+            window_region = true;
+
+            if (i!=0 && x%8 != 0) { // Fetch window tile if window switch in the middle of a tile
+                if (is_cgb) tile_bg_attribute = read_background_attribute(x, y, tile_map_region);
+                tile_data = fetch_tile_data(x, y, tile_map_region, lcdc.tile_data_area, is_cgb?tile_bg_attribute.bank:0,
+                                    is_cgb?tile_bg_attribute.y_flip:false);
+            }
         }
 
-        if (is_cgb) tile_bg_attribute = read_background_attribute(x, y, tile_map_region);
-
-        tile_data = fetch_tile_data(x, y, tile_map_region, lcdc.tile_data_area, is_cgb?tile_bg_attribute.bank:0,
-            is_cgb?tile_bg_attribute.y_flip:false);
+        if (i==0 || x%8 == 0) {
+            if (is_cgb) tile_bg_attribute = read_background_attribute(x, y, tile_map_region);
+            tile_data = fetch_tile_data(x, y, tile_map_region, lcdc.tile_data_area, is_cgb?tile_bg_attribute.bank:0,
+                                is_cgb?tile_bg_attribute.y_flip:false);
+        }
 
         uint8_t pixel_offset = 7 - (x % 8);
         if (is_cgb && tile_bg_attribute.x_flip) pixel_offset = x % 8;
@@ -118,7 +137,7 @@ void PPU::draw_scanline() {
         }
     }
 
-    if (lcdc.window_enable && scroll.wx <= 166 && scroll.wy <= 143 && ly >= scroll.wy) window_ly++;
+    if (window_region) window_ly++;
 }
 
 void PPU::oam_scan() {

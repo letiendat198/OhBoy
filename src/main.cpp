@@ -33,6 +33,7 @@ int main(int argc , char **argv){
     Scheduler scheduler;
     scheduler.ppu.set_cgb_mode(Memory::is_cartridge_cgb());
     Debugger debugger(&scheduler, debug_mode);
+    scheduler.set_render_callback(&debugger);
 
     auto t1 = std::chrono::steady_clock::now();
     while (!debugger.done){
@@ -43,7 +44,6 @@ int main(int argc , char **argv){
             std::this_thread::sleep_for(chrono::duration<double, milli>(MS_PER_FRAME - elapse));
         }
         t1 = std::chrono::steady_clock::now(); // Capture time at the start of new frame
-        debugger.render();
         debugger.capture_keyboard();
     }
     debugger.end();
