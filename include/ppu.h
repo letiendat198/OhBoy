@@ -50,7 +50,8 @@ struct Scroll {
 class PPU {
 private:
     Logger logger = Logger("PPU");
-    uint8_t dmg_palette[4][3] = {{224, 248, 208}, {136, 192, 112}, {52, 104, 86}, {8, 24, 32}};
+    // uint8_t dmg_palette[4][3] = {{224, 248, 208}, {136, 192, 112}, {52, 104, 86}, {8, 24, 32}};
+    uint8_t dmg_palette[4][3] = {{181, 198, 156}, {141, 156, 123}, {99, 114, 81}, {48, 56, 32}};
     ObjAttribute obj_queue[10]{};
     uint8_t obj_queue_index = 0;
     bool is_cgb = false;

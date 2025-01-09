@@ -210,13 +210,13 @@ void Memory::write_vram(uint16_t addr, uint8_t data, uint8_t bank) { // Low leve
 }
 
 uint8_t Memory::read_wram(uint16_t addr, uint8_t bank) { // Low level WRAM access - Won't automatically use current bank
-    uint16_t real_addr = addr - 0xD000;
+    uint16_t real_addr = addr - 0xC000;
     return wram[real_addr + 0x1000 * bank];
 }
 
 void Memory::write_wram(uint16_t addr, uint8_t data, uint8_t bank) { // Low level WRAM access - Won't automatically use current bank
     // logger.get_logger()->debug("Writing to VRAM at addr: {:X}, translated to: {:X}", addr, addr - 0x8000);
-    uint16_t real_addr = addr - 0xD000;
+    uint16_t real_addr = addr - 0xC000;
     wram[real_addr + 0x1000 * bank] = data;
 }
 

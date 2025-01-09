@@ -1,12 +1,10 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
-#include <apu.h>
+
 #include <cpu.h>
 #include <ppu.h>
 #include <set>
 #include <timer.h>
-#include <config.h>
-#include <queue>
 
 class Debugger;
 

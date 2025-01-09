@@ -2,8 +2,7 @@
 
 A Game Boy/Game Boy Color emulator
 
-The emulator core was written in C/C++ and the GUI was written in Rust (because C++ GUI libraries
-are either big or ugly)
+The emulator core was written in C++ and the GUI was written in Rust using Iced
 
 ## Images
 
@@ -50,9 +49,8 @@ cmake --build .
 
 ## TODO
 
-- PPU:
-  - Implement Mode 3 scroll penalty
-- Implement APU
+- Re-write APU
+- Re-do RTC
 - Debugger:
   - Add ability to reset CPU state
   - Allow toggling file logging
