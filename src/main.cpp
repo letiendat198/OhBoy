@@ -10,6 +10,21 @@
 
 using namespace std;
 
+void measure_frame_without_render(Scheduler *scheduler) {
+    long long frames = 0;
+    auto t1 = std::chrono::steady_clock::now();
+    while (true){
+        scheduler->tick_frame();
+        frames++;
+        auto t2 = std::chrono::steady_clock::now(); // Capture render + cycle time
+        double elapse = chrono::duration<double, std::milli>(t2-t1).count();
+        if (elapse/1000 > 5) {
+            std::cout<<"Frames count: "<<frames<<" Seconds: "<<elapse / 1000<<" Average FPS: "<<frames / (elapse/1000)<<"\n";
+            break;
+        }
+    }
+}
+
 int main(int argc , char **argv){
     popl::OptionParser op("Allowed Options");
     auto help_options = op.add<popl::Switch>("h", "help", "Get help");
@@ -27,11 +42,12 @@ int main(int argc , char **argv){
     }
 
     cout<<rom_path_option->value().c_str()<<endl;
-    bool cart_init = Memory::init_cartridge(rom_path_option->value().c_str());
+    bool cart_init = Memory::cartridge.init(rom_path_option->value().c_str());
     if (!cart_init) return -1;
 
     Scheduler scheduler;
-    scheduler.ppu.set_cgb_mode(Memory::is_cartridge_cgb());
+    scheduler.ppu.set_cgb_mode(Memory::cartridge.is_cgb);
+    // measure_frame_without_render(&scheduler);
     Debugger debugger(&scheduler, debug_mode);
     scheduler.set_render_callback(&debugger);
 
@@ -47,6 +63,6 @@ int main(int argc , char **argv){
         debugger.capture_keyboard();
     }
     debugger.end();
-    Memory::close_cartridge();
+    Memory::cartridge.save_sram();
     return 0;
 }

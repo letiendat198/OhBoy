@@ -27,10 +27,10 @@ namespace Memory{
 
     uint8_t read(uint16_t addr);
     void write(uint16_t addr, uint8_t data);
-    inline uint8_t read_vram(uint16_t addr, uint8_t bank);
-    inline void write_vram(uint16_t addr, uint8_t data, uint8_t bank);
-    inline uint8_t read_wram(uint16_t addr, uint8_t bank);
-    inline void write_wram(uint16_t addr, uint8_t data, uint8_t bank);
+    uint8_t read_vram(uint16_t addr, uint8_t bank);
+    void write_vram(uint16_t addr, uint8_t data, uint8_t bank);
+    uint8_t read_wram(uint16_t addr, uint8_t bank);
+    void write_wram(uint16_t addr, uint8_t data, uint8_t bank);
     uint8_t read_bg_cram(uint8_t addr);
     void write_bg_cram(uint8_t addr, uint8_t data);
     uint8_t read_obj_cram(uint8_t addr);
@@ -39,14 +39,6 @@ namespace Memory{
     void unsafe_write(uint16_t addr, uint8_t data);
 
     void memcpy(uint16_t dest_addr, uint16_t src_addr, uint16_t length);
-
-    bool init_cartridge(const char* file);
-    bool is_cartridge_cgb();
-    void close_cartridge();
-
-    uint8_t* get_raw();
-    uint8_t* get_raw_vram();
-    uint8_t* get_raw_wram();
 
     bool check_hdma();
     uint8_t get_hdma_type();

@@ -30,10 +30,13 @@ public:
 
     uint32_t external_ram_size = 0;
 
+    std::string save_file_path;
+
     bool is_cgb = false;
     MBC mbc = MBC(this);
 
     bool init(const char *file);
+    bool save_sram();
 };
 
 #endif

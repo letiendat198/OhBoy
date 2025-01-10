@@ -81,7 +81,7 @@ void Scheduler::tick_frame() {
                 Interrupts::set_interrupt_flag(0);
                 ppu.update_stat(1);
                 ppu.schedule_next_mode(1);
-                debugger->render();
+                if (debugger != nullptr) debugger->render();
                 break;
             case NEW_LINE:
                 ppu.update_ly();

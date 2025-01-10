@@ -91,7 +91,7 @@ void CPU::op_0F() {
 } // RRCA
 void CPU::op_10() {
     mcycle = 1;
-    if (Memory::is_cartridge_cgb()) {
+    if (Memory::cartridge.is_cgb) {
         uint8_t spd_switch_req = Memory::read(0xFF4D);
         uint8_t switch_armed = spd_switch_req & 0x1;
         uint8_t current_spd = (spd_switch_req >> 7) & 0x1;

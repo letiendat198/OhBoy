@@ -98,10 +98,10 @@ void Debugger::render() {
     if (is_debug) {
         render_registers(io);
         memory_editor.ReadOnly = true;
-        memory_editor.DrawWindow("Memory Bus", Memory::get_raw(), 0x4000);
+        memory_editor.DrawWindow("Memory Bus", Memory::memory, 0x2000);
         memory_editor.DrawWindow("External RAM", Memory::cartridge.external_ram, Memory::cartridge.external_ram_size);
-        memory_editor.DrawWindow("Video RAM", Memory::get_raw_vram(), 0x2000*2);
-        memory_editor.DrawWindow("Work RAM 1-7", Memory::get_raw_wram(), 0x1000*7);
+        memory_editor.DrawWindow("Video RAM", Memory::vram, 0x2000*2);
+        memory_editor.DrawWindow("Work RAM 0-7", Memory::wram, 0x1000*8);
         memory_editor.DrawWindow("Frame Buffer", scheduler->ppu.frame_buffer, 160*144*3);
     }
 

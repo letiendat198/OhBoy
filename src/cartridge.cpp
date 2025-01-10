@@ -1,30 +1,40 @@
 #include "cartridge.h"
 #include <filesystem>
 
-std::string get_save_file_name(std::string file_name) {
-    std::size_t delim = file_name.find_last_of('/');
-    if (delim == std::string::npos) {
-        delim = file_name.find_last_of('\\');
-    }
-    if (delim != std::string::npos) file_name = file_name.substr(delim+1);
-    std::size_t ext_delim = file_name.find_last_of('.');
-    file_name = file_name.substr(0, ext_delim) + ".sav";
-    return file_name;
+std::string get_save_file_path(std::string file_path) {
+    std::size_t ext_delim = file_path.find_last_of('.');
+    file_path = file_path.substr(0, ext_delim) + ".sav";
+    return file_path;
 }
 
 bool read_file(const char *file, uint8_t **output, uint32_t *size) {
     FILE *f = fopen(file, "rb");
     if (f == nullptr) {
         std::cerr << "File not found or invalid!\n";
-        output = nullptr;
-        *size = 0;
         return false;
     }
     fseek(f, 0L, SEEK_END);
-    *size = ftell(f);
-    *output = new uint8_t[*size];
+    if (*size == 0) *size = ftell(f);
+    if (*output == nullptr) *output = new uint8_t[*size];
     fseek(f, 0L, SEEK_SET);
     fread(*output, sizeof(uint8_t),*size, f);
+    fclose(f);
+    return true;
+}
+
+bool write_file(const char *file, uint8_t *data, uint32_t size) {
+    FILE *f = fopen(file, "wb");
+    if (f == nullptr) {
+        std::cerr << "Something went wrong while opening save file\n";
+        return false;
+    }
+    uint32_t bytes_written = fwrite(data, sizeof(uint8_t), size, f);
+    if (bytes_written != size) {
+        std::cerr << "Written less than input!\n";
+        fclose(f);
+        return false;
+    }
+    fclose(f);
     return true;
 }
 
@@ -46,7 +56,7 @@ CartridgeHeader read_cartridge_header(uint8_t *rom_data) {
 }
 
 bool Cartridge::init(const char *file) {
-    uint32_t rom_size;
+    uint32_t rom_size = 0;
     bool rom_result = read_file(file, &rom_data, &rom_size);
     if (!rom_result) return false;
 
@@ -60,7 +70,7 @@ bool Cartridge::init(const char *file) {
     else is_cgb = false;
 
     std::string boot_file = is_cgb ? "cgb_boot.bin" : "boot.bin";
-    uint32_t boot_size;
+    uint32_t boot_size = 0;
     bool boot_result = read_file(boot_file.c_str(), &boot_data, &boot_size);
     if (!boot_result) return false;
 
@@ -76,5 +86,19 @@ bool Cartridge::init(const char *file) {
     external_ram_size = 0x2000*header.ram_banks;
     external_ram = new uint8_t[external_ram_size]();
 
+    if (header.ram_banks == 0) return true;
+
+    save_file_path = get_save_file_path(file);
+    bool is_save_exist = read_file(save_file_path.c_str(), &external_ram, &external_ram_size);
+    if (!is_save_exist) std::cout << "No save file found for rom "<<file<<"\n";
     return true;
 }
+
+bool Cartridge::save_sram() {
+    if (header.ram_banks == 0) {
+        std::cout<<"Game don't have SRAM to save\n";
+        return false;
+    }
+    return write_file(save_file_path.c_str(), external_ram, external_ram_size);
+}
+

@@ -153,12 +153,16 @@ async fn scan_files(path: String) -> Vec<String> {
 
 async fn run_emulator(path: String, is_debug: bool) {
     let debug_flag = if is_debug {"-d"} else {""};
-    let output = tokio::process::Command::new("OhBoy.exe")
-        .args(["-r", &path, debug_flag]).output().await.unwrap();
-    let err = std::str::from_utf8(&output.stderr).unwrap();
-    let out = std::str::from_utf8(&output.stdout).unwrap();
-    println!("{}", out);
-    println!("{}", err);
+    let exec_file = match std::env::consts::OS {
+        "windows" => "OhBoy.exe",
+        _ => "./OhBoy"
+    };
+    let mut child = tokio::process::Command::new(exec_file)
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .args(["-r", &path, debug_flag]).spawn().unwrap();
+    let status = child.wait().await.unwrap();
+    println!("OhBoy exited with {}", status);
 }
 
 fn save_cache(path: &str) {

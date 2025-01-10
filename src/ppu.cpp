@@ -168,19 +168,12 @@ void PPU::write_frame_buffer(uint8_t x, uint8_t y, uint8_t color_id, uint8_t col
     }
     else {
         uint8_t color_addr = color_palette * 8 + (color_id * 2);
-        uint8_t r;
-        uint8_t g;
-        uint8_t b;
-        if (!is_obj) {
-            r = Memory::read_bg_cram(color_addr) & 0x1F;
-            g = ((Memory::read_bg_cram(color_addr) >> 5) & 0x07) | (Memory::read_bg_cram(color_addr+1) & 0x03) << 3;;
-            b = (Memory::read_bg_cram(color_addr+1) >> 2) & 0x1F;
-        }
-        else {
-            r = Memory::read_obj_cram(color_addr) & 0x1F;
-            g = ((Memory::read_obj_cram(color_addr) >> 5) & 0x07) | (Memory::read_obj_cram(color_addr+1) & 0x03) << 3;
-            b = (Memory::read_obj_cram(color_addr+1) >> 2) & 0x1F;
-        }
+        uint8_t p1 = is_obj ? Memory::read_obj_cram(color_addr) : Memory::read_bg_cram(color_addr);
+        uint8_t p2 = is_obj ? Memory::read_obj_cram(color_addr + 1) : Memory::read_bg_cram(color_addr + 1);
+
+        uint8_t r = p1 & 0x1F;
+        uint8_t g = ((p1 >> 5) & 0x07) | (p2 & 0x03) << 3;
+        uint8_t b = (p2 >> 2) & 0x1F;
 
         uint32_t R = (r * 26 + g *  4 + b *  2);
         uint32_t G = (         g * 24 + b *  8);

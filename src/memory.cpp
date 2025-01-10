@@ -171,32 +171,45 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
     *(memory+addr - 0xE000) = data;
 }
 
-void Memory::memcpy(uint16_t dest_addr, uint16_t src_addr, uint16_t length) {
-    uint16_t fragment_points[7] = {0x3FFF, 0x7FFF, 0x9FFF, 0xBFFF, 0xCFFF, 0xDFFF, 0xFFFF};
-    uint8_t *fragment_ptr[7] = {cartridge.rom_data, cartridge.rom_data + cartridge.rom_bank*0x4000,
-        vram + vram_bank*0x2000, cartridge.external_ram + cartridge.ram_bank*0x2000,
-        wram, wram + wram_bank*0x1000, memory};
-
-    uint8_t src_blk = 0;
-    uint8_t dest_blk = 0;
-    for(;src_blk<7;src_blk++) if (fragment_points[src_blk] >= src_addr) break;
-    for(;dest_blk<7;dest_blk++) if (fragment_points[dest_blk] >= dest_addr) break;
-
-
-}
-
-
-bool Memory::init_cartridge(const char* file) {
-    return cartridge.init(file);
-}
-
-bool Memory::is_cartridge_cgb() {
-    return cartridge.is_cgb;
-}
-
-void Memory::close_cartridge() {
-    // cartridge.close();
-}
+// Not really faster than just calling mem r/w in a for loop - To be removed next commit
+// void Memory::memcpy(uint16_t dest_addr, uint16_t src_addr, uint16_t length) {
+//     uint16_t fragment_start[7] = {0x0000, 0x4000, 0x8000, 0xA000, 0xC000, 0xD000, 0xE000};
+//     uint16_t fragment_end[7] = {0x3FFF, 0x7FFF, 0x9FFF, 0xBFFF, 0xCFFF, 0xDFFF, 0xFFFF};
+//     uint8_t *fragment_ptr[7] = {cartridge.rom_data, cartridge.rom_data + cartridge.rom_bank*0x4000,
+//         vram + vram_bank*0x2000, cartridge.external_ram + cartridge.ram_bank*0x2000,
+//         wram, wram + wram_bank*0x1000, memory};
+//
+//     uint8_t src_blk = 0;
+//     uint8_t dest_blk = 0;
+//     for(;src_blk<7;src_blk++) if (fragment_end[src_blk] >= src_addr) break;
+//     for(;dest_blk<7;dest_blk++) if (fragment_end[dest_blk] >= dest_addr) break;
+//
+//     uint16_t progress = length;
+//     while (progress != 0) {
+//         if (src_addr + (length - progress) >= fragment_end[src_blk]) {
+//             src_blk++;
+//             if (src_blk == 7) break;
+//         }
+//         if (dest_addr + (length - progress) >= fragment_end[dest_blk]) {
+//             dest_blk++;
+//             if (dest_blk == 7) break;
+//         }
+//
+//         uint16_t src_cut_off = fragment_end[src_blk] - (src_addr + length - progress);
+//         uint16_t dest_cut_off = fragment_end[dest_blk] - (dest_addr + length - progress);
+//
+//         uint16_t max_src_len = progress <= src_cut_off ? progress : src_cut_off;
+//         uint16_t max_dest_len = progress <= dest_cut_off ? progress : dest_cut_off;
+//
+//         uint16_t min_len = max_src_len < max_dest_len ? max_src_len : max_dest_len;
+//
+//         std::memcpy(fragment_ptr[dest_blk] + (dest_addr - fragment_start[dest_blk] + (length - progress)),
+//             fragment_ptr[src_blk] + (src_addr - fragment_start[src_blk] + (length - progress)), min_len);
+//
+//         progress -= min_len;
+//         //logger.get_logger()->debug("Transferred {:#X} bytes via memcpy", min_len);
+//     }
+// }
 
 uint8_t Memory::read_vram(uint16_t addr, uint8_t bank) { // Low level VRAM access - Won't automatically use current bank
     uint16_t real_addr = addr - 0x8000;
@@ -246,16 +259,4 @@ uint8_t Memory::get_hdma_type() {
 
 void Memory::resolve_hdma() {
     hdma_requested = false;
-}
-
-uint8_t *Memory::get_raw() {
-    return memory;
-}
-
-uint8_t *Memory::get_raw_vram() {
-    return vram;
-}
-
-uint8_t *Memory::get_raw_wram() {
-    return wram;
 }

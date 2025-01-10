@@ -2,6 +2,15 @@ cmake_minimum_required(VERSION 3.29)
 project(OhBoy)
 
 set(CMAKE_CXX_STANDARD 20)
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -march=native")
+
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 
 add_executable(OhBoy src/main.cpp
@@ -34,25 +43,21 @@ add_executable(OhBoy src/main.cpp
         src/mbc.cpp
 )
 
-include(FetchContent)
+set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 
+include(FetchContent)
 FetchContent_Declare(
         Corrosion
         GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
         GIT_TAG v0.5 # Optionally specify a commit hash, version tag or branch here
 )
 FetchContent_MakeAvailable(Corrosion)
-
 # Import targets defined in a package or workspace manifest `Cargo.toml` file
 corrosion_import_crate(MANIFEST_PATH gui/Cargo.toml)
-
 add_dependencies(OhBoy OhBoyGUI)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
-    set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif ()
-
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog)
+target_link_libraries(OhBoy spdlog)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") 
     target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2-VC/lib/x64/SDL2main.lib)
@@ -64,8 +69,6 @@ else ()
     find_package(SDL2 REQUIRED)
     target_link_libraries(OhBoy ${SDL2_LIBRARIES})
 endif()
-
-target_link_libraries(OhBoy spdlog)
 
 include_directories("include")
 include_directories("deps/imgui")
