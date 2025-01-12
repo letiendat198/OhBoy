@@ -22,14 +22,13 @@ enum SchedulerEvent {
     HDMA_TRANSFER,
 
     // TIMER
-    DIV_TICK,
-    TIMA_TICK
+    DIV_OVERFLOW,
+    TIMA_OVERFLOW
 };
 
 struct SchedulerEventInfo {
     SchedulerEvent event;
     uint32_t cycle;
-    bool double_spd_affected;
     bool operator < (SchedulerEventInfo a) const {
         if (cycle == a.cycle) return event < a.event; // If 2 event occur on same cycle, sort by priority
         return cycle < a.cycle;
@@ -39,7 +38,6 @@ struct SchedulerEventInfo {
 class Scheduler {
 private:
     inline static std::set<SchedulerEventInfo> event_queue;
-    Timer timer;
 
     Debugger *debugger = nullptr;
 public:

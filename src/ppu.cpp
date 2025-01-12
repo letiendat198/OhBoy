@@ -64,16 +64,8 @@ void PPU::draw_scanline() {
             continue;
         }
 
-        uint8_t x = 0;
-        uint8_t y = 0;
-        if (!window_region) {
-            x = (scroll.scx + i) % 256;
-            y = (scroll.scy + ly) % 256;
-        }
-        else {
-            x = i - (scroll.wx - 7);
-            y = window_ly;
-        }
+        uint8_t x = !window_region ? (scroll.scx + i) % 256 : i - (scroll.wx - 7);
+        uint8_t y = !window_region ? (scroll.scy + ly) % 256 : window_ly;
 
         // Check if should switch to rendering window
         if (!window_region && lcdc.window_enable && (i  >= (scroll.wx - 7) && ly >= scroll.wy)) {

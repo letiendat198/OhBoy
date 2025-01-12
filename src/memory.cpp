@@ -7,8 +7,15 @@
 
 uint8_t Memory::read(uint16_t addr) {
     switch (addr) {
+        case 0xFF04: { // DIV
+            return (Timer::calc_current_div() >> 8) & 0xFF;
+        }
+        case 0xFF05: { // TIMA
+            if (Timer::current_tac.enable) return Timer::calc_current_tima();
+            else return Timer::paused_tima_value;
+        }
         case 0xFF55: {
-            logger.get_logger()->debug("Reading HDMA5 register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
+            logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
             return (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F);
         }
     }
@@ -22,8 +29,22 @@ void Memory::write(uint16_t addr, uint8_t data) {
     switch (addr) {
         case 0xFF04: // DIV
         {
-            unsafe_write(0xFF04, 0);
+            Scheduler::reschedule(DIV_OVERFLOW, DIV_OVERFLOW_CYCLE);
+            Timer::div_overflow_cycle = Scheduler::current_cycle;
             return;
+        }
+        case 0xFF07: { // TAC
+            TimerControl tac = Timer::read_tac(data);
+            Timer::current_tac = tac;
+            if (tac.enable && !Timer::enable) {
+                Timer::enable = true;
+                Timer::schedule_next_tima_overflow(Timer::paused_tima_value);
+            }
+            else if (!tac.enable && Timer::enable) {
+                Timer::enable = false;
+                Scheduler::remove_schedule(TIMA_OVERFLOW);
+                Timer::paused_tima_value = Timer::calc_current_tima();
+            }
         }
         case 0xFF50:  // Write to this turn off boot
         {
@@ -129,87 +150,44 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
         if (is_boot && (addr < 0x100 || (cartridge.is_cgb && 0x200<=addr && addr<=0x8FF))) return *(cartridge.boot_data + addr);
         return *(cartridge.rom_data + addr);
     }
-    if (0x4000 <= addr && addr <= 0x7FFF) {
+    else if (addr <= 0x7FFF) {
         return *(cartridge.rom_data + (addr - 0x4000) + cartridge.rom_bank*0x4000);
     }
-    if (0xA000 <= addr && addr <= 0xBFFF) {
+    else if (addr <= 0x9FFF) {
+        return read_vram(addr, vram_bank);
+    }
+    else if (addr <= 0xBFFF) {
         if (cartridge.ram_enable) return *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000);
         else return 0xFF;
     }
-    if (0xC000 <= addr && addr <= 0xCFFF) {
+    else if (addr <= 0xCFFF) {
         return read_wram(addr, 0);
     }
-    if (0xD000 <= addr && addr <= 0xDFFF) {
+    else if (addr <= 0xDFFF) {
         return read_wram(addr, wram_bank);
     }
-    if (0x8000 <= addr && addr <= 0x9FFF) {
-        return read_vram(addr, vram_bank);
-    }
-    return memory[addr - 0xE000];
+    else return memory[addr - 0xE000];
 }
 
 void Memory::unsafe_write(uint16_t addr, uint8_t data) {
     // Re-route
     if (addr <= 0x7FFF) {
         cartridge.mbc.update_registers(addr, data);
-        return;
     }
-     if (0xA000 <= addr && addr <= 0xBFFF) {
+    else if (addr <= 0x9FFF) {
+        write_vram(addr, data, vram_bank);
+    }
+    else if (addr <= 0xBFFF) {
         if (cartridge.ram_enable) *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000) = data;
-        return;
     }
-    if (0xC000 <= addr && addr <= 0xCFFF) {
-        return write_wram(addr, data, 0);
+    else if (addr <= 0xCFFF) {
+        write_wram(addr, data, 0);
     }
-    if (0xD000 <= addr && addr <= 0xDFFF) {
-        return write_wram(addr, data, wram_bank);
+    else if (addr <= 0xDFFF) {
+        write_wram(addr, data, wram_bank);
     }
-    if (0x8000 <= addr && addr <= 0x9FFF) {
-        return write_vram(addr, data, vram_bank);
-    }
-
-    *(memory+addr - 0xE000) = data;
+    else *(memory+addr - 0xE000) = data;
 }
-
-// Not really faster than just calling mem r/w in a for loop - To be removed next commit
-// void Memory::memcpy(uint16_t dest_addr, uint16_t src_addr, uint16_t length) {
-//     uint16_t fragment_start[7] = {0x0000, 0x4000, 0x8000, 0xA000, 0xC000, 0xD000, 0xE000};
-//     uint16_t fragment_end[7] = {0x3FFF, 0x7FFF, 0x9FFF, 0xBFFF, 0xCFFF, 0xDFFF, 0xFFFF};
-//     uint8_t *fragment_ptr[7] = {cartridge.rom_data, cartridge.rom_data + cartridge.rom_bank*0x4000,
-//         vram + vram_bank*0x2000, cartridge.external_ram + cartridge.ram_bank*0x2000,
-//         wram, wram + wram_bank*0x1000, memory};
-//
-//     uint8_t src_blk = 0;
-//     uint8_t dest_blk = 0;
-//     for(;src_blk<7;src_blk++) if (fragment_end[src_blk] >= src_addr) break;
-//     for(;dest_blk<7;dest_blk++) if (fragment_end[dest_blk] >= dest_addr) break;
-//
-//     uint16_t progress = length;
-//     while (progress != 0) {
-//         if (src_addr + (length - progress) >= fragment_end[src_blk]) {
-//             src_blk++;
-//             if (src_blk == 7) break;
-//         }
-//         if (dest_addr + (length - progress) >= fragment_end[dest_blk]) {
-//             dest_blk++;
-//             if (dest_blk == 7) break;
-//         }
-//
-//         uint16_t src_cut_off = fragment_end[src_blk] - (src_addr + length - progress);
-//         uint16_t dest_cut_off = fragment_end[dest_blk] - (dest_addr + length - progress);
-//
-//         uint16_t max_src_len = progress <= src_cut_off ? progress : src_cut_off;
-//         uint16_t max_dest_len = progress <= dest_cut_off ? progress : dest_cut_off;
-//
-//         uint16_t min_len = max_src_len < max_dest_len ? max_src_len : max_dest_len;
-//
-//         std::memcpy(fragment_ptr[dest_blk] + (dest_addr - fragment_start[dest_blk] + (length - progress)),
-//             fragment_ptr[src_blk] + (src_addr - fragment_start[src_blk] + (length - progress)), min_len);
-//
-//         progress -= min_len;
-//         //logger.get_logger()->debug("Transferred {:#X} bytes via memcpy", min_len);
-//     }
-// }
 
 uint8_t Memory::read_vram(uint16_t addr, uint8_t bank) { // Low level VRAM access - Won't automatically use current bank
     uint16_t real_addr = addr - 0x8000;

@@ -21,9 +21,9 @@ void HDMA::transfer_gdma() {
 
     uint8_t length = Memory::unsafe_read(0xFF55) & 0x7F;
 
-     for (int cycle = 0; cycle<(length+1) * 0x10; cycle++) {
-         Memory::unsafe_write(dest_addr + cycle, Memory::unsafe_read(src_addr + cycle));
-     }
+    for (int cycle = 0; cycle<(length+1) * 0x10; cycle++) {
+        Memory::unsafe_write(dest_addr + cycle, Memory::unsafe_read(src_addr + cycle));
+    }
 
     Memory::resolve_hdma();
     Memory::unsafe_write(0xFF55, 0xFF);

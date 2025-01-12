@@ -14,4 +14,8 @@ static const uint32_t CYCLE_PER_FRAME  = 17556;
 static const uint16_t SAMPLE_COUNT = 2048;
 static const uint32_t OUTPUT_FREQUENCY = 44100;
 
+// TIMER CONST
+
+static const uint16_t DIV_OVERFLOW_CYCLE = 16384;
+
 #endif //CONFIG_H

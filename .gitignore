@@ -9,3 +9,4 @@ deps/SDL2-VC
 gui/target
 gui/*.ini
 gui/*.log
+*.diagsession
