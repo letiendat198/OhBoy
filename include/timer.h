@@ -17,11 +17,12 @@ namespace Timer {
     inline uint32_t div_overflow_cycle = 0;
     inline uint32_t next_tima_overflow_cycle = 0;
     inline uint8_t paused_tima_value = 0;
-    inline TimerControl current_tac;
+    inline TimerControl current_tac{};
 
     uint16_t calc_current_div();
-    uint32_t calc_next_tima_overflow(uint8_t current_tima);
-    uint8_t calc_current_tima();
+
+    void tick_tima();
+
     void schedule_next_tima_overflow(uint8_t current_tima);
 
     TimerControl read_tac(uint8_t tac);

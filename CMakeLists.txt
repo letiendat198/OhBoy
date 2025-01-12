@@ -41,6 +41,7 @@ add_executable(OhBoy src/main.cpp
         src/scheduler.cpp
         include/scheduler.h
         src/mbc.cpp
+        src/apu.cpp
 )
 
 set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)

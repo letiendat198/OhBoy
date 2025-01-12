@@ -8,8 +8,11 @@ Scheduler::Scheduler() {
     schedule(SchedulerEvent::OAM_SCAN, 0);
     schedule(SchedulerEvent::NEW_LINE, 114);
     schedule(SchedulerEvent::DIV_OVERFLOW, DIV_OVERFLOW_CYCLE);
+
+    Timer::current_tac = Timer::read_tac(Memory::read(0xFF07));
 }
 
+// Schedule an event a number of cycle from this point on
 void Scheduler::schedule(SchedulerEvent event, uint32_t cycle_to_go) {
     // if (static_cast<int>(event)>=5 && CPU::double_spd_mode) cycle_to_go /= 4;
     // else cycle_to_go /= 2;
@@ -17,6 +20,13 @@ void Scheduler::schedule(SchedulerEvent event, uint32_t cycle_to_go) {
     event_queue.insert(event_info);
     // logger.get_logger()->debug("Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
 }
+
+// Schedule an event at this exact cycle
+void Scheduler::schedule_absolute(SchedulerEvent event, uint32_t cycle) {
+    SchedulerEventInfo event_info{event, cycle};
+    event_queue.insert(event_info);
+}
+
 
 void Scheduler::remove_schedule(SchedulerEvent event) {
     for(auto iter = event_queue.begin(); iter != event_queue.end(); ++iter) {
@@ -27,9 +37,25 @@ void Scheduler::remove_schedule(SchedulerEvent event) {
     }
 }
 
+// Re-schedule an event (cycle) into the future from this point on
 void Scheduler::reschedule(SchedulerEvent event, uint32_t cycle) {
     remove_schedule(event);
     schedule(event, cycle);
+}
+
+SchedulerEventInfo Scheduler::get_schedule(SchedulerEvent event) {
+    for(auto iter = event_queue.begin(); iter != event_queue.end(); ++iter) {
+        if (iter->event == event) return *iter;
+    }
+    return SchedulerEventInfo{};
+}
+
+// Delay a schedule a number of cycle
+void Scheduler::delay_schedule(SchedulerEvent event, uint32_t cycle_to_delay) {
+    SchedulerEventInfo event_info = get_schedule(event);
+    if (event_info.event == ILLEGAL) return;
+    remove_schedule(event);
+    schedule_absolute(event, event_info.cycle + cycle_to_delay);
 }
 
 bool interrupt_already_fired = false;
@@ -49,13 +75,12 @@ SchedulerEventInfo Scheduler::progress() {
         if (!interrupt_already_fired) cpu.handle_interrupts();
         current_cycle += cpu.tick();
         // In double speed mode, CPU and DIV/TIMA should be twice as fast
-        // But since the later is inaccurate (for now) and most games don't relly on them
+        // But since the latter is inaccurate (for now) and most games don't relly on them
         // So I can get away with just ticking the CPU once more (Not cycle accurate though).
         if (CPU::double_spd_mode) cpu.tick();
         interrupt_already_fired = false;
     }
-    // if (event_queue.begin()->event == TIMA_OVERFLOW)
-    //     logger.get_logger()->debug("TIMA overflow event! Current TIMA: {:d}. Should overflow at cycle: {:d}, current: {:d}", Timer::calc_current_tima(Timer::read_tac()), Timer::next_tima_overflow_cycle, current_cycle);
+    logger.get_logger()->debug("Current DIV: {:d}. Current cycle: {:d}. Overflow cycle: {:d}", Timer::calc_current_div(), current_cycle, Timer::div_overflow_cycle);
     return event_queue.extract(event_queue.begin()).value();
 }
 
@@ -100,7 +125,7 @@ void Scheduler::tick_frame() {
                 schedule(DIV_OVERFLOW, DIV_OVERFLOW_CYCLE);
                 Timer::div_overflow_cycle = current_cycle;
                 break;
-            case TIMA_OVERFLOW:
+            case TIMA_TICK:
                 Interrupts::set_interrupt_flag(2);
                 Timer::schedule_next_tima_overflow(Memory::read(0xFF06));
                 break;

@@ -9,10 +9,10 @@ APU::APU(){
     cycle_needed_per_sample = blip_clocks_needed(blip, SAMPLE_COUNT);
     std::cout<<cycle_needed_per_sample<<"\n";
 
-    channel1.set_trigger(&Memory::c1_trigger);
-    channel2.set_trigger(&Memory::c2_trigger);
-    channel3.set_trigger(&Memory::c3_trigger);
-    channel4.set_trigger(&Memory::c4_trigger);
+    // channel1.set_trigger(&Memory::c1_trigger);
+    // channel2.set_trigger(&Memory::c2_trigger);
+    // channel3.set_trigger(&Memory::c3_trigger);
+    // channel4.set_trigger(&Memory::c4_trigger);
 }
 
 void APU::tick() {
@@ -54,7 +54,7 @@ void APU::tick() {
 
 void APU::tick_div_apu() {
     uint8_t bit_shift = 4;//CPU::double_spd_mode?5:4;
-    uint8_t div = Memory::unsafe_read(0xFF04);
+    uint8_t div = Memory::read(0xFF04);
     uint8_t current_div_bit = (div >> bit_shift) & 0x1;
     if (current_div_bit == 0 && pre_div_bit == 1) {
         div_apu_cycle = (div_apu_cycle + 1) % 8;
@@ -77,7 +77,7 @@ void APU::tick_div_apu() {
 }
 
 template<class T>
-void AudioChannel<T>::tick() { // Should be relatively the same across channels
+void AudioChannel<T>::tick() {
     update_registers_content();
     static_cast<T*>(this)->trigger();
     static_cast<T*>(this)->check_dac_status();
@@ -86,14 +86,14 @@ void AudioChannel<T>::tick() { // Should be relatively the same across channels
 }
 
 template<class T>
-void AudioChannel<T>::tick_length_timer() { // Should be same across channels
+void AudioChannel<T>::tick_length_timer() {
     if (NRx4 >> 6 & 0x1) length_counter++;
     else length_counter = 0;
     if (length_counter > static_cast<T*>(this)->LENGTH_OVERFLOW) enabled = false;
 }
 
 template<class T>
-void AudioChannel<T>::update_registers_content() { // Should be same across channels
+void AudioChannel<T>::update_registers_content() {
     NRx0 = Memory::unsafe_read(NRx0_addr);
     NRx1 = Memory::unsafe_read(NRx1_addr);
     NRx2 = Memory::unsafe_read(NRx2_addr);
@@ -102,27 +102,27 @@ void AudioChannel<T>::update_registers_content() { // Should be same across chan
 }
 
 template<class T>
-void AudioChannel<T>::reset_length_counter() { // Should be same across channels
+void AudioChannel<T>::reset_length_counter() {
     length_counter = NRx1 & static_cast<T*>(this)->LENGTH_OVERFLOW;
 }
 
 template<class T>
-void AudioChannel<T>::reset_period_counter() { // Should be same across channels
+void AudioChannel<T>::reset_period_counter() {
     period_counter = (NRx4 & 0x7) << 8| NRx3;
 }
 
 template<class T>
-bool AudioChannel<T>::is_dac_enabled() { // Should be same across channels
+bool AudioChannel<T>::is_dac_enabled() {
     return dac_enabled;
 }
 
 template<class T>
-bool AudioChannel<T>::is_enabled() { // Should be same across channels
+bool AudioChannel<T>::is_enabled() {
     return enabled;
 }
 
 template<class T>
-uint8_t AudioChannel<T>::get_current_sample() { // Should be same across channels
+uint8_t AudioChannel<T>::get_current_sample() {
     return current_sample;
 }
 
