@@ -7,9 +7,9 @@
 Scheduler::Scheduler() {
     schedule(SchedulerEvent::OAM_SCAN, 0);
     schedule(SchedulerEvent::NEW_LINE, 114);
-    schedule(SchedulerEvent::DIV_OVERFLOW, DIV_OVERFLOW_CYCLE);
 
     Timer::current_tac = Timer::read_tac(Memory::read(0xFF07));
+    Timer::schedule_next_div_overflow();
 }
 
 // Schedule an event a number of cycle from this point on
@@ -80,7 +80,7 @@ SchedulerEventInfo Scheduler::progress() {
         if (CPU::double_spd_mode) cpu.tick();
         interrupt_already_fired = false;
     }
-    logger.get_logger()->debug("Current DIV: {:d}. Current cycle: {:d}. Overflow cycle: {:d}", Timer::calc_current_div(), current_cycle, Timer::div_overflow_cycle);
+    // logger.get_logger()->debug("Current DIV: {:d}. Current cycle: {:d}. Overflow cycle: {:d}", Timer::calc_current_div(), current_cycle, Timer::div_overflow_cycle);
     return event_queue.extract(event_queue.begin()).value();
 }
 
@@ -122,12 +122,10 @@ void Scheduler::tick_frame() {
                 DMA::transfer_dma();
                 break;
             case DIV_OVERFLOW:
-                schedule(DIV_OVERFLOW, DIV_OVERFLOW_CYCLE);
-                Timer::div_overflow_cycle = current_cycle;
+                Timer::schedule_next_div_overflow();
                 break;
             case TIMA_TICK:
-                Interrupts::set_interrupt_flag(2);
-                Timer::schedule_next_tima_overflow(Memory::read(0xFF06));
+                Timer::tick_tima();
                 break;
             case GDMA_TRANSFER:
                 HDMA::transfer_gdma();
@@ -146,8 +144,6 @@ void Scheduler::tick_frame() {
     for(auto event_info : event_queue) {
         if (event_info.cycle > CYCLE_PER_FRAME) event_info.cycle -= CYCLE_PER_FRAME;
         else logger.get_logger()->warn("Scheduler will miss event: {:d} at: {:d}", static_cast<int>(event_info.event), event_info.cycle);
-
-        if (event_info.event == TIMA_OVERFLOW && Timer::next_tima_overflow_cycle > CYCLE_PER_FRAME) Timer::next_tima_overflow_cycle -= CYCLE_PER_FRAME;
         temp.insert(event_info);
     }
     event_queue.swap(temp);

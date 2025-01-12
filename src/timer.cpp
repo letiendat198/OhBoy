@@ -11,22 +11,34 @@ uint16_t Timer::calc_current_div() {
     return (current_cycle - div_overflow_cycle);
 }
 
-uint32_t Timer::calc_next_tima_overflow(uint8_t current_tima) {
-    return (0xFF - current_tima) * current_tac.increment_freq + 3;
+void Timer::schedule_next_div_overflow() {
+    Scheduler::schedule(DIV_OVERFLOW, DIV_OVERFLOW_CYCLE);
+    div_overflow_cycle = Scheduler::current_cycle;
+
+    Scheduler::reschedule(TIMA_TICK, current_tac.increment_freq);
 }
 
-uint8_t Timer::calc_current_tima() {
-    uint32_t current_cycle = Scheduler::current_cycle;
-    if (next_tima_overflow_cycle < current_cycle) logger.get_logger()->warn("Current cycle large than TIMA overflow. This shouldn't happen");
-    // logger.get_logger()->debug("Current cycle: {:d}, overflow cycle: {:d}, TAC freq: {:d}", current_cycle, next_tima_overflow_cycle, current_tac.increment_freq);
-    return 0xFF - ((next_tima_overflow_cycle - current_cycle) / current_tac.increment_freq);
+void Timer::schedule_tima_by_div() {
+    uint16_t current_div = calc_current_div();
+    uint16_t delay = current_tac.increment_freq;
+    logger.get_logger()->debug("Rescheduling TIMA tick at cycle: {:d}, current DIV: {:d}, delay: {:d}, next tick: {:d}",
+            Scheduler::current_cycle, current_div, delay, delay - (current_div % delay));
+    Scheduler::reschedule(TIMA_TICK, delay - (current_div % delay));
 }
 
-void Timer::schedule_next_tima_overflow(uint8_t current_tima) {
-    next_tima_overflow_cycle = calc_next_tima_overflow(current_tima);
-    Scheduler::schedule(TIMA_OVERFLOW, next_tima_overflow_cycle);
-    next_tima_overflow_cycle += Scheduler::current_cycle;
+
+void Timer::tick_tima() {
+    if (current_tac.enable) {
+        // logger.get_logger()->debug("Tick TIMA. Current TIMA: {:d}+1. Current cycle: {:d}", tima, Scheduler::current_cycle);
+        tima = (tima + 1) & 0xFF;
+        if (tima == 0) {
+            // logger.get_logger()->debug("Timer interrupt request at cycle: {:d}", Scheduler::current_cycle);
+            Interrupts::set_interrupt_flag(2);
+        }
+    }
+    Scheduler::schedule(TIMA_TICK, current_tac.increment_freq);
 }
+
 
 TimerControl Timer::read_tac(uint8_t tac) {
     TimerControl control{};
