@@ -2,7 +2,6 @@
 
 #include <debugger.h>
 #include <dma.h>
-#include <format>
 #include <interrupts.h>
 
 uint8_t Memory::read(uint16_t addr) {
@@ -11,7 +10,7 @@ uint8_t Memory::read(uint16_t addr) {
             return (Timer::calc_current_div() >> 8) & 0xFF;
         }
         case 0xFF05: { // TIMA
-            logger.get_logger()->debug("Read TIMA: {:d} at cycle: {:d}", Timer::tima, Scheduler::current_cycle);
+            logger.get_logger()->debug("Read TIMA: {:d} at cycle: {:d}, DIV: {:b}", Timer::tima, Scheduler::current_cycle, Timer::calc_current_div());
             return Timer::tima;
         }
         case 0xFF55: {
@@ -29,19 +28,22 @@ void Memory::write(uint16_t addr, uint8_t data) {
     switch (addr) {
         case 0xFF04: // DIV
         {
+            logger.get_logger()->debug("DIV reset at cycle: {:d}", Scheduler::current_cycle);
             Scheduler::remove_schedule(DIV_OVERFLOW);
             Timer::schedule_next_div_overflow();
             return;
         }
         case 0xFF05: { //TIMA
-            logger.get_logger()->debug("Write: {:d} to TIMA at cycle: {:d}", data, Scheduler::current_cycle);
+            logger.get_logger()->debug("Write: {:d} to TIMA at cycle: {:d}. DIV: {:b}", data, Scheduler::current_cycle, Timer::calc_current_div());
             Timer::tima = data;
+            // Timer::schedule_tima_by_div(); // Needed if using old scheduler
             break;
         }
         case 0xFF07: { // TAC
             TimerControl tac = Timer::read_tac(data);
+            TimerControl old_tac = Timer::current_tac;
             Timer::current_tac = tac;
-            Timer::schedule_tima_by_div();
+            if (tac.increment_freq != old_tac.increment_freq) Timer::schedule_tima_by_div();
             if (tac.enable) logger.get_logger()->debug("TIMA enabled");
             else if (!tac.enable) logger.get_logger()->debug("TIMA disabled at value: {:d}", Timer::tima);
             break;
