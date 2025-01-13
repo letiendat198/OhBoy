@@ -13,7 +13,6 @@ enum MBC_TYPES {
 
 class MBC {
 private:
-    Logger logger = Logger("MBC");
     Cartridge *cartridge;
 
     uint8_t rom_bank_low = 1;

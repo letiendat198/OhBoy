@@ -6,8 +6,6 @@
 #include <set>
 #include <timer.h>
 
-class Debugger;
-
 enum SchedulerEvent {
     // PPU
     NEW_LINE,
@@ -40,10 +38,7 @@ struct SchedulerEventInfo {
 class Scheduler {
 private:
     inline static std::set<SchedulerEventInfo> event_queue;
-
-    Debugger *debugger = nullptr;
 public:
-    inline static Logger logger = Logger("Scheduler");
     CPU cpu;
     PPU ppu;
 
@@ -60,8 +55,6 @@ public:
     static void delay_schedule(SchedulerEvent event, uint32_t cycle_to_delay);
     SchedulerEventInfo progress();
     void tick_frame();
-
-    void set_render_callback(Debugger *debugger);
 };
 
 #endif //SCHEDULER_H

@@ -101,7 +101,6 @@ void CPU::op_10() {
             double_spd_mode = !current_spd;
             Memory::write(0xFF4D, (double_spd_mode & 0x1) << 7);
             // mcycle = 2050; // Avoid overwhelming scheduler and cause early turn around
-            logger.get_logger()->debug("Speed switch requested, mode is now: {:X}", double_spd_mode);
         }
     }
     opskip = 2;

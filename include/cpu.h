@@ -2,14 +2,11 @@
 #define CPU_H
 
 #include <string>
-
-#include "logger.h"
 #include "memory.h"
-#include "types.h"
 
 class CPU{
 private:
-    Logger logger = Logger("CPU");
+
 public:
     unsigned char a=0;
     unsigned char b=0;

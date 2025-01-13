@@ -21,8 +21,6 @@ namespace Memory{
 
     inline bool is_boot = true;
 
-    inline Logger logger = Logger("Memory");
-
     inline Cartridge cartridge;
 
     uint8_t read(uint16_t addr);

@@ -1,31 +1,6 @@
-# OhBoy
+# OhBoyPico
 
-A Game Boy/Game Boy Color emulator
-
-The emulator core was written in C++ and the GUI was written in Rust using Iced
-
-## Images
-
-![](images/image1.png)
-![](images/image2.png)
-![](images/image3.png)
-![](images/image4.png)
-![](images/image5.png)
-![](images/image6.png)
-
-## Keyboard Mapping
-```
-Game Boy:
-
-       |Up|          |Select| |Start| 
-|Left||Down||Right|                     |B| |A|
-
-Keyboard:
-
-   |W|          |T| |Y| 
-|A||S||D|                     |N| |M|
-      
-```
+Adapt OhBoy to Pi Pico 2
 
 ## How to build
 #### This is a guide for MinGW only! MSVC is probably the same.

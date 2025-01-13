@@ -2,7 +2,7 @@
 #define CARTRIDGE_H
 
 #include <cstdint>
-#include <logger.h>
+#include <string>
 #include <mbc.h>
 
 struct CartridgeHeader {
@@ -18,7 +18,6 @@ struct CartridgeHeader {
 
 class Cartridge{
 private:
-    Logger logger = Logger("Cartridge");
 public:
     CartridgeHeader header;
     uint8_t *boot_data = nullptr;

@@ -1,8 +1,8 @@
-#include <debugger.h>
 #include <dma.h>
 #include <interrupts.h>
 #include <joypad.h>
 #include <scheduler.h>
+#include <config.h>
 
 Scheduler::Scheduler() {
     schedule(SchedulerEvent::OAM_SCAN, 0);
@@ -61,9 +61,6 @@ void Scheduler::delay_schedule(SchedulerEvent event, uint32_t cycle_to_delay) {
 bool interrupt_already_fired = false;
 
 SchedulerEventInfo Scheduler::progress() {
-    if (event_queue.begin() == event_queue.end()) {
-        logger.get_logger()->debug("Event queue empty!");
-    }
     // logger.get_logger()->debug("Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
     while (true) {
         Joypad::tick();
@@ -82,6 +79,7 @@ SchedulerEventInfo Scheduler::progress() {
         interrupt_already_fired = false;
     }
     // logger.get_logger()->debug("Current DIV: {:d}. Current cycle: {:d}. Overflow cycle: {:d}", Timer::calc_current_div(), current_cycle, Timer::div_overflow_cycle);
+    // printf("Handling event: %d\n", static_cast<int>(event_queue.begin()->event));
     return event_queue.extract(event_queue.begin()).value();
 }
 
@@ -112,7 +110,6 @@ void Scheduler::tick_frame() {
                 Interrupts::set_interrupt_flag(0);
                 ppu.update_stat(1);
                 ppu.schedule_next_mode(1);
-                if (debugger != nullptr) debugger->render();
                 break;
             case NEW_LINE:
                 ppu.update_ly();
@@ -135,7 +132,7 @@ void Scheduler::tick_frame() {
                 HDMA::transfer_hdma();
                 break;
             default:
-                logger.get_logger()->debug("Not yet implemented event");
+                printf("Not yet implemented event\n");
         }
         current_cycle = cycle_backup; // Restore context
     }
@@ -144,15 +141,9 @@ void Scheduler::tick_frame() {
     std::set<SchedulerEventInfo> temp;
     for(auto event_info : event_queue) {
         if (event_info.cycle > CYCLE_PER_FRAME) event_info.cycle -= CYCLE_PER_FRAME;
-        else logger.get_logger()->warn("Scheduler will miss event: {:d} at: {:d}", static_cast<int>(event_info.event), event_info.cycle);
         temp.insert(event_info);
     }
     event_queue.swap(temp);
 }
-
-void Scheduler::set_render_callback(Debugger *debugger) {
-    this->debugger = debugger;
-}
-
 
 

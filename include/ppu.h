@@ -2,7 +2,6 @@
 #define PPU_H
 #include <cartridge.h>
 #include <cstdint>
-#include <logger.h>
 
 struct LCDC {
     uint8_t lcd_enable;
@@ -49,7 +48,6 @@ struct Scroll {
 
 class PPU {
 private:
-    Logger logger = Logger("PPU");
     // uint8_t dmg_palette[4][3] = {{224, 248, 208}, {136, 192, 112}, {52, 104, 86}, {8, 24, 32}};
     uint8_t dmg_palette[4][3] = {{181, 198, 156}, {141, 156, 123}, {99, 114, 81}, {48, 56, 32}};
     ObjAttribute obj_queue[10]{};

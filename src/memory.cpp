@@ -1,8 +1,10 @@
 #include "memory.h"
 
-#include <debugger.h>
 #include <dma.h>
 #include <interrupts.h>
+#include <timer.h>
+
+#include "scheduler.h"
 
 uint8_t Memory::read(uint16_t addr) {
     switch (addr) {
@@ -10,11 +12,9 @@ uint8_t Memory::read(uint16_t addr) {
             return (Timer::calc_current_div() >> 8) & 0xFF;
         }
         case 0xFF05: { // TIMA
-            logger.get_logger()->debug("Read TIMA: {:d} at cycle: {:d}, DIV: {:b}", Timer::tima, Scheduler::current_cycle, Timer::calc_current_div());
             return Timer::tima;
         }
         case 0xFF55: {
-            logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
             return (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F);
         }
     }
@@ -28,13 +28,11 @@ void Memory::write(uint16_t addr, uint8_t data) {
     switch (addr) {
         case 0xFF04: // DIV
         {
-            logger.get_logger()->debug("DIV reset at cycle: {:d}", Scheduler::current_cycle);
             Scheduler::remove_schedule(DIV_OVERFLOW);
             Timer::schedule_next_div_overflow();
             return;
         }
         case 0xFF05: { //TIMA
-            logger.get_logger()->debug("Write: {:d} to TIMA at cycle: {:d}. DIV: {:b}", data, Scheduler::current_cycle, Timer::calc_current_div());
             Timer::tima = data;
             // Timer::schedule_tima_by_div(); // Needed if using old scheduler
             break;
@@ -44,8 +42,6 @@ void Memory::write(uint16_t addr, uint8_t data) {
             TimerControl old_tac = Timer::current_tac;
             Timer::current_tac = tac;
             if (tac.increment_freq != old_tac.increment_freq) Timer::schedule_tima_by_div();
-            if (tac.enable) logger.get_logger()->debug("TIMA enabled");
-            else if (!tac.enable) logger.get_logger()->debug("TIMA disabled at value: {:d}", Timer::tima);
             break;
         }
         case 0xFF50:  // Write to this turn off boot
@@ -62,7 +58,6 @@ void Memory::write(uint16_t addr, uint8_t data) {
             if (hdma_requested == false) {
                 hdma_requested = true;
                 hdma_type = (data >> 7) & 0x1;
-                logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", hdma_type, data & 0x7F);
                 if (hdma_type == 0) Scheduler::schedule(GDMA_TRANSFER, 0);
             }
             else {
@@ -71,7 +66,6 @@ void Memory::write(uint16_t addr, uint8_t data) {
                     hdma_requested = false;
                     HDMA::reset_hdma();
                 }
-                logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
             }
             break;
         }

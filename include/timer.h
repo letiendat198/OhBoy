@@ -1,7 +1,6 @@
 #ifndef TIMER_H
 #define TIMER_H
 #include <cstdint>
-#include <logger.h>
 
 struct TimerControl {
     uint8_t enable = 0;
@@ -10,8 +9,6 @@ struct TimerControl {
 };
 
 namespace Timer {
-    inline Logger logger = Logger("Timer");
-
     inline uint32_t div_overflow_cycle = 0;
     inline uint8_t tima = 0;
     inline TimerControl current_tac{};

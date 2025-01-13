@@ -15,7 +15,6 @@ uint16_t Interrupts::check_and_service(uint8_t &ime){
             ime = 0;
             reset_interrupt_flag(i);
             uint8_t return_addr[5] = {0x40, 0x48, 0x50, 0x58, 0x60};
-            if (i==2) logger.get_logger()->debug("Timer interrupt called");
             return return_addr[i];
         }
     }
