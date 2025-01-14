@@ -3,9 +3,6 @@
 #include <memory.h>
 
 uint16_t Interrupts::check_and_service(uint8_t &ime){
-    if (ime==0) {
-        return 0x00;
-    }
     uint8_t interrupt_enable = Memory::read(0xFFFF);
     uint8_t interrupt_flag = Memory::read(0xFF0F);
     uint8_t interrupt_status = interrupt_enable & interrupt_flag;

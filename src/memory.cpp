@@ -34,7 +34,6 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF05: { //TIMA
             Timer::tima = data;
-            // Timer::schedule_tima_by_div(); // Needed if using old scheduler
             break;
         }
         case 0xFF07: { // TAC
