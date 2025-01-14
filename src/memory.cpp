@@ -36,7 +36,6 @@ void Memory::write(uint16_t addr, uint8_t data) {
         case 0xFF05: { //TIMA
             logger.get_logger()->debug("Write: {:d} to TIMA at cycle: {:d}. DIV: {:b}", data, Scheduler::current_cycle, Timer::calc_current_div());
             Timer::tima = data;
-            // Timer::schedule_tima_by_div(); // Needed if using old scheduler
             break;
         }
         case 0xFF07: { // TAC

@@ -3,9 +3,6 @@
 #include <memory.h>
 
 uint16_t Interrupts::check_and_service(uint8_t &ime){
-    if (ime==0) {
-        return 0x00;
-    }
     uint8_t interrupt_enable = Memory::read(0xFFFF);
     uint8_t interrupt_flag = Memory::read(0xFF0F);
     uint8_t interrupt_status = interrupt_enable & interrupt_flag;
@@ -15,7 +12,6 @@ uint16_t Interrupts::check_and_service(uint8_t &ime){
             ime = 0;
             reset_interrupt_flag(i);
             uint8_t return_addr[5] = {0x40, 0x48, 0x50, 0x58, 0x60};
-            if (i==2) logger.get_logger()->debug("Timer interrupt called");
             return return_addr[i];
         }
     }

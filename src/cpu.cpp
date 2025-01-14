@@ -50,24 +50,17 @@ uint32_t CPU::tick(){
         ime_next = false;
     } // EI is delayed by 1 instr
 
-    exec_flag = true;
     (this->*jump_table[Memory::read(pc)])();
     pc+=opskip;
 
     return mcycle;
 }
 
-uint32_t CPU::fetch_next_length() {
-    exec_flag = false;
-    (this->*jump_table[Memory::read(pc)])();
-    return mcycle;
-}
-
 bool CPU::handle_interrupts() {
-    if (Interrupts::is_pending()) {
+    if (Interrupts::is_pending()) { // This guarantee IF & IE != 0
         halt = 0;
+        if (!ime) return false;
         uint8_t interrupt_addr = Interrupts::check_and_service(ime); // Check interrupts
-        if (interrupt_addr == 0) return false; // In case IME is disabled
         mcycle = 5;
 
         // logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);

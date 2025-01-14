@@ -65,21 +65,14 @@ SchedulerEventInfo Scheduler::progress() {
         logger.get_logger()->debug("Event queue empty!");
     }
     // logger.get_logger()->debug("Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
-    while (true) {
-        Joypad::tick();
-        if (current_cycle + cpu.fetch_next_length() >= event_queue.begin()->cycle) {
-            cpu.handle_interrupts();
-            interrupt_already_fired = true;
-            break;
-        }
-        if (!interrupt_already_fired) cpu.handle_interrupts();
-        current_cycle += cpu.fetch_next_length();
-        cpu.tick();
-        // In double speed mode, CPU and DIV/TIMA should be twice as fast
-        // But since the latter is inaccurate (for now) and most games don't relly on them
-        // So I can get away with just ticking the CPU once more (Not cycle accurate though).
+    while(current_cycle < event_queue.begin()->cycle) {
+        cpu.handle_interrupts();
+        current_cycle += cpu.tick();
         if (CPU::double_spd_mode) cpu.tick();
-        interrupt_already_fired = false;
+
+        // Joypad need to tick every cycle because game will read and reset register value
+        // Actual keyboard update can be done once per frame. Can probably optimize by tick per joypad register read
+        Joypad::tick();
     }
     // logger.get_logger()->debug("Current DIV: {:d}. Current cycle: {:d}. Overflow cycle: {:d}", Timer::calc_current_div(), current_cycle, Timer::div_overflow_cycle);
     return event_queue.extract(event_queue.begin()).value();

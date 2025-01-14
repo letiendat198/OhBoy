@@ -9,4 +9,7 @@ deps/SDL2-VC
 gui/target
 gui/*.ini
 gui/*.log
+include/boot.h
+include/cgb_boot.h
+include/tetris.h
 *.diagsession

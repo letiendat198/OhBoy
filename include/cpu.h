@@ -29,7 +29,6 @@ public:
 
     inline static bool double_spd_mode = false;
 
-    bool exec_flag = true;
     bool ime_next = false;
 
     unsigned char opskip;
