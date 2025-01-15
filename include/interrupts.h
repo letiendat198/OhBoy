@@ -1,7 +1,6 @@
 #ifndef INTERRUPTS_H
 #define INTERRUPTS_H
 #include <cstdint>
-#include <logger.h>
 #include <types.h>
 
 namespace Interrupts {
