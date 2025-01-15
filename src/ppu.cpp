@@ -40,6 +40,8 @@ uint16_t fetch_obj_tile_data(ObjAttribute obj, LCDC lcdc, uint8_t ly) {
 void PPU::draw_scanline() {
     Scroll scroll = read_scroll();
     LCDC lcdc = read_lcdc();
+
+    // Handle LCDC enable TODO: MOVE THIS OUT OF HERE
     if (lcdc.lcd_enable == false) {
         ly = 0;
         update_ly();
@@ -56,10 +58,20 @@ void PPU::draw_scanline() {
     uint8_t fill_table[160] = {};
     bool window_region = false;
 
+    uint16_t bg_palette[4]{};
+    uint16_t obj_palette0[4]{};
+    uint16_t obj_palette1[4]{};
+
+    if (!is_cgb) {
+        read_palette(bg_palette, 0xFF47);
+        read_palette(obj_palette0, 0xFF48);
+        read_palette(obj_palette1, 0xFF49);
+    }
+
     // Render background/window
     for(uint8_t i=0;i<160;i++) {
         if (!is_cgb && lcdc.bg_window_priority == 0) { // In DMG mode, if bg lose priority -> white line
-            write_frame_buffer(i, ly, 0);
+            frame_buffer[ly*160+i] = bg_palette[0];
             fill_table[i] = 0;
             continue;
         }
@@ -75,14 +87,20 @@ void PPU::draw_scanline() {
             window_region = true;
 
             if (i!=0 && x%8 != 0) { // Fetch window tile if window switch in the middle of a tile
-                if (is_cgb) tile_bg_attribute = read_background_attribute(x, y, tile_map_region);
+                if (is_cgb) {
+                    tile_bg_attribute = read_background_attribute(x, y, tile_map_region);
+                    read_cgb_palette(bg_palette, tile_bg_attribute.color_palette, false);
+                }
                 tile_data = fetch_tile_data(x, y, tile_map_region, lcdc.tile_data_area, is_cgb?tile_bg_attribute.bank:0,
                                     is_cgb?tile_bg_attribute.y_flip:false);
             }
         }
 
         if (i==0 || x%8 == 0) {
-            if (is_cgb) tile_bg_attribute = read_background_attribute(x, y, tile_map_region);
+            if (is_cgb) {
+                tile_bg_attribute = read_background_attribute(x, y, tile_map_region);
+                read_cgb_palette(bg_palette, tile_bg_attribute.color_palette, false);
+            }
             tile_data = fetch_tile_data(x, y, tile_map_region, lcdc.tile_data_area, is_cgb?tile_bg_attribute.bank:0,
                                 is_cgb?tile_bg_attribute.y_flip:false);
         }
@@ -95,8 +113,8 @@ void PPU::draw_scanline() {
         uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
         fill_table[i] = color;
         if (is_cgb && tile_bg_attribute.priority) fill_table[i] |= 0xF0;
-        if (!is_cgb) write_frame_buffer(i, ly, parse_palette(color, 0xFF47));
-        else write_frame_buffer(i, ly, color, tile_bg_attribute.color_palette, false);
+
+        frame_buffer[ly*160 + i] = bg_palette[color];
     }
 
     // Render objects
@@ -107,6 +125,8 @@ void PPU::draw_scanline() {
         if (obj.x_pos == 0 || obj.x_pos >= 168) continue; // No need to render, object hidden
 
         tile_data = fetch_obj_tile_data(obj, lcdc, ly);
+        uint16_t *obj_palette = obj.dmg_palette ? obj_palette1 : obj_palette0;
+        if (is_cgb) read_cgb_palette(obj_palette, obj.cgb_palette, true);
 
         for (int x = obj.x_pos - 8; x<obj.x_pos;x++) { // Signed is important
             if (x<0 || x >= 160) continue; // If x < 8 -> x - 8 > 160 cause wrap around so invalidate. Same for x >= 160
@@ -120,11 +140,9 @@ void PPU::draw_scanline() {
             uint8_t p2 = tile_data >> 8;
 
             uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
-            uint16_t palette_addr = obj.dmg_palette ? 0xFF49 : 0xFF48;
             if (color > 0) {
                 fill_table[x] = 0xFF; // Set to 0xFF to indicate an obj already show on this pixel
-                if (!is_cgb) write_frame_buffer(x, ly, parse_palette(color, palette_addr));
-                else write_frame_buffer(x, ly, color, obj.cgb_palette, true);
+                frame_buffer[ly*160 + x] = obj_palette[color];
             }
         }
     }
@@ -139,50 +157,32 @@ void PPU::oam_scan() {
     for (uint16_t addr=0xFE00; addr<=0xFE9F; addr+=4) {
         if (obj_queue_index == 10) break;
 
-        ObjAttribute obj = read_obj(addr);
-        if ((obj.y_pos - 16) <= ly && ly < (obj.y_pos - 16 + lcdc.obj_size)) {
+        uint8_t obj_y_pos = Memory::unsafe_read(addr);
+        if ((obj_y_pos - 16) <= ly && ly < (obj_y_pos - 16 + lcdc.obj_size)) {
+            ObjAttribute obj = read_obj(addr);
             obj_queue[obj_queue_index++] = obj;
         }
     }
     if (!is_cgb) std::stable_sort(obj_queue, obj_queue + obj_queue_index); // TODO: Change to use 0xFF6C
 }
 
-uint32_t min(uint32_t a, uint32_t b) {
-    return a<b?a:b;
+void PPU::read_palette(uint16_t *palette, uint16_t palette_addr) {
+    uint8_t palette_data = Memory::unsafe_read(palette_addr);
+    for(uint8_t i=0;i<4;i++) palette[i] = dmg_palette[(palette_data >> i * 2) & 0x3];
 }
 
-void PPU::write_frame_buffer(uint8_t x, uint8_t y, uint8_t color_id, uint8_t color_palette, bool is_obj) { // color_palette not used in DMG mode
-    int index = (y * 160 + x) * 3;
-    if (!is_cgb) { // SDL uses BGR
-        frame_buffer[index] = dmg_palette[color_id][2];
-        frame_buffer[index+1] = dmg_palette[color_id][1];
-        frame_buffer[index+2] = dmg_palette[color_id][0];
-    }
-    else {
+void PPU::read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj) {
+    for (uint8_t color_id = 0; color_id < 4; color_id++) {
         uint8_t color_addr = color_palette * 8 + (color_id * 2);
         uint8_t p1 = is_obj ? Memory::read_obj_cram(color_addr) : Memory::read_bg_cram(color_addr);
         uint8_t p2 = is_obj ? Memory::read_obj_cram(color_addr + 1) : Memory::read_bg_cram(color_addr + 1);
 
         uint8_t r = p1 & 0x1F;
-        uint8_t g = ((p1 >> 5) & 0x07) | (p2 & 0x03) << 3;
+        uint8_t g = ((p1 >> 5) & 0x07) << 1 | (p2 & 0x03) << 4;
         uint8_t b = (p2 >> 2) & 0x1F;
 
-        uint32_t R = (r * 26 + g *  4 + b *  2);
-        uint32_t G = (         g * 24 + b *  8);
-        uint32_t B = (r *  6 + g *  4 + b * 22);
-        R = min(960, R) >> 2;
-        G = min(960, G) >> 2;
-        B = min(960, B) >> 2;
-
-        frame_buffer[index] = B & 0xFF;
-        frame_buffer[index+1] = G & 0xFF;
-        frame_buffer[index+2] = R & 0xFF;
+        palette[color_id] = (r << 11) | (g << 5) | b;
     }
-}
-
-uint8_t PPU::parse_palette(uint8_t src_color, uint16_t palette_addr) {
-    uint8_t palette_data = Memory::unsafe_read(palette_addr);
-    return (palette_data >> src_color * 2) & 0x3;
 }
 
 void PPU::schedule_next_mode(uint8_t current_mode) {
