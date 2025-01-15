@@ -9,7 +9,7 @@ endif()
 
 # set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-Ofast")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 

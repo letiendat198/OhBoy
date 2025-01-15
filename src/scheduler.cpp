@@ -58,7 +58,7 @@ void Scheduler::delay_schedule(SchedulerEvent event, uint32_t cycle_to_delay) {
     schedule_absolute(event, event_info.cycle + cycle_to_delay);
 }
 
-bool interrupt_already_fired = false;
+uint8_t frame_count = 0;
 
 SchedulerEventInfo Scheduler::progress() {
     // logger.get_logger()->debug("Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
@@ -90,7 +90,7 @@ void Scheduler::tick_frame() {
                 break;
             case HBLANK:
                 if (Memory::check_hdma() && Memory::get_hdma_type() == 1 && !cpu.halt) schedule(HDMA_TRANSFER, 0);
-                ppu.draw_scanline();
+                if (frame_count % 2 == 0) ppu.draw_scanline();
                 ppu.update_stat(0);
                 ppu.schedule_next_mode(0);
                 break;
@@ -133,6 +133,9 @@ void Scheduler::tick_frame() {
         temp.insert(event_info);
     }
     event_queue.swap(temp);
+
+    frame_count++;
+    if (frame_count==10) frame_count = 0;
 }
 
 
