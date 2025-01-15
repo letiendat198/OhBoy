@@ -51,15 +51,15 @@ class PPU {
 private:
     Logger logger = Logger("PPU");
     // uint8_t dmg_palette[4][3] = {{224, 248, 208}, {136, 192, 112}, {52, 104, 86}, {8, 24, 32}};
-    uint8_t dmg_palette[4][3] = {{181, 198, 156}, {141, 156, 123}, {99, 114, 81}, {48, 56, 32}};
+    uint16_t dmg_palette[4] = {0xB633, 0x8CEF, 0x638A, 0x31C4};
     ObjAttribute obj_queue[10]{};
     uint8_t obj_queue_index = 0;
     bool is_cgb = false;
 
-    void write_frame_buffer(uint8_t x, uint8_t y, uint8_t color_id, uint8_t color_palette=0x0, bool is_obj=false);
-    uint8_t parse_palette(uint8_t src_color, uint16_t palette_addr);
+    void read_palette(uint16_t *palette, uint16_t palette_addr);
+    void read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj);
 public:
-    inline static uint8_t *frame_buffer = new uint8_t[160*144*3]();
+    uint16_t *frame_buffer = new uint16_t[160*144]();
 
     uint8_t ly = 0;
     uint8_t window_ly = 0;

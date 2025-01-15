@@ -120,7 +120,7 @@ void Debugger::render_game() {
         ImGui::SetNextWindowClass(&window_class);
     }
     ImGui::Begin("Game");
-    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)PPU::frame_buffer, 160, 144, 24, 160*3, 0x0, 0x0, 0x0, 0x0);
+    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)scheduler->ppu.frame_buffer, 160, 144, 16, 160*2, 0x0, 0x0, 0x0, 0x0);
     if (surface == nullptr) {
         fprintf(stderr, "Failed to create SDL surface: %s\n", SDL_GetError());
     }
