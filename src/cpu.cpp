@@ -57,20 +57,12 @@ bool CPU::handle_interrupts() {
         mcycle = 5;
 
         // logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);
-        write8_mem(--sp, pc >> 8);
-        write8_mem(--sp, pc & 0xFF);
+        Memory::write(--sp, pc >> 8);
+        Memory::write(--sp, pc & 0xFF);
         pc = interrupt_addr;
         return true;
     }
     return false;
-}
-
-void CPU::write8_mem(uint16_t addr, uint8_t a) {
-    Memory::write(addr, a);
-}
-
-uint8_t CPU::read8_mem(uint16_t addr) {
-    return Memory::read(addr);
 }
 
 uint16_t CPU::read16_mem(uint16_t addr) {
@@ -110,10 +102,10 @@ void CPU::inc_sp() {
 }
 
 void CPU::inc_ind_hl() {
-    uint8_t data = read8_mem(h<<8|l);
+    uint8_t data = Memory::read(h<<8|l);
     auto [result, carry] = SafeOperations::safe_add(data, 1);
     data = result;
-    write8_mem(h<<8|l, data);
+    Memory::write(h<<8|l, data);
     if ((data & 0xF) == 0) h_flag = 1; // Lower 4 bit carry
     else h_flag=0;
 
@@ -146,10 +138,10 @@ void CPU::dec_sp() {
 }
 
 void CPU::dec_ind_hl() {
-    uint8_t data = read8_mem(h<<8|l);
+    uint8_t data = Memory::read(h<<8|l);
     auto [result, carry] = SafeOperations::safe_sub(data, 1);
     data = result;
-    write8_mem(h<<8|l, data);
+    Memory::write(h<<8|l, data);
     if ((data & 0xF) == 0xF) h_flag = 1; // Lower 4 bit carry
     else h_flag=0;
 
@@ -282,48 +274,48 @@ void CPU::jpc(uint8_t flag, uint16_t e) {
 }
 
 void CPU::call() {
-    write8_mem(--sp, pc+3 >> 8);
-    write8_mem(--sp, pc+3 & 0xFF);
+    Memory::write(--sp, pc+3 >> 8);
+    Memory::write(--sp, pc+3 & 0xFF);
     pc = read16_mem(pc+1);
     opskip = 0;
 }
 
 void CPU::callc(uint8_t flag) {
     if(flag) {
-        write8_mem(--sp, pc+3 >> 8);
-        write8_mem(--sp, pc+3 & 0xFF);
+        Memory::write(--sp, pc+3 >> 8);
+        Memory::write(--sp, pc+3 & 0xFF);
         pc = read16_mem(pc+1);
         opskip = 0;
     }
 }
 
 void CPU::ret() {
-    pc = read8_mem(sp++) | read8_mem(sp++) << 8;
+    pc = Memory::read(sp++) | Memory::read(sp++) << 8;
     opskip = 0;
 }
 
 void CPU::retc(uint8_t flag) {
     if (flag) {
-        pc = read8_mem(sp++) | read8_mem(sp++) << 8;
+        pc = Memory::read(sp++) | Memory::read(sp++) << 8;
         opskip = 0;
     }
 }
 
 void CPU::rst(uint8_t n) {
-    write8_mem(--sp, pc+1 >> 8);
-    write8_mem(--sp, pc+1 & 0xFF);
+    Memory::write(--sp, pc+1 >> 8);
+    Memory::write(--sp, pc+1 & 0xFF);
     pc = 0x00 << 8 | n;
     opskip = 0;
 }
 
 void CPU::pop(uint8_t &a, uint8_t &b) {
-    b = read8_mem(sp++);
-    a = read8_mem(sp++);
+    b = Memory::read(sp++);
+    a = Memory::read(sp++);
 }
 
 void CPU::push(uint8_t a, uint8_t b) {
-    write8_mem(--sp, a);
-    write8_mem(--sp, b);
+    Memory::write(--sp, a);
+    Memory::write(--sp, b);
 }
 
 void CPU::rlc(uint8_t &a) {
@@ -337,11 +329,11 @@ void CPU::rlc(uint8_t &a) {
 }
 
 void CPU::rlc_hl() {
-    uint8_t a = read8_mem(h<<8|l);
+    uint8_t a = Memory::read(h<<8|l);
     c_flag = (a & 0x80) >> 7;
     a = a << 1;
     a = a | c_flag;
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
 
     z_flag = a==0;
     n_flag = 0;
@@ -359,11 +351,11 @@ void CPU::rrc(uint8_t &a) {
 }
 
 void CPU::rrc_hl() {
-    uint8_t a = read8_mem(h<<8|l);
+    uint8_t a = Memory::read(h<<8|l);
     c_flag = a & 0x01;
     a = a >> 1;
     a = c_flag<<7 | a;
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
 
     z_flag = a==0;
     n_flag = 0;
@@ -382,12 +374,12 @@ void CPU::rl(uint8_t &a) {
 }
 
 void CPU::rl_hl() {
-    uint8_t a = read8_mem(h<<8|l);
+    uint8_t a = Memory::read(h<<8|l);
     uint8_t t = (a & 0x80) >> 7;
     a = a << 1;
     a = a | c_flag;
     c_flag = t;
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
 
     z_flag = a==0;
     n_flag = 0;
@@ -406,12 +398,12 @@ void CPU::rr(uint8_t &a) {
 }
 
 void CPU::rr_hl() {
-    uint8_t a = read8_mem(h<<8|l);
+    uint8_t a = Memory::read(h<<8|l);
     uint8_t t = a & 0x01;
     a = a >> 1;
     a = c_flag << 7 | a;
     c_flag = t;
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
 
     z_flag = a==0;
     n_flag = 0;
@@ -428,10 +420,10 @@ void CPU::sla(uint8_t &a) {
 }
 
 void CPU::sla_hl() {
-    uint8_t a = read8_mem(h<<8|l);
+    uint8_t a = Memory::read(h<<8|l);
     c_flag = (a & 0x80) >> 7;
     a = a << 1;
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
 
     z_flag = a==0;
     n_flag = 0;
@@ -449,11 +441,11 @@ void CPU::sra(uint8_t &a) { // KEEP BIT 7
 }
 
 void CPU::sra_hl() {
-    uint8_t a = read8_mem(h<<8|l);
+    uint8_t a = Memory::read(h<<8|l);
     c_flag = a & 0x01;
     a = a >> 1;
     a = (a & 0x40) << 1 | a;
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
 
     z_flag = a==0;
     n_flag = 0;
@@ -470,9 +462,9 @@ void CPU::swap(uint8_t &a) {
 }
 
 void CPU::swap_hl() {
-    uint8_t a = read8_mem(h<<8|l);
+    uint8_t a = Memory::read(h<<8|l);
     a = ((a & 0xF) << 4) | (a >> 4);
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
 
     z_flag = a==0;
     n_flag = 0;
@@ -490,10 +482,10 @@ void CPU::srl(uint8_t &a) { // SRL IS WHAT SRA SUPPOSED TO BE
 }
 
 void CPU::srl_hl() {
-    uint8_t a = read8_mem(h<<8|l);
+    uint8_t a = Memory::read(h<<8|l);
     c_flag = a & 0x01;
     a = a >> 1;
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
 
     z_flag = a==0;
     n_flag = 0;
@@ -511,9 +503,9 @@ void CPU::set(uint8_t i, uint8_t &a) {
 }
 
 void CPU::set_hl(uint8_t i) {
-    uint8_t a = read8_mem(h<<8|l);
+    uint8_t a = Memory::read(h<<8|l);
     a = a | (0x01 << i);
-    write8_mem(h<<8|l , a);
+    Memory::write(h<<8|l , a);
 }
 
 void CPU::res(uint8_t i, uint8_t &a) {
@@ -521,9 +513,9 @@ void CPU::res(uint8_t i, uint8_t &a) {
 }
 
 void CPU::res_hl(uint8_t i) {
-    uint8_t a = read8_mem(h<<8|l);
+    uint8_t a = Memory::read(h<<8|l);
     a = a & ~(0x01 << i);
-    write8_mem(h<<8|l , a);
+    Memory::write(h<<8|l , a);
 }
 
 

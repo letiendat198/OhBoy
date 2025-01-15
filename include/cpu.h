@@ -37,8 +37,6 @@ public:
 
     void log_cpu();
 
-    void write8_mem(uint16_t addr, uint8_t a);
-    uint8_t read8_mem(uint16_t addr);
     uint16_t read16_mem(uint16_t addr);
 
     void ld8_imm(uint8_t &a, uint8_t imm);
