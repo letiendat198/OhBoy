@@ -353,7 +353,7 @@ void CPU::op_CB45(){
 void CPU::op_CB46(){
 	opskip=2;
 	mcycle=3;
-	bit(0, read8_mem(h<<8|l));
+	bit(0, Memory::read(h<<8|l));
 } // BIT 0 [HL]
 void CPU::op_CB47(){
 	opskip=2;
@@ -393,7 +393,7 @@ void CPU::op_CB4D(){
 void CPU::op_CB4E(){
 	opskip=2;
 	mcycle=3;
-	bit(1, read8_mem(h<<8|l));
+	bit(1, Memory::read(h<<8|l));
 } // BIT 1 [HL]
 void CPU::op_CB4F(){
 	opskip=2;
@@ -433,7 +433,7 @@ void CPU::op_CB55(){
 void CPU::op_CB56(){
 	opskip=2;
 	mcycle=3;
-	bit(2, read8_mem(h<<8|l));
+	bit(2, Memory::read(h<<8|l));
 } // BIT 2 [HL]
 void CPU::op_CB57(){
 	opskip=2;
@@ -473,7 +473,7 @@ void CPU::op_CB5D(){
 void CPU::op_CB5E(){
 	opskip=2;
 	mcycle=3;
-	bit(3, read8_mem(h<<8|l));
+	bit(3, Memory::read(h<<8|l));
 } // BIT 3 [HL]
 void CPU::op_CB5F(){
 	opskip=2;
@@ -513,7 +513,7 @@ void CPU::op_CB65(){
 void CPU::op_CB66(){
 	opskip=2;
 	mcycle=3;
-	bit(4, read8_mem(h<<8|l));
+	bit(4, Memory::read(h<<8|l));
 } // BIT 4 [HL]
 void CPU::op_CB67(){
 	opskip=2;
@@ -553,7 +553,7 @@ void CPU::op_CB6D(){
 void CPU::op_CB6E(){
 	opskip=2;
 	mcycle=3;
-	bit(5, read8_mem(h<<8|l));
+	bit(5, Memory::read(h<<8|l));
 } // BIT 5 [HL]
 void CPU::op_CB6F(){
 	opskip=2;
@@ -593,7 +593,7 @@ void CPU::op_CB75(){
 void CPU::op_CB76(){
 	opskip=2;
 	mcycle=3;
-	bit(6, read8_mem(h<<8|l));
+	bit(6, Memory::read(h<<8|l));
 } // BIT 6 [HL]
 void CPU::op_CB77(){
 	opskip=2;
@@ -633,7 +633,7 @@ void CPU::op_CB7D(){
 void CPU::op_CB7E(){
 	opskip=2;
 	mcycle=3;
-	bit(7, read8_mem(h<<8|l));
+	bit(7, Memory::read(h<<8|l));
 } // BIT 7 [HL]
 void CPU::op_CB7F(){
 	opskip=2;

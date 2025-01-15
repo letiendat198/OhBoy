@@ -10,7 +10,7 @@ void CPU::op_01() {
     opskip = 3;
 } // LD BC n16
 void CPU::op_02() {
-    write8_mem(b<<8 | c, a);
+    Memory::write(b<<8 | c, a);
     mcycle = 2;
     opskip = 1;
 } // LD [BC] A
@@ -30,7 +30,7 @@ void CPU::op_05() {
     opskip = 1;
 } // DEC B
 void CPU::op_06() {
-    ld8_imm(b, read8_mem(pc+1));
+    ld8_imm(b, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // LD B n8
@@ -43,8 +43,8 @@ void CPU::op_07() {
 } // RLCA
 void CPU::op_08() {
     uint16_t addr = read16_mem(pc+1);
-    write8_mem(addr, sp & 0xFF);
-    write8_mem(addr+1, sp >> 8);
+    Memory::write(addr, sp & 0xFF);
+    Memory::write(addr+1, sp >> 8);
     mcycle = 5;
     opskip = 3;
 } // LD [a16] SP
@@ -54,7 +54,7 @@ void CPU::op_09() {
     add_hl(b<<8 | c);
 } // ADD HL BC
 void CPU::op_0A() {
-    ld8_imm(a, read8_mem(b<<8 | c));
+    ld8_imm(a, Memory::read(b<<8 | c));
     mcycle = 2;
     opskip = 1;
 } // LD A [BC]
@@ -74,7 +74,7 @@ void CPU::op_0D() {
     opskip = 1;
 } // DEC C
 void CPU::op_0E() {
-    ld8_imm(c, read8_mem(pc+1));
+    ld8_imm(c, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // LD C n8
@@ -109,7 +109,7 @@ void CPU::op_11() {
     opskip = 3;
 } // LD DE n16
 void CPU::op_12() {
-    write8_mem(d<<8|e, a);
+    Memory::write(d<<8|e, a);
     mcycle = 2;
     opskip = 1;
 } // LD [DE] A
@@ -129,7 +129,7 @@ void CPU::op_15() {
     opskip = 1;
 } // DEC D
 void CPU::op_16() {
-    ld8_imm(d, read8_mem(pc+1));
+    ld8_imm(d, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // LD D n8
@@ -141,7 +141,7 @@ void CPU::op_17() {
     z_flag = 0;
 } // RLA
 void CPU::op_18() {
-    jr(read8_mem(pc+1));
+    jr(Memory::read(pc+1));
     mcycle=3;
     opskip=2;
 } // JR e8
@@ -151,7 +151,7 @@ void CPU::op_19() {
     add_hl(d<<8 | e);
 } // ADD HL DE
 void CPU::op_1A() {
-    ld8_imm(a, read8_mem(d<<8|e));
+    ld8_imm(a, Memory::read(d<<8|e));
     mcycle=2;
     opskip=1;
 } // LD A [DE]
@@ -171,7 +171,7 @@ void CPU::op_1D() {
     opskip = 1;
 } // DEC E
 void CPU::op_1E() {
-    ld8_imm(e, read8_mem(pc+1));
+    ld8_imm(e, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // LD E n8
@@ -182,7 +182,7 @@ void CPU::op_1F() {
     z_flag = 0;
 } // RRA
 void CPU::op_20() {
-    jrc(!z_flag, read8_mem(pc+1));
+    jrc(!z_flag, Memory::read(pc+1));
     if (!z_flag) mcycle = 3;
     else mcycle = 2;
     opskip=2;
@@ -193,7 +193,7 @@ void CPU::op_21() {
     opskip = 3;
 } // LD HL n16
 void CPU::op_22() {
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
     inc16(h,l);
     mcycle = 2;
     opskip = 1;
@@ -214,7 +214,7 @@ void CPU::op_25() {
     opskip = 1;
 } // DEC H
 void CPU::op_26() {
-    ld8_imm(h, read8_mem(pc+1));
+    ld8_imm(h, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // LD H n8
@@ -235,7 +235,7 @@ void CPU::op_27() {
     h_flag = 0; // h flag is always cleared
 } // DAA
 void CPU::op_28() {
-    jrc(z_flag, read8_mem(pc+1));
+    jrc(z_flag, Memory::read(pc+1));
     if (z_flag) mcycle = 3;
     else mcycle = 2;
     opskip=2;
@@ -246,7 +246,7 @@ void CPU::op_29() {
     add_hl(h<<8 | l);
 } // ADD HL HL
 void CPU::op_2A() {
-    ld8_imm(a, read8_mem(h<<8|l));
+    ld8_imm(a, Memory::read(h<<8|l));
     inc16(h,l);
 
     mcycle = 2;
@@ -268,7 +268,7 @@ void CPU::op_2D() {
     opskip = 1;
 } // DEC L
 void CPU::op_2E() {
-    ld8_imm(l, read8_mem(pc+1));
+    ld8_imm(l, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // LD L n8
@@ -282,7 +282,7 @@ void CPU::op_2F() {
 
 } // CPL
 void CPU::op_30() {
-    jrc(!c_flag, read8_mem(pc+1));
+    jrc(!c_flag, Memory::read(pc+1));
     if (!c_flag) mcycle = 3;
     else mcycle = 2;
     opskip=2;
@@ -293,7 +293,7 @@ void CPU::op_31() {
     opskip = 3;
 } // LD SP n16
 void CPU::op_32() {
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
     dec16(h,l);
 
     mcycle = 2;
@@ -315,7 +315,7 @@ void CPU::op_35() {
     opskip = 1;
 } // DEC [HL]
 void CPU::op_36() {
-    write8_mem(h<<8|l, read8_mem(pc+1));
+    Memory::write(h<<8|l, Memory::read(pc+1));
     mcycle = 3;
     opskip = 2;
 } // LD [HL] n8
@@ -329,7 +329,7 @@ void CPU::op_37() {
 
 } // SCF
 void CPU::op_38() {
-    jrc(c_flag, read8_mem(pc+1));
+    jrc(c_flag, Memory::read(pc+1));
     if (c_flag) mcycle = 3;
     else mcycle = 2;
     opskip=2;
@@ -340,7 +340,7 @@ void CPU::op_39() {
     add_hl(sp);
 } // ADD HL SP
 void CPU::op_3A() {
-    ld8_imm(a, read8_mem(h<<8|l));
+    ld8_imm(a, Memory::read(h<<8|l));
     dec16(h,l);
     mcycle = 2;
     opskip = 1;
@@ -361,7 +361,7 @@ void CPU::op_3D() {
     mcycle = 1;
 } // DEC A
 void CPU::op_3E() {
-    ld8_imm(a, read8_mem(pc+1));
+    ld8_imm(a, Memory::read(pc+1));
 
     mcycle = 2;
     opskip = 2;
@@ -405,7 +405,7 @@ void CPU::op_45() {
     opskip = 1;
 } // LD B L
 void CPU::op_46() {
-    ld8_imm(b,read8_mem(h<<8|l));
+    ld8_imm(b,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // LD B [HL]
@@ -445,7 +445,7 @@ void CPU::op_4D() {
     opskip = 1;
 } // LD C L
 void CPU::op_4E() {
-    ld8_imm(c,read8_mem(h<<8|l));
+    ld8_imm(c,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // LD C [HL]
@@ -485,7 +485,7 @@ void CPU::op_55() {
     opskip = 1;
 } // LD D L
 void CPU::op_56() {
-    ld8_imm(d,read8_mem(h<<8|l));
+    ld8_imm(d,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // LD D [HL]
@@ -525,7 +525,7 @@ void CPU::op_5D() {
     opskip = 1;
 } // LD E L
 void CPU::op_5E() {
-    ld8_imm(e,read8_mem(h<<8|l));
+    ld8_imm(e,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // LD E [HL]
@@ -565,7 +565,7 @@ void CPU::op_65() {
     opskip = 1;
 } // LD H L
 void CPU::op_66() {
-    ld8_imm(h,read8_mem(h<<8|l));
+    ld8_imm(h,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // LD H [HL]
@@ -605,7 +605,7 @@ void CPU::op_6D() {
     opskip = 1;
 } // LD L L
 void CPU::op_6E() {
-    ld8_imm(l,read8_mem(h<<8|l));
+    ld8_imm(l,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // LD L [HL]
@@ -615,32 +615,32 @@ void CPU::op_6F() {
     opskip = 1;
 } // LD L A
 void CPU::op_70() {
-    write8_mem(h<<8|l, b);
+    Memory::write(h<<8|l, b);
     mcycle = 2;
     opskip = 1;
 } // LD [HL] B
 void CPU::op_71() {
-    write8_mem(h<<8|l, c);
+    Memory::write(h<<8|l, c);
     mcycle = 2;
     opskip = 1;
 } // LD [HL] C
 void CPU::op_72() {
-    write8_mem(h<<8|l, d);
+    Memory::write(h<<8|l, d);
     mcycle = 2;
     opskip = 1;
 } // LD [HL] D
 void CPU::op_73() {
-    write8_mem(h<<8|l, e);
+    Memory::write(h<<8|l, e);
     mcycle = 2;
     opskip = 1;
 } // LD [HL] E
 void CPU::op_74() {
-    write8_mem(h<<8|l, h);
+    Memory::write(h<<8|l, h);
     mcycle = 2;
     opskip = 1;
 } // LD [HL] H
 void CPU::op_75() {
-    write8_mem(h<<8|l, l);
+    Memory::write(h<<8|l, l);
     mcycle = 2;
     opskip = 1;
 } // LD [HL] L
@@ -650,7 +650,7 @@ void CPU::op_76() {
     halt = 1;
 } // HALT
 void CPU::op_77() {
-    write8_mem(h<<8|l, a);
+    Memory::write(h<<8|l, a);
     mcycle = 2;
     opskip = 1;
 } // LD [HL] A
@@ -685,7 +685,7 @@ void CPU::op_7D() {
     opskip = 1;
 } // LD A L
 void CPU::op_7E() {
-    ld8_imm(a,read8_mem(h<<8|l));
+    ld8_imm(a,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // LD A [HL]
@@ -725,7 +725,7 @@ void CPU::op_85() {
     opskip = 1;
 } // ADD A L
 void CPU::op_86() {
-    add8(a,read8_mem(h<<8|l));
+    add8(a,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // ADD A [HL]
@@ -765,7 +765,7 @@ void CPU::op_8D() {
     opskip = 1;
 } // ADC A L
 void CPU::op_8E() {
-    adc8(a,read8_mem(h<<8|l));
+    adc8(a,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // ADC A [HL]
@@ -805,7 +805,7 @@ void CPU::op_95() {
     opskip = 1;
 } // SUB A L
 void CPU::op_96() {
-    sub8(a,read8_mem(h<<8|l));
+    sub8(a,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // SUB A [HL]
@@ -845,7 +845,7 @@ void CPU::op_9D() {
     opskip = 1;
 } // SBC A L
 void CPU::op_9E() {
-    sbc8(a,read8_mem(h<<8|l));
+    sbc8(a,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // SBC A [HL]
@@ -885,7 +885,7 @@ void CPU::op_A5() {
     opskip = 1;
 } // AND A L
 void CPU::op_A6() {
-    and8(a,read8_mem(h<<8|l));
+    and8(a,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // AND A [HL]
@@ -925,7 +925,7 @@ void CPU::op_AD() {
     opskip = 1;
 } // XOR A L
 void CPU::op_AE() {
-    xor8(a,read8_mem(h<<8|l));
+    xor8(a,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // XOR A [HL]
@@ -965,7 +965,7 @@ void CPU::op_B5() {
     opskip = 1;
 } // OR A L
 void CPU::op_B6() {
-    or8(a,read8_mem(h<<8|l));
+    or8(a,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // OR A [HL]
@@ -1005,7 +1005,7 @@ void CPU::op_BD() {
     opskip = 1;
 } // CP A L
 void CPU::op_BE() {
-    cp8(a,read8_mem(h<<8|l));
+    cp8(a,Memory::read(h<<8|l));
     mcycle = 2;
     opskip = 1;
 } // CP A [HL]
@@ -1048,7 +1048,7 @@ void CPU::op_C5() {
     push(b, c);
 } // PUSH BC
 void CPU::op_C6() {
-    add8(a, read8_mem(pc+1));
+    add8(a, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // ADD A n8
@@ -1075,7 +1075,7 @@ void CPU::op_CA() {
     else mcycle = 3;
 } // JP Z a16
 void CPU::op_CB() {
-    (this->*jump_table_prefixed[read8_mem(pc+1)])();
+    (this->*jump_table_prefixed[Memory::read(pc+1)])();
 } // PREFIX
 void CPU::op_CC() {
     if (z_flag) mcycle = 6;
@@ -1089,7 +1089,7 @@ void CPU::op_CD() {
     call(); // May override opskip if jump
 } // CALL a16
 void CPU::op_CE() {
-    adc8(a, read8_mem(pc+1));
+    adc8(a, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // ADC A n8
@@ -1129,7 +1129,7 @@ void CPU::op_D5() {
     push(d, e);
 } // PUSH DE
 void CPU::op_D6() {
-    sub8(a, read8_mem(pc+1));
+    sub8(a, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // SUB A n8
@@ -1167,7 +1167,7 @@ void CPU::op_DC() {
 void CPU::op_DD() {
 } // ILLEGAL_DD
 void CPU::op_DE() {
-    sbc8(a, read8_mem(pc+1));
+    sbc8(a, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // SBC A n8
@@ -1179,7 +1179,7 @@ void CPU::op_DF() {
 void CPU::op_E0() {
     opskip = 2;
     mcycle = 3;
-    write8_mem(0xFF << 8 | read8_mem(pc+1), a);
+    Memory::write(0xFF << 8 | Memory::read(pc+1), a);
 } // LDH [a8] A
 void CPU::op_E1() {
     opskip = 1;
@@ -1189,7 +1189,7 @@ void CPU::op_E1() {
 void CPU::op_E2() {
     opskip = 1;
     mcycle = 2;
-    write8_mem(0xFF << 8 | c, a);
+    Memory::write(0xFF << 8 | c, a);
 } // LD [C] A
 void CPU::op_E3() {
 } // ILLEGAL_E3
@@ -1201,7 +1201,7 @@ void CPU::op_E5() {
     push(h, l);
 } // PUSH HL
 void CPU::op_E6() {
-    and8(a, read8_mem(pc+1));
+    and8(a, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // AND A n8
@@ -1213,7 +1213,7 @@ void CPU::op_E7() {
 void CPU::op_E8() {
     opskip = 2;
     mcycle = 4;
-    add_sp(read8_mem(pc+1));
+    add_sp(Memory::read(pc+1));
 } // ADD SP e8
 void CPU::op_E9() {
     opskip=1;
@@ -1223,7 +1223,7 @@ void CPU::op_E9() {
 void CPU::op_EA() {
     opskip = 3;
     mcycle = 4;
-    write8_mem(read16_mem(pc+1), a);
+    Memory::write(read16_mem(pc+1), a);
 } // LD [a16] A
 void CPU::op_EB() {
 } // ILLEGAL_EB
@@ -1232,7 +1232,7 @@ void CPU::op_EC() {
 void CPU::op_ED() {
 } // ILLEGAL_ED
 void CPU::op_EE() {
-    xor8(a, read8_mem(pc+1));
+    xor8(a, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // XOR A n8
@@ -1244,13 +1244,13 @@ void CPU::op_EF() {
 void CPU::op_F0() {
     opskip = 2;
     mcycle = 3;
-    ld8_imm(a, read8_mem(0xFF << 8 | read8_mem(pc+1)));
+    ld8_imm(a, Memory::read(0xFF << 8 | Memory::read(pc+1)));
 } // LDH A [a8]
 void CPU::op_F1() {
     opskip = 1;
     mcycle = 3;
-    uint8_t f = read8_mem(sp++);
-    a = read8_mem(sp++);
+    uint8_t f = Memory::read(sp++);
+    a = Memory::read(sp++);
     z_flag = f >> 7;
     n_flag = (f >> 6) & 0x1;
     h_flag = (f >> 5) & 0x1;
@@ -1259,7 +1259,7 @@ void CPU::op_F1() {
 void CPU::op_F2() {
     opskip = 1;
     mcycle = 2;
-    ld8_imm(a, read8_mem(0xFF << 8 | c));
+    ld8_imm(a, Memory::read(0xFF << 8 | c));
 } // LD A [C]
 void CPU::op_F3() {
     opskip = 1;
@@ -1272,11 +1272,11 @@ void CPU::op_F4() {
 void CPU::op_F5() {
     opskip = 1;
     mcycle = 4;
-    write8_mem(--sp, a);
-    write8_mem(--sp, z_flag << 7 | n_flag << 6 | h_flag << 5 | c_flag << 4);
+    Memory::write(--sp, a);
+    Memory::write(--sp, z_flag << 7 | n_flag << 6 | h_flag << 5 | c_flag << 4);
 } // PUSH AF
 void CPU::op_F6() {
-    or8(a, read8_mem(pc+1));
+    or8(a, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // OR A n8
@@ -1289,7 +1289,7 @@ void CPU::op_F8() {
     opskip = 2;
     mcycle = 3;
     uint16_t temp_sp = sp;
-    add_sp(read8_mem(pc+1));
+    add_sp(Memory::read(pc+1));
     ld16_imm(h, l, sp);
     sp = temp_sp;
 } // LD HL SP e8
@@ -1301,7 +1301,7 @@ void CPU::op_F9() {
 void CPU::op_FA() {
     opskip = 3;
     mcycle = 4;
-    ld8_imm(a, read8_mem(read16_mem(pc+1)));
+    ld8_imm(a, Memory::read(read16_mem(pc+1)));
 } // LD A [a16]
 void CPU::op_FB() {
     opskip = 1;
@@ -1313,7 +1313,7 @@ void CPU::op_FC() {
 void CPU::op_FD() {
 } // ILLEGAL_FD
 void CPU::op_FE() {
-    cp8(a, read8_mem(pc+1));
+    cp8(a, Memory::read(pc+1));
     mcycle = 2;
     opskip = 2;
 } // CP A n8

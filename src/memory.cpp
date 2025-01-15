@@ -3,6 +3,7 @@
 #include <debugger.h>
 #include <dma.h>
 #include <interrupts.h>
+#include <joypad.h>
 
 uint8_t Memory::read(uint16_t addr) {
     switch (addr) {
@@ -11,6 +12,9 @@ uint8_t Memory::read(uint16_t addr) {
         }
         case 0xFF0F: { // IF
             return Interrupts::IF;
+        }
+        case 0xFF00: { // Joypad
+            return Joypad::read();
         }
         case 0xFF04: { // DIV
             return (Timer::calc_current_div() >> 6) & 0xFF;
@@ -38,6 +42,10 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF0F: { // IF
             Interrupts::IF = data;
+            return;
+        }
+        case 0xFF00: { // Joypad
+            Joypad::select(data >> 4 & 0x3);
             return;
         }
         case 0xFF04: // DIV

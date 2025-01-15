@@ -69,10 +69,6 @@ SchedulerEventInfo Scheduler::progress() {
         cpu.handle_interrupts();
         current_cycle += cpu.tick();
         if (CPU::double_spd_mode) cpu.tick();
-
-        // Joypad need to tick every cycle because game will read and reset register value
-        // Actual keyboard update can be done once per frame. Can probably optimize by tick per joypad register read
-        Joypad::tick();
     }
     // logger.get_logger()->debug("Current DIV: {:d}. Current cycle: {:d}. Overflow cycle: {:d}", Timer::calc_current_div(), current_cycle, Timer::div_overflow_cycle);
     return event_queue.extract(event_queue.begin()).value();
