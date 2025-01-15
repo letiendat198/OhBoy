@@ -218,10 +218,10 @@ void PPU::update_stat(uint8_t mode) {
 
 ObjAttribute PPU::read_obj(uint16_t addr) {
     ObjAttribute obj{};
-    obj.y_pos = Memory::read(addr);
-    obj.x_pos = Memory::read(addr+1);
-    obj.tile_index = Memory::read(addr+2);
-    uint8_t flag = Memory::read(addr+3);
+    obj.y_pos = Memory::unsafe_read(addr);
+    obj.x_pos = Memory::unsafe_read(addr+1);
+    obj.tile_index = Memory::unsafe_read(addr+2);
+    uint8_t flag = Memory::unsafe_read(addr+3);
     obj.priority = flag >> 7 & 0x1;
     obj.y_flip = flag >> 6 & 0x1;
     obj.x_flip = flag >> 5 & 0x1;
@@ -245,7 +245,7 @@ BgAttribute PPU::read_background_attribute(uint8_t x, uint8_t y, uint16_t tile_m
 
 LCDC PPU::read_lcdc() {
     LCDC lcdc{};
-    uint8_t reg = Memory::read(0xFF40);
+    uint8_t reg = Memory::unsafe_read(0xFF40);
     lcdc.lcd_enable = reg >> 7 & 0x1;
     lcdc.window_tile_map = (reg >> 6 & 0x1) ? 0x9C00 : 0x9800;
     lcdc.window_enable = reg >> 5 & 0x1;
@@ -263,10 +263,10 @@ void PPU::set_cgb_mode(bool is_cgb) {
 
 Scroll PPU::read_scroll() {
     Scroll scroll{};
-    scroll.scy = Memory::read(0xFF42);
-    scroll.scx = Memory::read(0xFF43);
-    scroll.wy = Memory::read(0xFF4A);
-    scroll.wx = Memory::read(0xFF4B);
+    scroll.scy = Memory::unsafe_read(0xFF42);
+    scroll.scx = Memory::unsafe_read(0xFF43);
+    scroll.wy = Memory::unsafe_read(0xFF4A);
+    scroll.wx = Memory::unsafe_read(0xFF4B);
     return scroll;
 }
 

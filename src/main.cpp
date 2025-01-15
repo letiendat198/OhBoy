@@ -47,7 +47,7 @@ int main(int argc , char **argv){
 
     Scheduler scheduler;
     scheduler.ppu.set_cgb_mode(Memory::cartridge.is_cgb);
-    measure_frame_without_render(&scheduler);
+    // measure_frame_without_render(&scheduler);
     Debugger debugger(&scheduler, debug_mode);
     scheduler.set_render_callback(&debugger);
 

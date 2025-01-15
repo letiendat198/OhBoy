@@ -6,8 +6,14 @@
 
 uint8_t Memory::read(uint16_t addr) {
     switch (addr) {
+        case 0xFFFF: { // IE
+            return Interrupts::IE;
+        }
+        case 0xFF0F: { // IF
+            return Interrupts::IF;
+        }
         case 0xFF04: { // DIV
-            return (Timer::calc_current_div() >> 8) & 0xFF;
+            return (Timer::calc_current_div() >> 6) & 0xFF;
         }
         case 0xFF05: { // TIMA
             logger.get_logger()->debug("Read TIMA: {:d} at cycle: {:d}, DIV: {:b}", Timer::tima, Scheduler::current_cycle, Timer::calc_current_div());
@@ -26,6 +32,14 @@ void Memory::write(uint16_t addr, uint8_t data) {
     // Cannot put this in unsafe_write because that's used to increment DIV in Timer
     // Put this in unsafe_write will write 0 everytime timer want to be incremented
     switch (addr) {
+        case 0xFFFF: { // IE
+            Interrupts::IE = data;
+            return;
+        }
+        case 0xFF0F: { // IF
+            Interrupts::IF = data;
+            return;
+        }
         case 0xFF04: // DIV
         {
             logger.get_logger()->debug("DIV reset at cycle: {:d}", Scheduler::current_cycle);
