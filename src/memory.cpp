@@ -20,8 +20,12 @@ uint8_t Memory::read(uint16_t addr) {
             return (Timer::calc_current_div() >> 6) & 0xFF;
         }
         case 0xFF05: { // TIMA
-            logger.get_logger()->debug("Read TIMA: {:d} at cycle: {:d}, DIV: {:b}", Timer::tima, Scheduler::current_cycle, Timer::calc_current_div());
-            return Timer::tima;
+            logger.get_logger()->debug("Read TIMA: {:d} at cycle: {:d}, DIV: {:b}", Timer::calc_current_tima(), Scheduler::current_cycle, Timer::calc_current_div());
+            if (Timer::current_tac.enable) return Timer::calc_current_tima();
+            else return Timer::paused_tima;
+        }
+        case 0xFF06: { // TMA
+            return Timer::tma;
         }
         case 0xFF55: {
             logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
@@ -56,18 +60,39 @@ void Memory::write(uint16_t addr, uint8_t data) {
             return;
         }
         case 0xFF05: { //TIMA
-            logger.get_logger()->debug("Write: {:d} to TIMA at cycle: {:d}. DIV: {:b}", data, Scheduler::current_cycle, Timer::calc_current_div());
-            Timer::tima = data;
-            break;
+            if (Timer::current_tac.enable) Timer::schedule_tima_overflow(data);
+            else Timer::paused_tima = data;
+            logger.get_logger()->debug("Write: {:d} to TIMA at cycle: {:d}. Overflow at: {:d}. DIV: {:b}", data, Timer::tima_overflow_cycle, Scheduler::current_cycle, Timer::calc_current_div());
+            return;
         }
         case 0xFF07: { // TAC
             TimerControl tac = Timer::read_tac(data);
             TimerControl old_tac = Timer::current_tac;
             Timer::current_tac = tac;
-            if (tac.increment_freq != old_tac.increment_freq) Timer::schedule_tima_by_div();
-            if (tac.enable) logger.get_logger()->debug("TIMA enabled");
-            else if (!tac.enable) logger.get_logger()->debug("TIMA disabled at value: {:d}", Timer::tima);
+            uint16_t div = Timer::calc_current_div();
+
+            if (tac.enable && !old_tac.enable) Timer::schedule_tima_overflow(Timer::paused_tima); // On enable
+            else if (!tac.enable && old_tac.enable) { // On disable
+                Timer::paused_tima = Timer::calc_current_tima();
+                Scheduler::remove_schedule(TIMA_OVERFLOW);
+                if (((div>>tac.bit_select) & 0x1) == 1) {
+                    Timer::paused_tima = (Timer::paused_tima + 1) & 0xFF;
+                    if (Timer::paused_tima == 0) {
+                        Interrupts::set_interrupt_flag(2);
+                        Timer::paused_tima = Timer::tma;
+                    }
+                }
+            }
+            logger.get_logger()->debug("TAC enable: {}, TAC delay: {:d}", tac.enable, tac.increment_freq);
+            if (tac.increment_freq != old_tac.increment_freq) { // On freq change
+                Timer::schedule_tima_overflow(Timer::calc_current_tima());
+                if (((div>>old_tac.bit_select) & 0x1) == 1 && ((div>>tac.bit_select) & 0x1) == 0) Timer::tick_tima_once();
+            }
             break;
+        }
+        case 0xFF06: { // TMA
+            Timer::tma = data;
+            return;
         }
         case 0xFF50:  // Write to this turn off boot
         {

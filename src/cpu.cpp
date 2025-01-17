@@ -61,7 +61,7 @@ bool CPU::handle_interrupts() {
         halt = 0;
         if (!ime) return false;
         uint8_t interrupt_addr = Interrupts::check_and_service(ime); // Check interrupts
-        mcycle = 5;
+        Scheduler::current_cycle += 5;
 
         // logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);
         Memory::write(--sp, pc >> 8);

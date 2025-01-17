@@ -8,7 +8,6 @@ void DMA::transfer_dma() {
     uint16_t src = dma_addr * 0x100;
 
     for (uint8_t cycle = 0; cycle < 160; cycle++) Memory::unsafe_write(dest + cycle, Memory::unsafe_read(src + cycle));
-    Memory::unsafe_read(0xFE00 + 159);
 }
 
 void HDMA::transfer_gdma() {

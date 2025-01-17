@@ -108,14 +108,15 @@ void Scheduler::tick_frame() {
                 // ppu.update_stat(0);
                 schedule(NEW_LINE, 114);
                 break;
-            case DMA_TRANSFER:
-                DMA::transfer_dma();
-                break;
             case DIV_OVERFLOW:
                 Timer::schedule_next_div_overflow();
                 break;
-            case TIMA_TICK:
-                Timer::tick_tima();
+            case TIMA_OVERFLOW:
+                Interrupts::set_interrupt_flag(2);
+                Timer::schedule_tima_overflow(Timer::tma);
+                break;
+            case DMA_TRANSFER:
+                DMA::transfer_dma();
                 break;
             case GDMA_TRANSFER:
                 HDMA::transfer_gdma();
@@ -134,6 +135,7 @@ void Scheduler::tick_frame() {
     for(auto event_info : event_queue) {
         if (event_info.cycle > CYCLE_PER_FRAME) event_info.cycle -= CYCLE_PER_FRAME;
         else logger.get_logger()->warn("Scheduler will miss event: {:d} at: {:d}", static_cast<int>(event_info.event), event_info.cycle);
+        if (event_info.event == TIMA_OVERFLOW && Timer::tima_overflow_cycle > CYCLE_PER_FRAME) Timer::tima_overflow_cycle -= CYCLE_PER_FRAME;
         temp.insert(event_info);
     }
     event_queue.swap(temp);

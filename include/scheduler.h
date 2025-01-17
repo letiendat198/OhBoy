@@ -23,7 +23,7 @@ enum SchedulerEvent {
 
     // TIMER
     DIV_OVERFLOW,
-    TIMA_TICK,
+    TIMA_OVERFLOW,
 
     ILLEGAL
 };
