@@ -16,6 +16,6 @@ static const uint32_t OUTPUT_FREQUENCY = 44100;
 
 // TIMER CONST
 
-static const uint16_t DIV_OVERFLOW_CYCLE = 0x3FFF;
+static const uint16_t DIV_OVERFLOW_CYCLE = 0x4000;
 
 #endif //CONFIG_H

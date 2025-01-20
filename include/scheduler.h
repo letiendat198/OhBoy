@@ -54,10 +54,8 @@ public:
     Scheduler();
     static void schedule(SchedulerEvent event, uint32_t cycle_to_go);
     static void schedule_absolute(SchedulerEvent event, uint32_t cycle);
-    static SchedulerEventInfo get_schedule(SchedulerEvent event);
     static void remove_schedule(SchedulerEvent event);
     static void reschedule(SchedulerEvent event, uint32_t cycle);
-    static void delay_schedule(SchedulerEvent event, uint32_t cycle_to_delay);
     SchedulerEventInfo progress();
     void tick_frame();
 

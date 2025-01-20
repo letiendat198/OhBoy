@@ -29,8 +29,6 @@ namespace Memory{
     void write(uint16_t addr, uint8_t data);
     uint8_t read_vram(uint16_t addr, uint8_t bank);
     void write_vram(uint16_t addr, uint8_t data, uint8_t bank);
-    uint8_t read_wram(uint16_t addr, uint8_t bank);
-    void write_wram(uint16_t addr, uint8_t data, uint8_t bank);
     uint8_t read_bg_cram(uint8_t addr);
     void write_bg_cram(uint8_t addr, uint8_t data);
     uint8_t read_obj_cram(uint8_t addr);

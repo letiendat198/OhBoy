@@ -43,23 +43,6 @@ void Scheduler::reschedule(SchedulerEvent event, uint32_t cycle) {
     schedule(event, cycle);
 }
 
-SchedulerEventInfo Scheduler::get_schedule(SchedulerEvent event) {
-    for(auto iter = event_queue.begin(); iter != event_queue.end(); ++iter) {
-        if (iter->event == event) return *iter;
-    }
-    return SchedulerEventInfo{};
-}
-
-// Delay a schedule a number of cycle
-void Scheduler::delay_schedule(SchedulerEvent event, uint32_t cycle_to_delay) {
-    SchedulerEventInfo event_info = get_schedule(event);
-    if (event_info.event == ILLEGAL) return;
-    remove_schedule(event);
-    schedule_absolute(event, event_info.cycle + cycle_to_delay);
-}
-
-bool interrupt_already_fired = false;
-
 SchedulerEventInfo Scheduler::progress() {
     if (event_queue.begin() == event_queue.end()) {
         logger.get_logger()->debug("Event queue empty!");
@@ -68,7 +51,7 @@ SchedulerEventInfo Scheduler::progress() {
     while(current_cycle < event_queue.begin()->cycle) {
         cpu.handle_interrupts();
         current_cycle += cpu.tick();
-        if (CPU::double_spd_mode) cpu.tick();
+        // if (CPU::double_spd_mode) cpu.tick();
     }
     // logger.get_logger()->debug("Current DIV: {:d}. Current cycle: {:d}. Overflow cycle: {:d}", Timer::calc_current_div(), current_cycle, Timer::div_overflow_cycle);
     return event_queue.extract(event_queue.begin()).value();
@@ -101,7 +84,7 @@ void Scheduler::tick_frame() {
                 Interrupts::set_interrupt_flag(0);
                 ppu.update_stat(1);
                 ppu.schedule_next_mode(1);
-                if (debugger != nullptr) debugger->render();
+                if (debugger != nullptr) debugger->render(); // WILL HANG IF PPU IS OFF
                 break;
             case NEW_LINE:
                 ppu.update_ly();

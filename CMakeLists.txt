@@ -8,8 +8,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -march=native")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address")
+endif()
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 
