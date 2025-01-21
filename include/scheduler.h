@@ -21,7 +21,7 @@ enum SchedulerEvent {
 
     // TIMER
     DIV_OVERFLOW,
-    TIMA_TICK,
+    TIMA_OVERFLOW,
 
     ILLEGAL
 };
@@ -29,6 +29,7 @@ enum SchedulerEvent {
 struct SchedulerEventInfo {
     SchedulerEvent event = ILLEGAL;
     uint32_t cycle = 0;
+    uint32_t relative_cycle = 0;
     bool operator < (SchedulerEventInfo a) const {
         if (cycle == a.cycle) return event < a.event; // If 2 event occur on same cycle, sort by priority
         return cycle < a.cycle;
@@ -43,16 +44,15 @@ public:
     PPU ppu;
 
     inline static uint32_t current_cycle = 0;
-
+    inline static bool double_spd = false;
     bool pause = false;
 
     Scheduler();
     static void schedule(SchedulerEvent event, uint32_t cycle_to_go);
     static void schedule_absolute(SchedulerEvent event, uint32_t cycle);
-    static SchedulerEventInfo get_schedule(SchedulerEvent event);
     static void remove_schedule(SchedulerEvent event);
     static void reschedule(SchedulerEvent event, uint32_t cycle);
-    static void delay_schedule(SchedulerEvent event, uint32_t cycle_to_delay);
+    static void switch_speed(bool is_double_spd);
     SchedulerEventInfo progress();
     void tick_frame();
 };

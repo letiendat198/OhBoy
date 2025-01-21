@@ -1,4 +1,5 @@
 #include "cpu.h"
+#include "scheduler.h"
 
 void CPU::op_00() {
     mcycle = 1;
@@ -96,6 +97,7 @@ void CPU::op_10() {
         if (switch_armed) {
             Memory::write(0xFF04, 0); // Reset DIV
             double_spd_mode = !current_spd;
+            Scheduler::switch_speed(double_spd_mode);
             Memory::write(0xFF4D, (double_spd_mode & 0x1) << 7);
             // mcycle = 2050; // Avoid overwhelming scheduler and cause early turn around
         }

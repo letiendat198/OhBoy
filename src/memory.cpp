@@ -22,6 +22,11 @@ uint8_t Memory::read(uint16_t addr) {
         }
         case 0xFF05: { // TIMA
             return Timer::tima;
+            if (Timer::current_tac.enable) return Timer::calc_current_tima();
+            else return Timer::paused_tima;
+        }
+        case 0xFF06: { // TMA
+            return Timer::tma;
         }
         case 0xFF55: {
             return (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F);
@@ -47,22 +52,50 @@ void Memory::write(uint16_t addr, uint8_t data) {
             Joypad::select(data >> 4 & 0x3);
             return;
         }
-        case 0xFF04: // DIV
+        case 0xFF04: // DIV RESET
         {
             Scheduler::remove_schedule(DIV_OVERFLOW);
             Timer::schedule_next_div_overflow();
+            // If DIV reset and TIMA currently enable, reschedule to match. DON'T SCHEDULE WHEN OFF - KIRBY 2 DMG CARE FOR THIS
+            // Also should not reschedule TIMA every DIV overflow, or it will be push back into oblivion!
+            if (Timer::current_tac.enable) Timer::schedule_tima_overflow(Timer::calc_current_tima());
             return;
         }
         case 0xFF05: { //TIMA
-            Timer::tima = data;
-            break;
+            if (Timer::current_tac.enable) Timer::schedule_tima_overflow(data);
+            else Timer::paused_tima = data;
+            return;
         }
         case 0xFF07: { // TAC
             TimerControl tac = Timer::read_tac(data);
             TimerControl old_tac = Timer::current_tac;
             Timer::current_tac = tac;
-            if (tac.increment_freq != old_tac.increment_freq) Timer::schedule_tima_by_div();
+            uint16_t div = Timer::calc_current_div();
+
+            if (tac.enable && !old_tac.enable) Timer::schedule_tima_overflow(Timer::paused_tima); // On enable
+            else if (!tac.enable && old_tac.enable) { // On disable
+                // Save current TIMA
+                Timer::paused_tima = Timer::calc_current_tima();
+                Scheduler::remove_schedule(TIMA_OVERFLOW);
+                // If TIMA disable when DIV selected bit is high, increase TIMA
+                if (((div>>tac.bit_select) & 0x1) == 1) {
+                    Timer::paused_tima = (Timer::paused_tima + 1) & 0xFF;
+                    if (Timer::paused_tima == 0) {
+                        Interrupts::set_interrupt_flag(2);
+                        Timer::paused_tima = Timer::tma;
+                    }
+                }
+            }
+            // logger.get_logger()->debug("TAC enable: {}, TAC delay: {:d}", tac.enable, tac.increment_freq);
+            if (tac.enable && tac.increment_freq != old_tac.increment_freq) { // On freq change - Potentially problematic
+                Timer::schedule_tima_overflow(Timer::calc_current_tima());
+                if (((div>>old_tac.bit_select) & 0x1) == 1 && ((div>>tac.bit_select) & 0x1) == 0) Timer::tick_tima_once();
+            }
             break;
+        }
+        case 0xFF06: { // TMA
+            Timer::tma = data;
+            return;
         }
         case 0xFF50:  // Write to this turn off boot
         {
@@ -78,6 +111,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
             if (hdma_requested == false) {
                 hdma_requested = true;
                 hdma_type = (data >> 7) & 0x1;
+                // logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", hdma_type, data & 0x7F);
                 if (hdma_type == 0) Scheduler::schedule(GDMA_TRANSFER, 0);
             }
             else {
@@ -86,6 +120,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
                     hdma_requested = false;
                     HDMA::reset_hdma();
                 }
+                // logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
             }
             break;
         }
@@ -162,47 +197,66 @@ void Memory::write(uint16_t addr, uint8_t data) {
 }
 
 uint8_t Memory::unsafe_read(uint16_t addr) {
-    if (addr <= 0x3FFF) {
-        if (is_boot && (addr < 0x100 || (cartridge.is_cgb && 0x200<=addr && addr<=0x8FF))) return *(cartridge.boot_data + addr);
-        return *(cartridge.rom_data + addr);
+    switch((addr & 0xF000) >> 12) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+            if (is_boot && (addr < 0x100 || (cartridge.is_cgb && 0x200<=addr && addr<=0x8FF))) return *(cartridge.boot_data + addr);
+            return *(cartridge.rom_data + addr);
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+            return *(cartridge.rom_data + (addr - 0x4000) + cartridge.rom_bank*0x4000);
+        case 8:
+        case 9:
+            return read_vram(addr, vram_bank);
+        case 0xA:
+        case 0xB:
+            if (cartridge.rtc_access) return 0x0; // Shouldn't be accessible without RAM enable, but it's stubbed so doesn't really matter
+            if (cartridge.ram_enable) return *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000);
+            else return 0xFF;
+        case 0xC:
+            return wram[addr - 0xC000];
+        case 0xD:
+            return wram[addr - 0xD000 + 0x1000 * wram_bank];
+        default:
+            return memory[addr - 0xE000];
     }
-    else if (addr <= 0x7FFF) {
-        return *(cartridge.rom_data + (addr - 0x4000) + cartridge.rom_bank*0x4000);
-    }
-    else if (addr <= 0x9FFF) {
-        return read_vram(addr, vram_bank);
-    }
-    else if (addr <= 0xBFFF) {
-        if (cartridge.ram_enable) return *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000);
-        else return 0xFF;
-    }
-    else if (addr <= 0xCFFF) {
-        return read_wram(addr, 0);
-    }
-    else if (addr <= 0xDFFF) {
-        return read_wram(addr, wram_bank);
-    }
-    else return memory[addr - 0xE000];
 }
 
 void Memory::unsafe_write(uint16_t addr, uint8_t data) {
     // Re-route
-    if (addr <= 0x7FFF) {
-        cartridge.mbc.update_registers(addr, data);
+    switch ((addr & 0xF000) >> 12) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+            cartridge.mbc.update_registers(addr, data);
+            break;
+        case 8:
+        case 9:
+            write_vram(addr, data, vram_bank);
+            break;
+        case 0xA:
+        case 0xB:
+            if (cartridge.rtc_access) break;
+            if (cartridge.ram_enable) *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000) = data;
+            break;
+        case 0xC:
+            wram[addr - 0xC000] = data;
+            break;
+        case 0xD:
+            wram[addr - 0xD000 + 0x1000 * wram_bank] = data;
+            break;
+        default:
+            *(memory+addr - 0xE000) = data;
     }
-    else if (addr <= 0x9FFF) {
-        write_vram(addr, data, vram_bank);
-    }
-    else if (addr <= 0xBFFF) {
-        if (cartridge.ram_enable) *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000) = data;
-    }
-    else if (addr <= 0xCFFF) {
-        write_wram(addr, data, 0);
-    }
-    else if (addr <= 0xDFFF) {
-        write_wram(addr, data, wram_bank);
-    }
-    else *(memory+addr - 0xE000) = data;
 }
 
 uint8_t Memory::read_vram(uint16_t addr, uint8_t bank) { // Low level VRAM access - Won't automatically use current bank
@@ -214,17 +268,6 @@ void Memory::write_vram(uint16_t addr, uint8_t data, uint8_t bank) { // Low leve
     // logger.get_logger()->debug("Writing to VRAM at addr: {:X}, translated to: {:X}", addr, addr - 0x8000);
     uint16_t real_addr = addr - 0x8000;
     vram[real_addr + 0x2000 * bank] = data;
-}
-
-uint8_t Memory::read_wram(uint16_t addr, uint8_t bank) { // Low level WRAM access - Won't automatically use current bank
-    uint16_t real_addr = addr - 0xC000;
-    return wram[real_addr + 0x1000 * bank];
-}
-
-void Memory::write_wram(uint16_t addr, uint8_t data, uint8_t bank) { // Low level WRAM access - Won't automatically use current bank
-    // logger.get_logger()->debug("Writing to VRAM at addr: {:X}, translated to: {:X}", addr, addr - 0x8000);
-    uint16_t real_addr = addr - 0xC000;
-    wram[real_addr + 0x1000 * bank] = data;
 }
 
 uint8_t Memory::read_bg_cram(uint8_t addr) {

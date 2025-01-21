@@ -26,6 +26,7 @@ public:
     uint32_t rom_bank = 1;
     uint32_t ram_bank = 0;
     bool ram_enable = false;
+    bool rtc_access = false;
 
     uint32_t external_ram_size = 0;
 
