@@ -3,6 +3,7 @@
 #include <iomanip>
 
 #include "interrupts.h"
+#include "scheduler.h"
 using namespace std;
 
 CPU::CPU() {

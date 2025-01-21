@@ -21,7 +21,6 @@ uint8_t Memory::read(uint16_t addr) {
             return (Timer::calc_current_div() >> 6) & 0xFF;
         }
         case 0xFF05: { // TIMA
-            return Timer::tima;
             if (Timer::current_tac.enable) return Timer::calc_current_tima();
             else return Timer::paused_tima;
         }
