@@ -77,6 +77,10 @@ SchedulerEventInfo Scheduler::progress() {
     // logger.get_logger()->debug("Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
     while(current_cycle < event_queue.begin()->cycle) {
         cpu.handle_interrupts();
+        if (cpu.halt) { // Skip to next event if halt, cause CPU do nothing anyway
+            current_cycle = event_queue.begin()->cycle;
+            break;
+        }
         current_cycle += cpu.tick();
     }
     // logger.get_logger()->debug("Current DIV: {:d}. Current cycle: {:d}. Overflow cycle: {:d}", Timer::calc_current_div(), current_cycle, Timer::div_overflow_cycle);
