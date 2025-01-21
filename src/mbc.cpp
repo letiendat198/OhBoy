@@ -11,7 +11,7 @@ void MBC::update_registers(uint16_t addr, uint8_t data) {
             return;
         case MBC1: {
             if (addr <= 0x1FFF) {
-                if ((data & 0xF) == 0xA) cartridge->ram_enable = true;
+                if ((data & 0xF) == 0xA && cartridge->header.ram_banks>0) cartridge->ram_enable = true; // Only enable if actually have ram bank
                 else cartridge->ram_enable = false;
             }
             else if (0x2000 <= addr && addr <= 0x3FFF) {
@@ -35,7 +35,7 @@ void MBC::update_registers(uint16_t addr, uint8_t data) {
         }
         case MBC3: {
             if (addr <= 0x1FFF) {
-                if ((data & 0xF) == 0xA) cartridge->ram_enable = true;
+                if ((data & 0xF) == 0xA && cartridge->header.ram_banks>0) cartridge->ram_enable = true; // Wrong in case Timer only
                 else cartridge->ram_enable = false;
             }
             else if (0x2000 <= addr && addr <= 0x3FFF) {
@@ -45,8 +45,11 @@ void MBC::update_registers(uint16_t addr, uint8_t data) {
             else if (0x4000 <= addr && addr <= 0x5FFF) {
                 uint8_t value = data & 0xFF;
                 // if (value == 0) cartridge->ram_bank_ptr = 0; // In case a 0 RAM ROM want to map back to RAM 0 from RTC
-                if (value <= 0x07 && cartridge->header.ram_banks > 0) cartridge->ram_bank = value % cartridge->header.ram_banks;
-                // else if (0x08 <= value && value <= 0x0C) cartridge->ram_bank_ptr = value;
+                if (value <= 0x07 && cartridge->header.ram_banks > 0) {
+                    cartridge->ram_bank = value % cartridge->header.ram_banks;
+                    cartridge->rtc_access = false;
+                }
+                else if (0x08 <= value && value <= 0x0C) cartridge->rtc_access = true;
             }
             else if (0x6000 <= addr && addr <= 0x7FFF) {
                 // std::cout<<"Write to latch: "<<(int) data<<"\n";
@@ -62,7 +65,7 @@ void MBC::update_registers(uint16_t addr, uint8_t data) {
         }
         case MBC5: {
             if (addr <= 0x1FFF) {
-                if ((data & 0xF) == 0xA) cartridge->ram_enable = true;
+                if ((data & 0xF) == 0xA && cartridge->header.ram_banks>0) cartridge->ram_enable = true;
                 else cartridge->ram_enable = false;
             }
             else if (0x2000 <= addr && addr <= 0x2FFF) {

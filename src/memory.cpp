@@ -216,6 +216,7 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
             return read_vram(addr, vram_bank);
         case 0xA:
         case 0xB:
+            if (cartridge.rtc_access) return 0x0; // Shouldn't be accessible without RAM enable, but it's stubbed so doesn't really matter
             if (cartridge.ram_enable) return *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000);
             else return 0xFF;
         case 0xC:
@@ -246,6 +247,7 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
             break;
         case 0xA:
         case 0xB:
+            if (cartridge.rtc_access) break;
             if (cartridge.ram_enable) *(cartridge.external_ram + (addr - 0xA000) + cartridge.ram_bank*0x2000) = data;
             break;
         case 0xC:

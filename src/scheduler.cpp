@@ -14,15 +14,18 @@ Scheduler::Scheduler() {
 
 // Schedule an event a number of cycle from this point on
 void Scheduler::schedule(SchedulerEvent event, uint32_t cycle_to_go) {
-    // if (static_cast<int>(event)>=5 && CPU::double_spd_mode) cycle_to_go /= 4;
-    // else cycle_to_go /= 2;
-    SchedulerEventInfo event_info{event, cycle_to_go + current_cycle};
+    SchedulerEventInfo event_info;
+    if (double_spd && static_cast<int>(event)<=4) event_info = SchedulerEventInfo{event, cycle_to_go * 2 + current_cycle, cycle_to_go};
+    else event_info = SchedulerEventInfo{event, cycle_to_go + current_cycle, cycle_to_go};
     event_queue.insert(event_info);
     // logger.get_logger()->debug("Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
 }
 
 // Schedule an event at this exact cycle
+// Must only be used to schedule TIMA
+// Will have a problem when switching speed mode if scheduling different events
 void Scheduler::schedule_absolute(SchedulerEvent event, uint32_t cycle) {
+    assert(("Schedule absolute MUST NOT be used to schedule event OTHER THAN TIMA", event == TIMA_OVERFLOW));
     SchedulerEventInfo event_info{event, cycle};
     event_queue.insert(event_info);
 }
@@ -43,6 +46,30 @@ void Scheduler::reschedule(SchedulerEvent event, uint32_t cycle) {
     schedule(event, cycle);
 }
 
+void Scheduler::switch_speed(bool is_double_spd) {
+    double_spd = is_double_spd;
+    CYCLE_PER_FRAME = double_spd ? 17556*2 : 17556;
+    std::set<SchedulerEventInfo> temp;
+    logger.get_logger()->debug("Speed switch at cycle: {:d}", current_cycle);
+    if (double_spd) {
+        for(auto event_info : event_queue) {
+            if (event_info.event > 4) continue;
+            event_info.cycle += event_info.relative_cycle;
+            logger.get_logger()->debug("Reschedule event: {:d} from cycle: {:d} to {:d}", static_cast<int>(event_info.event), event_info.cycle-event_info.relative_cycle, event_info.cycle);
+            temp.insert(event_info);
+        }
+    }
+    else {
+        for(auto event_info : event_queue) {
+            if (event_info.event > 4) continue;
+            event_info.cycle -= event_info.relative_cycle;
+            temp.insert(event_info);
+        }
+    }
+    event_queue.swap(temp);
+}
+
+
 SchedulerEventInfo Scheduler::progress() {
     if (event_queue.begin() == event_queue.end()) {
         logger.get_logger()->debug("Event queue empty!");
@@ -51,7 +78,6 @@ SchedulerEventInfo Scheduler::progress() {
     while(current_cycle < event_queue.begin()->cycle) {
         cpu.handle_interrupts();
         current_cycle += cpu.tick();
-        // if (CPU::double_spd_mode) cpu.tick();
     }
     // logger.get_logger()->debug("Current DIV: {:d}. Current cycle: {:d}. Overflow cycle: {:d}", Timer::calc_current_div(), current_cycle, Timer::div_overflow_cycle);
     return event_queue.extract(event_queue.begin()).value();

@@ -31,6 +31,7 @@ enum SchedulerEvent {
 struct SchedulerEventInfo {
     SchedulerEvent event = ILLEGAL;
     uint32_t cycle = 0;
+    uint32_t relative_cycle = 0;
     bool operator < (SchedulerEventInfo a) const {
         if (cycle == a.cycle) return event < a.event; // If 2 event occur on same cycle, sort by priority
         return cycle < a.cycle;
@@ -48,7 +49,7 @@ public:
     PPU ppu;
 
     inline static uint32_t current_cycle = 0;
-
+    inline static bool double_spd = false;
     bool pause = false;
 
     Scheduler();
@@ -56,6 +57,7 @@ public:
     static void schedule_absolute(SchedulerEvent event, uint32_t cycle);
     static void remove_schedule(SchedulerEvent event);
     static void reschedule(SchedulerEvent event, uint32_t cycle);
+    static void switch_speed(bool is_double_spd);
     SchedulerEventInfo progress();
     void tick_frame();
 
