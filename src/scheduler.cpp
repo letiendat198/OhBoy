@@ -111,6 +111,7 @@ void Scheduler::tick_frame() {
                 Interrupts::set_interrupt_flag(0);
                 ppu.update_stat(1);
                 ppu.schedule_next_mode(1);
+                if (frame_count % 2 == 0) (*render_callback)(0, 0, 320, 240, ppu.frame_buffer);
                 break;
             case NEW_LINE:
                 ppu.update_ly();
@@ -153,4 +154,6 @@ void Scheduler::tick_frame() {
     if (frame_count==10) frame_count = 0;
 }
 
-
+void Scheduler::set_render_callback(hw_render_callback render_callback) {
+    this->render_callback = render_callback;
+}

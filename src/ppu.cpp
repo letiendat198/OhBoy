@@ -1,5 +1,6 @@
 #include <ppu.h>
 #include <algorithm>
+#include <cstring>
 
 #include "scheduler.h"
 
@@ -68,10 +69,12 @@ void PPU::draw_scanline() {
         read_palette(obj_palette1, 0xFF49);
     }
 
+    uint8_t frame_buffer_line = ly + ((ly / 3) * 2 + (ly % 3 != 0));
+
     // Render background/window
     for(uint8_t i=0;i<160;i++) {
         if (!is_cgb && lcdc.bg_window_priority == 0) { // In DMG mode, if bg lose priority -> white line
-            frame_buffer[ly*160+i] = bg_palette[0];
+            // frame_buffer[ly*160+i] = bg_palette[0];
             fill_table[i] = 0;
             continue;
         }
@@ -113,8 +116,10 @@ void PPU::draw_scanline() {
         uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
         fill_table[i] = color;
         if (is_cgb && tile_bg_attribute.priority) fill_table[i] |= 0xF0;
+        // frame_buffer[ly*160 + i] = bg_palette[color];
 
-        frame_buffer[ly*160 + i] = bg_palette[color];
+        frame_buffer[frame_buffer_line*320 + i*2] = bg_palette[color];
+        frame_buffer[frame_buffer_line*320 + i*2 + 1] = bg_palette[color];
     }
 
     // Render objects
@@ -142,11 +147,14 @@ void PPU::draw_scanline() {
             uint8_t color = ((p1 >> pixel_offset) & 0x1) | (((p2 >> pixel_offset) & 0x1) << 1);
             if (color > 0) {
                 fill_table[x] = 0xFF; // Set to 0xFF to indicate an obj already show on this pixel
-                frame_buffer[ly*160 + x] = obj_palette[color];
+                // frame_buffer[ly*160 + x] = obj_palette[color];
+
+                frame_buffer[frame_buffer_line*320 + x*2] = obj_palette[color];
+                frame_buffer[frame_buffer_line*320 + x*2 + 1] = obj_palette[color];
             }
         }
     }
-
+    if (ly % 3 != 1) std::memcpy(frame_buffer + (frame_buffer_line+1)*320, frame_buffer + frame_buffer_line*320, 320*sizeof(uint16_t));
     if (window_region) window_ly++;
 }
 

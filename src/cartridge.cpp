@@ -4,7 +4,7 @@
 #include <string>
 #include <boot.h>
 #include <cgb_boot.h>
-#include <tetris.h>
+#include <game.h>
 
 std::string get_save_file_path(std::string file_path) {
     std::size_t ext_delim = file_path.find_last_of('.');
@@ -65,7 +65,7 @@ bool Cartridge::init(const char *file) {
     // bool rom_result = read_file(file, &rom_data, &rom_size);
     // if (!rom_result) return false;
     //
-    rom_data = tetris;
+    rom_data = game;
 
     header = read_cartridge_header(rom_data);
 

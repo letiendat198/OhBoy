@@ -10,5 +10,5 @@ gui/*.ini
 gui/*.log
 include/boot.h
 include/cgb_boot.h
-include/tetris.h
+include/game.h
 *.diagsession

@@ -6,6 +6,8 @@
 #include <set>
 #include <timer.h>
 
+typedef void(* hw_render_callback)(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t *buffer);
+
 enum SchedulerEvent {
     // PPU
     NEW_LINE,
@@ -39,6 +41,7 @@ struct SchedulerEventInfo {
 class Scheduler {
 private:
     inline static std::set<SchedulerEventInfo> event_queue;
+    hw_render_callback render_callback;
 public:
     CPU cpu;
     PPU ppu;
@@ -55,6 +58,7 @@ public:
     static void switch_speed(bool is_double_spd);
     SchedulerEventInfo progress();
     void tick_frame();
+    void set_render_callback(hw_render_callback render_callback);
 };
 
 #endif //SCHEDULER_H
