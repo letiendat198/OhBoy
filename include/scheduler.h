@@ -10,16 +10,10 @@ class Debugger;
 
 enum SchedulerEvent {
     // PPU
-    NEW_LINE,
     HBLANK,
     VBLANK,
     OAM_SCAN,
     DRAW,
-
-    // DMA
-    DMA_TRANSFER,
-    GDMA_TRANSFER,
-    HDMA_TRANSFER,
 
     // TIMER
     DIV_OVERFLOW,
@@ -50,12 +44,14 @@ public:
 
     inline static uint32_t current_cycle = 0;
     inline static bool double_spd = false;
+    inline static bool first_line = true;
     bool pause = false;
 
     Scheduler();
     static void schedule(SchedulerEvent event, uint32_t cycle_to_go);
     static void schedule_absolute(SchedulerEvent event, uint32_t cycle);
     static void remove_schedule(SchedulerEvent event);
+    static void remove_ppu_schedules();
     static void reschedule(SchedulerEvent event, uint32_t cycle);
     static void switch_speed(bool is_double_spd);
     SchedulerEventInfo progress();

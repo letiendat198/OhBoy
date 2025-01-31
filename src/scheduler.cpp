@@ -5,9 +5,6 @@
 #include <scheduler.h>
 
 Scheduler::Scheduler() {
-    schedule(SchedulerEvent::OAM_SCAN, 0);
-    schedule(SchedulerEvent::NEW_LINE, 114);
-
     Timer::current_tac = Timer::read_tac(Memory::read(0xFF07));
     Timer::schedule_next_div_overflow();
 }
@@ -40,6 +37,15 @@ void Scheduler::remove_schedule(SchedulerEvent event) {
     }
 }
 
+void Scheduler::remove_ppu_schedules() {
+    std::set<SchedulerEventInfo> temp;
+    for(auto event_info : event_queue) {
+        if (event_info.event > DRAW) temp.insert(event_info);
+    }
+    event_queue.swap(temp);
+}
+
+
 // Re-schedule an event (cycle) into the future from this point on
 void Scheduler::reschedule(SchedulerEvent event, uint32_t cycle) {
     remove_schedule(event);
@@ -47,24 +53,27 @@ void Scheduler::reschedule(SchedulerEvent event, uint32_t cycle) {
 }
 
 void Scheduler::switch_speed(bool is_double_spd) {
+    if (double_spd == is_double_spd) return;
     double_spd = is_double_spd;
     CYCLE_PER_FRAME = double_spd ? 17556*2 : 17556;
     std::set<SchedulerEventInfo> temp;
     logger.get_logger()->debug("Speed switch at cycle: {:d}", current_cycle);
     if (double_spd) {
         for(auto event_info : event_queue) {
-            if (event_info.event > 4) continue;
-            event_info.cycle += event_info.relative_cycle;
-            logger.get_logger()->debug("Reschedule event: {:d} from cycle: {:d} to {:d}", static_cast<int>(event_info.event), event_info.cycle-event_info.relative_cycle, event_info.cycle);
+            if (event_info.event <= DRAW) {
+                event_info.cycle += event_info.relative_cycle;
+                logger.get_logger()->debug("Reschedule event: {:d} from cycle: {:d} to {:d}", static_cast<int>(event_info.event), event_info.cycle-event_info.relative_cycle, event_info.cycle);
+            }
             temp.insert(event_info);
         }
     }
     else {
-        for(auto event_info : event_queue) {
-            if (event_info.event > 4) continue;
-            event_info.cycle -= event_info.relative_cycle;
-            temp.insert(event_info);
-        }
+     for(auto event_info : event_queue) {
+         if (event_info.event <= DRAW) {
+             event_info.cycle -= event_info.relative_cycle;
+         }
+         temp.insert(event_info);
+     }
     }
     event_queue.swap(temp);
 }
@@ -95,8 +104,10 @@ void Scheduler::tick_frame() {
         current_cycle = event_info.cycle; // Set cycle context to the cycle event supposed to happen
         switch (event_info.event) {
             case OAM_SCAN:
-                ppu.oam_scan();
+                if (!first_line) ppu.update_ly();
+                else first_line = false;
                 ppu.update_stat(2);
+                ppu.oam_scan();
                 ppu.schedule_next_mode(2);
                 break;
             case DRAW:
@@ -104,22 +115,20 @@ void Scheduler::tick_frame() {
                 ppu.schedule_next_mode(3);
                 break;
             case HBLANK:
-                if (Memory::check_hdma() && Memory::get_hdma_type() == 1 && !cpu.halt) schedule(HDMA_TRANSFER, 0);
+                if (Memory::check_hdma() && Memory::get_hdma_type() == 1 && !cpu.halt) HDMA::transfer_hdma();
                 ppu.draw_scanline();
                 ppu.update_stat(0);
                 ppu.schedule_next_mode(0);
                 break;
             case VBLANK:
-                ppu.window_ly = 0;
-                Interrupts::set_interrupt_flag(0);
-                ppu.update_stat(1);
+                ppu.update_ly(); // Update LY only update LY register
+                ppu.update_stat(1); // Need to call update STAT so that LYC==LY actually update
+                if (ppu.ly == 144) {
+                    ppu.window_ly = 0;
+                    Interrupts::set_interrupt_flag(0);
+                    if (debugger != nullptr) debugger->render(); // WILL HANG IF PPU IS OFF
+                }
                 ppu.schedule_next_mode(1);
-                if (debugger != nullptr) debugger->render(); // WILL HANG IF PPU IS OFF
-                break;
-            case NEW_LINE:
-                ppu.update_ly();
-                // ppu.update_stat(0);
-                schedule(NEW_LINE, 114);
                 break;
             case DIV_OVERFLOW:
                 Timer::schedule_next_div_overflow();
@@ -127,15 +136,6 @@ void Scheduler::tick_frame() {
             case TIMA_OVERFLOW:
                 Interrupts::set_interrupt_flag(2);
                 Timer::schedule_tima_overflow(Timer::tma);
-                break;
-            case DMA_TRANSFER:
-                DMA::transfer_dma();
-                break;
-            case GDMA_TRANSFER:
-                HDMA::transfer_gdma();
-                break;
-            case HDMA_TRANSFER:
-                HDMA::transfer_hdma();
                 break;
             default:
                 logger.get_logger()->debug("Not yet implemented event");

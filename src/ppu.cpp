@@ -41,16 +41,6 @@ void PPU::draw_scanline() {
     Scroll scroll = read_scroll();
     LCDC lcdc = read_lcdc();
 
-    // Handle LCDC enable TODO: MOVE THIS OUT OF HERE
-    if (lcdc.lcd_enable == false) {
-        ly = 0;
-        update_ly();
-        update_stat(0); // STAT update won't work if not enable
-        enable = false;
-        return;
-    }
-    else enable = true;
-
     uint16_t tile_data = 0;
     BgAttribute tile_bg_attribute{};
     uint16_t tile_map_region = lcdc.bg_tile_map;
@@ -151,7 +141,6 @@ void PPU::draw_scanline() {
 }
 
 void PPU::oam_scan() {
-    if (!enable) return;
     LCDC lcdc = read_lcdc();
     obj_queue_index = 0;
     for (uint16_t addr=0xFE00; addr<=0xFE9F; addr+=4) {
@@ -192,7 +181,8 @@ void PPU::schedule_next_mode(uint8_t current_mode) {
             else Scheduler::schedule(SchedulerEvent::VBLANK, 51);
             break;
         case 1: // VBLANK
-            Scheduler::schedule(SchedulerEvent::OAM_SCAN, 1140);
+            if (ly < 153) Scheduler::schedule(VBLANK, 114);
+            else Scheduler::schedule(SchedulerEvent::OAM_SCAN, 114);
             break;
         case 2: // OAM SCAN
             Scheduler::schedule(SchedulerEvent::DRAW, 20);
@@ -205,14 +195,10 @@ void PPU::schedule_next_mode(uint8_t current_mode) {
 }
 
 void PPU::update_stat(uint8_t mode) {
-    if (!enable) return;
     uint8_t prev_stat = Memory::unsafe_read(0xFF41);
     uint8_t lyc = Memory::unsafe_read(0xFF45);
     uint8_t write_data = (lyc == ly) << 2 |  mode;
     uint8_t new_stat = (prev_stat & 0xF8) | write_data;
-    // spdlog::info("Current mode: {}", mode);
-    // spdlog::info("Current LYC and LY: {} {}", lyc, read_ly());
-    // spdlog::info("New stat: {:08b}", new_stat);
     Memory::write(0xFF41, new_stat);
 }
 
@@ -273,4 +259,17 @@ Scroll PPU::read_scroll() {
 void PPU::update_ly() {
     ly = (ly + 1) % 154;
     Memory::unsafe_write(0xFF44, ly);
+}
+
+void PPU::disable() {
+    ly = 0;
+    Memory::unsafe_write(0xFF44, ly);
+    update_stat(0);
+
+    Scheduler::remove_ppu_schedules();
+}
+
+void PPU::enable() {
+    Scheduler::first_line = true;
+    Scheduler::schedule(OAM_SCAN, 0);
 }

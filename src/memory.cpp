@@ -28,7 +28,7 @@ uint8_t Memory::read(uint16_t addr) {
             return Timer::tma;
         }
         case 0xFF55: {
-            //logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
+            // logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
             return (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F);
         }
     }
@@ -106,7 +106,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF46: // Capture DMA
         {
-            Scheduler::schedule(DMA_TRANSFER, 0);
+            DMA::transfer_dma();
             break;
         }
         case 0xFF55: {
@@ -114,7 +114,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
                 hdma_requested = true;
                 hdma_type = (data >> 7) & 0x1;
                 // logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", hdma_type, data & 0x7F);
-                if (hdma_type == 0) Scheduler::schedule(GDMA_TRANSFER, 0);
+                if (hdma_type == 0) HDMA::transfer_gdma();
             }
             else {
                 uint8_t terminate_bit = (data >> 7) & 0x1;
@@ -124,6 +124,13 @@ void Memory::write(uint16_t addr, uint8_t data) {
                 }
                 // logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
             }
+            break;
+        }
+        case 0xFF40: { //LCDC
+            uint8_t lcdc_enable = data >> 7 & 0x1;
+            if (lcdc_enable && !PPU::is_enable) PPU::enable();
+            else if (!lcdc_enable && PPU::is_enable) PPU::disable();
+            PPU::is_enable = lcdc_enable;
             break;
         }
         case 0xFF45: // LYC

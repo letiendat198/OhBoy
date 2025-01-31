@@ -40,7 +40,7 @@ void HDMA::transfer_hdma() {
     uint16_t dest_addr = 0x8000 + ((dest1 << 8 | dest2) & 0x1FF0);
 
     uint8_t ppu_mode = Memory::read(0xFF41) & 0x3;
-    if (ppu_mode != 0) logger.get_logger()->warn("HDMA called outside of HBlank");
+    // if (ppu_mode != 0) logger.get_logger()->warn("HDMA called outside of HBlank");
 
      for(int i=cycle;i<cycle+16;i++) {
          Memory::unsafe_write(dest_addr + i, Memory::unsafe_read(src_addr + i));
