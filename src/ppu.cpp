@@ -174,6 +174,8 @@ void PPU::read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj
     }
 }
 
+bool is_vblank_bug_executed = false;
+
 void PPU::schedule_next_mode(uint8_t current_mode) {
     switch (current_mode) {
         case 0: // HBLANK
@@ -181,8 +183,13 @@ void PPU::schedule_next_mode(uint8_t current_mode) {
             else Scheduler::schedule(SchedulerEvent::VBLANK, 51);
             break;
         case 1: // VBLANK
-            if (ly < 153) Scheduler::schedule(VBLANK, 114);
-            else Scheduler::schedule(SchedulerEvent::OAM_SCAN, 114);
+            if (ly != 0 && ly < 153) Scheduler::schedule(VBLANK, 114);
+            else { // LY = 0 or 153
+                if (!is_vblank_bug_executed) Scheduler::schedule(VBLANK, 1);
+                else Scheduler::schedule(SchedulerEvent::OAM_SCAN, 114);
+                is_vblank_bug_executed = !is_vblank_bug_executed;
+                first_line = true;
+            }
             break;
         case 2: // OAM SCAN
             Scheduler::schedule(SchedulerEvent::DRAW, 20);
@@ -270,6 +277,6 @@ void PPU::disable() {
 }
 
 void PPU::enable() {
-    Scheduler::first_line = true;
+    first_line = true;
     Scheduler::schedule(OAM_SCAN, 0);
 }

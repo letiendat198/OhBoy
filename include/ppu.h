@@ -63,6 +63,7 @@ public:
     inline static uint8_t ly = 0;
     uint8_t window_ly = 0;
     inline static bool is_enable = false;
+    inline static bool first_line = true;
 
     void oam_scan();
     void draw_scanline();

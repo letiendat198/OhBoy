@@ -13,6 +13,9 @@ uint8_t Memory::read(uint16_t addr) {
         case 0xFF0F: { // IF
             return Interrupts::IF;
         }
+        case 0xFF4D: { // Double SPD mode
+            return (CPU::double_spd_mode << 7) | CPU::switch_armed;
+        }
         case 0xFF00: { // Joypad
             return Joypad::read();
         }
@@ -27,9 +30,19 @@ uint8_t Memory::read(uint16_t addr) {
         case 0xFF06: { // TMA
             return Timer::tma;
         }
+        case 0xFF46:
+            return DMA::dma_addr;
+        case 0xFF51:
+            return HDMA::hdma_start_addr1;
+        case 0xFF52:
+            return HDMA::hdma_start_addr2;
+        case 0xFF53:
+            return HDMA::hdma_end_addr1;
+        case 0xFF54:
+            return HDMA::hdma_end_addr2;
         case 0xFF55: {
             // logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
-            return (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F);
+            return (!HDMA::is_hdma_running) << 7 | (HDMA::hdma_length & 0x7F);
         }
     }
     return unsafe_read(addr);
@@ -50,6 +63,10 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF00: { // Joypad
             Joypad::select(data >> 4 & 0x3);
+            return;
+        }
+        case 0xFF4D: { // Double SPD mode
+            CPU::switch_armed = data & 0x1;
             return;
         }
         case 0xFF04: // DIV RESET
@@ -106,25 +123,43 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF46: // Capture DMA
         {
+            DMA::dma_addr = data;
             DMA::transfer_dma();
-            break;
+            return;
         }
-        case 0xFF55: {
-            if (hdma_requested == false) {
-                hdma_requested = true;
-                hdma_type = (data >> 7) & 0x1;
-                // logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", hdma_type, data & 0x7F);
-                if (hdma_type == 0) HDMA::transfer_gdma();
+        case 0xFF51: { // HDMA1
+            HDMA::hdma_start_addr1 = data;
+            return;
+        }
+        case 0xFF52: { // HDMA2
+            HDMA::hdma_start_addr2 = data;
+            return;
+        }
+        case 0xFF53: { // HDMA3
+            HDMA::hdma_end_addr1 = data;
+            return;
+        }
+        case 0xFF54: { // HDMA4
+            HDMA::hdma_end_addr2 = data;
+            return;
+        }
+        case 0xFF55: { // HDMA5 - Length/Mode/Start
+            HDMA::hdma_length = data & 0x7F;
+            if (HDMA::is_hdma_running == false) {
+                HDMA::is_hdma_running = true;
+                HDMA::hdma_type = (data >> 7) & 0x1;
+                logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", HDMA::hdma_type, data & 0x7F);
+                if (HDMA::hdma_type == 0) HDMA::transfer_gdma();
             }
             else {
                 uint8_t terminate_bit = (data >> 7) & 0x1;
                 if (terminate_bit == 0) {
-                    hdma_requested = false;
+                    HDMA::is_hdma_running = false;
                     HDMA::reset_hdma();
                 }
-                // logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
+                logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
             }
-            break;
+            return;
         }
         case 0xFF40: { //LCDC
             uint8_t lcdc_enable = data >> 7 & 0x1;
@@ -145,7 +180,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
         {
             uint8_t prev_stat = unsafe_read(0xFF41);
             uint8_t changes = prev_stat ^ data;
-            unsafe_write(addr, data);
+            unsafe_write(addr, data); // TODO: 2 lower bit is read-only
             uint8_t mode = data & 0x3;
             uint8_t lyc_eq = data >> 2 & 0x1;
             for(uint8_t i = 0; i < 7; i++) {
@@ -293,16 +328,4 @@ uint8_t Memory::read_obj_cram(uint8_t addr) {
 
 void Memory::write_obj_cram(uint8_t addr, uint8_t data) {
     obj_cram[addr] = data;
-}
-
-bool Memory::check_hdma() {
-    return hdma_requested;
-}
-
-uint8_t Memory::get_hdma_type() {
-    return hdma_type;
-}
-
-void Memory::resolve_hdma() {
-    hdma_requested = false;
 }

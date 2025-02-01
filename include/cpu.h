@@ -28,6 +28,7 @@ public:
     unsigned char halt=0;
 
     inline static bool double_spd_mode = false;
+    inline static bool switch_armed = false;
 
     bool ime_next = false;
 

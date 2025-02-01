@@ -12,7 +12,7 @@ Scheduler::Scheduler() {
 // Schedule an event a number of cycle from this point on
 void Scheduler::schedule(SchedulerEvent event, uint32_t cycle_to_go) {
     SchedulerEventInfo event_info;
-    if (double_spd && static_cast<int>(event)<=4) event_info = SchedulerEventInfo{event, cycle_to_go * 2 + current_cycle, cycle_to_go};
+    if (CPU::double_spd_mode && static_cast<int>(event)<=4) event_info = SchedulerEventInfo{event, cycle_to_go * 2 + current_cycle, cycle_to_go};
     else event_info = SchedulerEventInfo{event, cycle_to_go + current_cycle, cycle_to_go};
     event_queue.insert(event_info);
     // logger.get_logger()->debug("Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
@@ -53,12 +53,10 @@ void Scheduler::reschedule(SchedulerEvent event, uint32_t cycle) {
 }
 
 void Scheduler::switch_speed(bool is_double_spd) {
-    if (double_spd == is_double_spd) return;
-    double_spd = is_double_spd;
-    CYCLE_PER_FRAME = double_spd ? 17556*2 : 17556;
+    CYCLE_PER_FRAME = is_double_spd ? 17556*2 : 17556;
     std::set<SchedulerEventInfo> temp;
     logger.get_logger()->debug("Speed switch at cycle: {:d}", current_cycle);
-    if (double_spd) {
+    if (is_double_spd) {
         for(auto event_info : event_queue) {
             if (event_info.event <= DRAW) {
                 event_info.cycle += event_info.relative_cycle;
@@ -104,8 +102,8 @@ void Scheduler::tick_frame() {
         current_cycle = event_info.cycle; // Set cycle context to the cycle event supposed to happen
         switch (event_info.event) {
             case OAM_SCAN:
-                if (!first_line) ppu.update_ly();
-                else first_line = false;
+                if (!ppu.first_line) ppu.update_ly();
+                else ppu.first_line = false;
                 ppu.update_stat(2);
                 ppu.oam_scan();
                 ppu.schedule_next_mode(2);
@@ -115,7 +113,7 @@ void Scheduler::tick_frame() {
                 ppu.schedule_next_mode(3);
                 break;
             case HBLANK:
-                if (Memory::check_hdma() && Memory::get_hdma_type() == 1 && !cpu.halt) HDMA::transfer_hdma();
+                if (HDMA::is_hdma_running && HDMA::hdma_type == 1 && !cpu.halt) HDMA::transfer_hdma();
                 ppu.draw_scanline();
                 ppu.update_stat(0);
                 ppu.schedule_next_mode(0);

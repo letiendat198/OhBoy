@@ -90,15 +90,11 @@ void CPU::op_0F() {
 void CPU::op_10() {
     mcycle = 1;
     if (Memory::cartridge.is_cgb) {
-        uint8_t spd_switch_req = Memory::read(0xFF4D);
-        uint8_t switch_armed = spd_switch_req & 0x1;
-        uint8_t current_spd = (spd_switch_req >> 7) & 0x1;
-
         if (switch_armed) {
             Memory::write(0xFF04, 0); // Reset DIV
-            double_spd_mode = !current_spd;
+            double_spd_mode = !double_spd_mode;
+            switch_armed = false;
             Scheduler::switch_speed(double_spd_mode);
-            Memory::write(0xFF4D, (double_spd_mode & 0x1) << 7);
             // mcycle = 2050; // Avoid overwhelming scheduler and cause early turn around
             logger.get_logger()->debug("Speed switch requested, mode is now: {:X}", double_spd_mode);
         }

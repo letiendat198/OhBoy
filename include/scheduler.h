@@ -43,8 +43,6 @@ public:
     PPU ppu;
 
     inline static uint32_t current_cycle = 0;
-    inline static bool double_spd = false;
-    inline static bool first_line = true;
     bool pause = false;
 
     Scheduler();

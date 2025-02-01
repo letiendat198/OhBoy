@@ -16,9 +16,6 @@ namespace Memory{
     inline uint8_t vram_bank = 0;
     inline uint8_t wram_bank = 1;
 
-    inline bool hdma_requested = false;
-    inline uint8_t hdma_type = 0; // 0 - GDMA, 1 - HDMA
-
     inline bool is_boot = true;
 
     inline Logger logger = Logger("Memory");
@@ -37,10 +34,6 @@ namespace Memory{
     void unsafe_write(uint16_t addr, uint8_t data);
 
     void memcpy(uint16_t dest_addr, uint16_t src_addr, uint16_t length);
-
-    bool check_hdma();
-    uint8_t get_hdma_type();
-    void resolve_hdma();
 };
 
 #endif
