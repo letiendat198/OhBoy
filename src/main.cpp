@@ -56,6 +56,7 @@ int main(int argc , char **argv){
         scheduler.tick_frame();
         auto t2 = std::chrono::steady_clock::now(); // Capture render + cycle time
         double elapse = chrono::duration<double, std::milli>(t2-t1).count();
+        debugger.last_frame_duration = elapse;
         if (elapse < MS_PER_FRAME) { // If still have some time left in this frame -> Sleep
             std::this_thread::sleep_for(chrono::duration<double, milli>(MS_PER_FRAME - elapse));
         }

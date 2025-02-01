@@ -1,5 +1,6 @@
 #include <ppu.h>
 #include <algorithm>
+#include <interrupts.h>
 
 #include "scheduler.h"
 
@@ -174,7 +175,28 @@ void PPU::read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj
     }
 }
 
-bool is_vblank_bug_executed = false;
+void PPU::check_stat_interrupt() {
+    uint8_t data = stat_mode_selection | (lyc==ly) << 2 | mode & 0x3;
+    uint8_t changes = prev_stat ^ data;
+    uint8_t lyc_eq = ly==lyc;
+    for(uint8_t i = 0; i < 7; i++) {
+        uint8_t is_bit_changed = (changes >> i) & 0x1;
+        if (!is_bit_changed) continue;
+        if (i == 2 || i == 6) {
+            if ((data >> 6 & 0x1) == 1 && lyc_eq == 1) Interrupts::set_interrupt_flag(1);
+        }
+        else {
+            // if (((data >> (mode+3)) & 0x1) == 1) Interrupts::set_interrupt_flag(1); // WILL SOMEHOW CAUSE CATASTROPHIC ERROR
+            if ((data >> 3 & 0x1) == 1 && mode == 0) Interrupts::set_interrupt_flag(1);
+            else if ((data >> 4 & 0x1) == 1 && mode == 1) Interrupts::set_interrupt_flag(1);
+            else if ((data >> 5 & 0x1) == 1 && mode == 2) Interrupts::set_interrupt_flag(1);
+        }
+    }
+    prev_stat = data;
+}
+
+
+bool is_lyc_bug_executed = false;
 
 void PPU::schedule_next_mode(uint8_t current_mode) {
     switch (current_mode) {
@@ -185,9 +207,9 @@ void PPU::schedule_next_mode(uint8_t current_mode) {
         case 1: // VBLANK
             if (ly != 0 && ly < 153) Scheduler::schedule(VBLANK, 114);
             else { // LY = 0 or 153
-                if (!is_vblank_bug_executed) Scheduler::schedule(VBLANK, 1);
+                if (!is_lyc_bug_executed) Scheduler::schedule(VBLANK, 1);
                 else Scheduler::schedule(SchedulerEvent::OAM_SCAN, 114);
-                is_vblank_bug_executed = !is_vblank_bug_executed;
+                is_lyc_bug_executed = !is_lyc_bug_executed;
                 first_line = true;
             }
             break;
@@ -199,14 +221,6 @@ void PPU::schedule_next_mode(uint8_t current_mode) {
             break;
         default: ;
     }
-}
-
-void PPU::update_stat(uint8_t mode) {
-    uint8_t prev_stat = Memory::unsafe_read(0xFF41);
-    uint8_t lyc = Memory::unsafe_read(0xFF45);
-    uint8_t write_data = (lyc == ly) << 2 |  mode;
-    uint8_t new_stat = (prev_stat & 0xF8) | write_data;
-    Memory::write(0xFF41, new_stat);
 }
 
 ObjAttribute PPU::read_obj(uint16_t addr) {
@@ -263,15 +277,9 @@ Scroll PPU::read_scroll() {
     return scroll;
 }
 
-void PPU::update_ly() {
-    ly = (ly + 1) % 154;
-    Memory::unsafe_write(0xFF44, ly);
-}
-
 void PPU::disable() {
     ly = 0;
-    Memory::unsafe_write(0xFF44, ly);
-    update_stat(0);
+    mode = 0;
 
     Scheduler::remove_ppu_schedules();
 }

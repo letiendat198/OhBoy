@@ -41,9 +41,15 @@ uint8_t Memory::read(uint16_t addr) {
         case 0xFF54:
             return HDMA::hdma_end_addr2;
         case 0xFF55: {
-            // logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F), hdma_requested);
+            logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!HDMA::is_hdma_running) << 7 | (HDMA::hdma_length & 0x7F), HDMA::is_hdma_running);
             return (!HDMA::is_hdma_running) << 7 | (HDMA::hdma_length & 0x7F);
         }
+        case 0xFF44: // LY
+            return PPU::ly;
+        case 0xFF45: // LYC
+            return PPU::lyc;
+        case 0xFF41: // STAT
+            return PPU::stat_mode_selection | ((PPU::lyc == PPU::ly) << 2) | PPU::mode & 0x3;
     }
     return unsafe_read(addr);
 }
@@ -170,32 +176,14 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF45: // LYC
         {
-            uint8_t stat = unsafe_read(0xFF41);
-            uint8_t lyc_eq = data == unsafe_read(0xFF44);
-            uint8_t new_stat = (stat & 0xFB) | (lyc_eq << 2);
-            write(0xFF41, new_stat);
-            break;
+            PPU::lyc = data;
+            PPU::check_stat_interrupt();
+            return;
         }
         case 0xFF41: // Capture STAT change
         {
-            uint8_t prev_stat = unsafe_read(0xFF41);
-            uint8_t changes = prev_stat ^ data;
-            unsafe_write(addr, data); // TODO: 2 lower bit is read-only
-            uint8_t mode = data & 0x3;
-            uint8_t lyc_eq = data >> 2 & 0x1;
-            for(uint8_t i = 0; i < 7; i++) {
-                uint8_t is_bit_changed = (changes >> i) & 0x1;
-                if (!is_bit_changed) continue;
-                if (i == 2 || i == 6) {
-                    if ((data >> 6 & 0x1) == 1 && lyc_eq == 1) Interrupts::set_interrupt_flag(1);
-                }
-                else {
-                    // if (((data >> (mode+3)) & 0x1) == 1) Interrupts::set_interrupt_flag(1); // WILL SOMEHOW CAUSE CATASTROPHIC ERROR
-                    if ((data >> 3 & 0x1) == 1 && mode == 0) Interrupts::set_interrupt_flag(1);
-                    else if ((data >> 4 & 0x1) == 1 && mode == 1) Interrupts::set_interrupt_flag(1);
-                    else if ((data >> 5 & 0x1) == 1 && mode == 2) Interrupts::set_interrupt_flag(1);
-                }
-            }
+            PPU::stat_mode_selection = data & 0xF8; // 3 lower bit is read-only
+            PPU::check_stat_interrupt();
             return;
         }
         case 0xFF68: // Capture BGPI change event

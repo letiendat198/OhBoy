@@ -102,30 +102,34 @@ void Scheduler::tick_frame() {
         current_cycle = event_info.cycle; // Set cycle context to the cycle event supposed to happen
         switch (event_info.event) {
             case OAM_SCAN:
-                if (!ppu.first_line) ppu.update_ly();
+                if (!ppu.first_line) PPU::ly = (PPU::ly + 1) % 154;
                 else ppu.first_line = false;
-                ppu.update_stat(2);
+                PPU::mode = 2;
+                PPU::check_stat_interrupt();
                 ppu.oam_scan();
                 ppu.schedule_next_mode(2);
                 break;
             case DRAW:
-                ppu.update_stat(3);
+                PPU::mode = 3;
+                PPU::check_stat_interrupt();
                 ppu.schedule_next_mode(3);
                 break;
             case HBLANK:
                 if (HDMA::is_hdma_running && HDMA::hdma_type == 1 && !cpu.halt) HDMA::transfer_hdma();
                 ppu.draw_scanline();
-                ppu.update_stat(0);
+                PPU::mode = 0;
+                PPU::check_stat_interrupt();
                 ppu.schedule_next_mode(0);
                 break;
             case VBLANK:
-                ppu.update_ly(); // Update LY only update LY register
-                ppu.update_stat(1); // Need to call update STAT so that LYC==LY actually update
-                if (ppu.ly == 144) {
+                PPU::ly = (PPU::ly + 1) % 154; // Update LY only update LY register
+                if (PPU::ly == 144) {
+                    PPU::mode = 1;
                     ppu.window_ly = 0;
                     Interrupts::set_interrupt_flag(0);
                     if (debugger != nullptr) debugger->render(); // WILL HANG IF PPU IS OFF
                 }
+                PPU::check_stat_interrupt();
                 ppu.schedule_next_mode(1);
                 break;
             case DIV_OVERFLOW:

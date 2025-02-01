@@ -155,9 +155,13 @@ void Debugger::render_registers(const ImGuiIO& io) {
     //     ImGui::TextColored(ImVec4(255,255,0,255), "Breakpoint hit!");
     // }
 
-    ImGui::Text("Frame rate:");
+    ImGui::Text("Screen FPS:");
     ImGui::SameLine();
     ImGui::Text(std::to_string(io.Framerate).c_str());
+
+    ImGui::Text("Frame FPS:");
+    ImGui::SameLine();
+    ImGui::Text(std::to_string((double)1000/last_frame_duration).c_str());
 
     CPU cpu = scheduler->cpu;
 

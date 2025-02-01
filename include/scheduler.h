@@ -14,6 +14,7 @@ enum SchedulerEvent {
     VBLANK,
     OAM_SCAN,
     DRAW,
+    // Anything UP is not affected by double speed mode
 
     // TIMER
     DIV_OVERFLOW,

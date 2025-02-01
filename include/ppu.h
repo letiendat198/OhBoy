@@ -49,7 +49,7 @@ struct Scroll {
 
 class PPU {
 private:
-    Logger logger = Logger("PPU");
+    inline static Logger logger = Logger("PPU");
     // uint8_t dmg_palette[4][3] = {{224, 248, 208}, {136, 192, 112}, {52, 104, 86}, {8, 24, 32}};
     uint16_t dmg_palette[4] = {0xB633, 0x8CEF, 0x638A, 0x31C4};
     ObjAttribute obj_queue[10]{};
@@ -64,15 +64,18 @@ public:
     uint8_t window_ly = 0;
     inline static bool is_enable = false;
     inline static bool first_line = true;
+    inline static uint8_t mode = 0;
+    inline static uint8_t lyc = 0;
+    inline static uint8_t prev_stat = 0;
+    inline static uint8_t stat_mode_selection = 0;
 
     void oam_scan();
     void draw_scanline();
     void set_cgb_mode(bool is_cgb);
     void schedule_next_mode(uint8_t mode);
-    static void update_ly();
-    static void update_stat(uint8_t mode);
     static void enable();
     static void disable();
+    static void check_stat_interrupt();
 
     ObjAttribute read_obj(uint16_t addr);
 

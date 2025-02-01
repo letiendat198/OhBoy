@@ -35,6 +35,7 @@ private:
 public:
     inline static Logger logger = Logger("Debugger");
     bool done = false;
+    double last_frame_duration = 0;
 
     Debugger(Scheduler *scheduler, bool debug);
     void render();

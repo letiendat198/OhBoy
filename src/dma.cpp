@@ -28,6 +28,8 @@ void HDMA::transfer_hdma() {
     uint16_t src_addr = ((hdma_start_addr1 << 8) | hdma_start_addr2) & 0xFFF0;
     uint16_t dest_addr = 0x8000 + ((hdma_end_addr1 << 8 | hdma_end_addr2) & 0x1FF0);
 
+    logger.get_logger()->debug("HDMA transfer from: {:#X} to: {:#X}", src_addr, dest_addr);
+
      for(int i=cycle;i<cycle+16;i++) {
          Memory::unsafe_write(dest_addr + i, Memory::unsafe_read(src_addr + i));
      }
