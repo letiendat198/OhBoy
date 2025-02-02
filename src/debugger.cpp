@@ -165,11 +165,19 @@ void Debugger::render_registers(const ImGuiIO& io) {
 
     CPU cpu = scheduler->cpu;
 
+    ImGui::InputInt("Breakpoint", &breakpoint);
+    if (cpu.pc == breakpoint) {
+        ImGui::TextColored(ImVec4(255,255,0,255), "Breakpoint hit!");
+        scheduler->pause = true;
+    }
     if (ImGui::Button("Pause")) scheduler->pause = true;
     ImGui::SameLine();
     if (ImGui::Button("Step")) scheduler->cpu.tick();
     ImGui::SameLine();
     if (ImGui::Button("Continue")) scheduler->pause = false;
+
+    if (cpu.halt) ImGui::TextColored(ImVec4(255,255,0,255), "CPU Halted!");
+    else ImGui::Text("");
 
     ImGui::Text(std::format("A: {:02X}", cpu.a).c_str());
     ImGui::SameLine();
@@ -217,7 +225,6 @@ void Debugger::render_registers(const ImGuiIO& io) {
 
     ImGui::Text(std::format("LYC: {}", Memory::read(0xFF45)).c_str());
 
-    if (cpu.halt) ImGui::Text("CPU HALTED!");
     ImGui::End();
 }
 

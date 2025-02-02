@@ -154,7 +154,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
             if (HDMA::is_hdma_running == false) {
                 HDMA::is_hdma_running = true;
                 HDMA::hdma_type = (data >> 7) & 0x1;
-                logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", HDMA::hdma_type, data & 0x7F);
+                // logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", HDMA::hdma_type, data & 0x7F);
                 if (HDMA::hdma_type == 0) HDMA::transfer_gdma();
             }
             else {
@@ -163,7 +163,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
                     HDMA::is_hdma_running = false;
                     HDMA::reset_hdma();
                 }
-                logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
+                // logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
             }
             return;
         }
@@ -243,7 +243,11 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
             return *(cartridge.rom_data + (addr - 0x4000) + cartridge.rom_bank*0x4000);
         case 8:
         case 9:
-            return read_vram(addr, vram_bank);
+            if (PPU::mode != 3) return read_vram(addr, vram_bank);
+            else {
+                logger.get_logger()->warn("Reading VRAM in mode 3");
+                return 0xFF;
+            }
         case 0xA:
         case 0xB:
             if (cartridge.rtc_access) return 0x0; // Shouldn't be accessible without RAM enable, but it's stubbed so doesn't really matter
@@ -273,7 +277,8 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
             break;
         case 8:
         case 9:
-            write_vram(addr, data, vram_bank);
+            if (PPU::mode != 3) write_vram(addr, data, vram_bank);
+            else logger.get_logger()->warn("Writing VRAM in mode 3 is forbidden");
             break;
         case 0xA:
         case 0xB:
