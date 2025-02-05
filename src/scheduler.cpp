@@ -7,6 +7,8 @@
 Scheduler::Scheduler() {
     Timer::current_tac = Timer::read_tac(Memory::read(0xFF07));
     Timer::schedule_next_div_overflow();
+
+    schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
 }
 
 // Schedule an event a number of cycle from this point on
@@ -115,9 +117,9 @@ void Scheduler::tick_frame() {
                 ppu.schedule_next_mode(3);
                 break;
             case HBLANK:
-                if (HDMA::is_hdma_running && HDMA::hdma_type == 1 && !cpu.halt) HDMA::transfer_hdma();
                 ppu.draw_scanline();
                 PPU::mode = 0;
+                if (HDMA::is_hdma_running && HDMA::hdma_type == 1 && !cpu.halt) HDMA::transfer_hdma();
                 PPU::check_stat_interrupt();
                 ppu.schedule_next_mode(0);
                 break;
@@ -138,6 +140,23 @@ void Scheduler::tick_frame() {
             case TIMA_OVERFLOW:
                 Interrupts::set_interrupt_flag(2);
                 Timer::schedule_tima_overflow(Timer::tma);
+                break;
+            case SQUARE1_PERIOD_OVERFLOW:
+                apu.channel1.on_period_overflow();
+                break;
+            case SQUARE2_PERIOD_OVERFLOW:
+                apu.channel2.on_period_overflow();
+                break;
+            case WAVE_PERIOD_OVERFLOW:
+                apu.channel3.on_period_overflow();
+                break;
+            case NOISE_PERIOD_OVERFLOW:
+                apu.channel4.on_period_overflow();
+                break;
+            case SAMPLE_APU:
+                // apu.sample();
+                // if (apu.sample_count == SAMPLE_COUNT) return;
+                // schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
                 break;
             default:
                 logger.get_logger()->debug("Not yet implemented event");

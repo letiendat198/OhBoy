@@ -3,6 +3,7 @@
 
 #include <cpu.h>
 #include <ppu.h>
+#include <apu.h>
 #include <set>
 #include <timer.h>
 
@@ -19,6 +20,13 @@ enum SchedulerEvent {
     // TIMER
     DIV_OVERFLOW,
     TIMA_OVERFLOW,
+
+    // APU
+    SQUARE1_PERIOD_OVERFLOW,
+    SQUARE2_PERIOD_OVERFLOW,
+    WAVE_PERIOD_OVERFLOW,
+    NOISE_PERIOD_OVERFLOW,
+    SAMPLE_APU,
 
     ILLEGAL
 };
@@ -42,6 +50,7 @@ public:
     inline static Logger logger = Logger("Scheduler");
     CPU cpu;
     PPU ppu;
+    APU apu;
 
     inline static uint32_t current_cycle = 0;
     bool pause = false;

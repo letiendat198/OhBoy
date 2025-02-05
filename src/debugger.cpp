@@ -40,18 +40,18 @@ Debugger::Debugger(Scheduler *scheduler, bool debug) {
     }
     SDL_RenderSetVSync(renderer, 0);
 
-    // SDL_AudioSpec spec;
-    // spec.freq = OUTPUT_FREQUENCY;
-    // spec.format = AUDIO_S16SYS;
-    // spec.channels = 1;
-    // spec.samples = SAMPLE_COUNT;
-    // spec.callback = &audio_callback;
+    SDL_AudioSpec spec;
+    spec.freq = OUTPUT_FREQUENCY;
+    spec.format = AUDIO_F32;
+    spec.channels = 1;
+    spec.samples = SAMPLE_COUNT;
+    spec.callback = nullptr;
     // spec.userdata = &scheduler->apu;
-    //
-    // SDL_AudioSpec obtained;
-    //
-    // audioDeviceID = SDL_OpenAudioDevice(NULL, 0, &spec, &obtained, 0);
-    // SDL_PauseAudioDevice(audioDeviceID, 0);
+
+    SDL_AudioSpec obtained;
+
+    audioDeviceID = SDL_OpenAudioDevice(NULL, 0, &spec, &obtained, 0);
+    SDL_PauseAudioDevice(audioDeviceID, 0);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -231,6 +231,11 @@ void Debugger::render_registers(const ImGuiIO& io) {
 void audio_callback(void *userdata, Uint8 *stream, int len) {
     // blip_read_samples(static_cast<APU*>(userdata)->blip, reinterpret_cast<short *>(stream), len / sizeof(short), 0);
     memcpy(stream, static_cast<APU*>(userdata)->blip_out, len);
+}
+
+void Debugger::queue_audio() {
+    SDL_QueueAudio(audioDeviceID, scheduler->apu.blip_out, scheduler->apu.sample_count*sizeof(float));
+    while(SDL_GetQueuedAudioSize(audioDeviceID) != 0) {}
 }
 
 

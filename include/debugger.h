@@ -42,7 +42,8 @@ public:
     void render();
     void render_registers(const ImGuiIO& io);
     void render_game();
-    static void capture_keyboard();
+    void capture_keyboard();
+    void queue_audio();
     void end();
 };
 

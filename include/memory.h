@@ -3,6 +3,8 @@
 
 #include "cartridge.h"
 
+class Scheduler;
+
 namespace Memory{
     inline uint8_t* memory = new uint8_t[0x2000]();
     inline uint8_t* vram = new uint8_t[0x2000*2]();
@@ -21,6 +23,7 @@ namespace Memory{
     inline Logger logger = Logger("Memory");
 
     inline Cartridge cartridge;
+    inline Scheduler *scheduler;
 
     uint8_t read(uint16_t addr);
     void write(uint16_t addr, uint8_t data);

@@ -7,3 +7,6 @@
 [submodule "deps/spdlog"]
 	path = deps/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "deps/miniaudio"]
+	path = deps/miniaudio
+	url = https://github.com/mackron/miniaudio.git

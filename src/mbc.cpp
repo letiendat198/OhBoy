@@ -19,7 +19,6 @@ void MBC::update_registers(uint16_t addr, uint8_t data) {
                 else rom_bank_low = data & 0x1F;
             }
             else if (0x4000 <= addr && addr <= 0x5FFF) {
-                logger.get_logger()->debug("MBC1 RAM bank switch to: {:d}", data & 0x3);
                 uint8_t ram_bank_request = data & 0x3;
                 if (cartridge->header.ram_banks > 0) {
                     ram_bank = ram_bank_request % cartridge->header.ram_banks;

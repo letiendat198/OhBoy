@@ -1,7 +1,6 @@
 #define SDL_MAIN_HANDLED
 #include <iostream>
 #include <chrono>
-#include <joypad.h>
 #include <popl.hpp>
 #include "debugger.h"
 #include "config.h"
@@ -25,6 +24,7 @@ void measure_frame_without_render(Scheduler *scheduler) {
     }
 }
 
+Scheduler scheduler;
 int main(int argc , char **argv){
     popl::OptionParser op("Allowed Options");
     auto help_options = op.add<popl::Switch>("h", "help", "Get help");
@@ -45,7 +45,7 @@ int main(int argc , char **argv){
     bool cart_init = Memory::cartridge.init(rom_path_option->value().c_str());
     if (!cart_init) return -1;
 
-    Scheduler scheduler;
+    Memory::scheduler = &scheduler;
     scheduler.ppu.set_cgb_mode(Memory::cartridge.is_cgb);
     // measure_frame_without_render(&scheduler);
     Debugger debugger(&scheduler, debug_mode);
@@ -57,11 +57,14 @@ int main(int argc , char **argv){
         auto t2 = std::chrono::steady_clock::now(); // Capture render + cycle time
         double elapse = chrono::duration<double, std::milli>(t2-t1).count();
         debugger.last_frame_duration = elapse;
+
         if (elapse < MS_PER_FRAME) { // If still have some time left in this frame -> Sleep
             std::this_thread::sleep_for(chrono::duration<double, milli>(MS_PER_FRAME - elapse));
         }
         t1 = std::chrono::steady_clock::now(); // Capture time at the start of new frame
-        // debugger.render();
+
+        debugger.render();
+        // debugger.queue_audio();
         debugger.capture_keyboard();
     }
     debugger.end();

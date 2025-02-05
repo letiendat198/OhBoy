@@ -52,6 +52,7 @@ uint32_t CPU::tick(){
 
     (this->*jump_table[Memory::read(pc)])();
     pc+=opskip;
+    // log_cpu();
 
     return mcycle;
 }

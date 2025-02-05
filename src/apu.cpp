@@ -3,86 +3,44 @@
 #include <cpu.h>
 #include <memory.h>
 
+#include "scheduler.h"
+
 APU::APU(){
     blip = blip_new(SAMPLE_COUNT*10);
     blip_set_rates(blip, 2106720, OUTPUT_FREQUENCY);
     cycle_needed_per_sample = blip_clocks_needed(blip, SAMPLE_COUNT);
     std::cout<<cycle_needed_per_sample<<"\n";
-
-    // channel1.set_trigger(&Memory::c1_trigger);
-    // channel2.set_trigger(&Memory::c2_trigger);
-    // channel3.set_trigger(&Memory::c3_trigger);
-    // channel4.set_trigger(&Memory::c4_trigger);
 }
 
-void APU::tick() {
-    tick_div_apu();
-    cycle++;
-    if (cycle % 2 == 0) {
-        if (cycle % 4 == 0) {
-            channel1.tick();
-            channel2.tick();
-            channel4.tick();
-        }
-        channel3.tick();
+void APU::sample() {
+    uint8_t sample1 = channel1.enabled?channel1.get_current_sample():0;
+    uint8_t sample2 = channel2.enabled?channel2.get_current_sample():0;
+    uint8_t sample3 = channel3.enabled?channel3.get_current_sample():0;
+    // uint8_t sample4 = channel4.enabled?channel4.get_current_sample():0;
 
-        short sample1 = channel1.is_dac_enabled()?channel1.get_current_sample():0;
-        short sample2 = channel2.is_dac_enabled()?channel2.get_current_sample():0;
-        short sample3 = channel3.is_dac_enabled()?channel3.get_current_sample():0;
-        short sample4 = channel4.is_dac_enabled()?channel4.get_current_sample():0;
+    float f1 = 1 - ((float) (sample1 & 0xF))*0.13;
+    float f2 = 1 - ((float) (sample2 & 0xF))*0.13;
+    float f3 = 1 - ((float) (sample3 & 0xF))*0.13;
 
-        short sample = sample1 + sample2 + sample3 + sample4;
-
-        if (sample != current_sample) {
-            blip_add_delta(blip, cycle/2, (sample - current_sample)*100);
-            current_sample = sample;
-        }
-        if (cycle/2 == cycle_needed_per_sample) {
-            blip_end_frame(blip, cycle/2);
-            logger.get_logger()->debug("Frame ended, sample available: {:d}", blip_samples_avail(blip));
-            blip_read_samples(blip, blip_out, SAMPLE_COUNT, 0);
-            while(blip_samples_avail(blip)) {
-                blip_read_samples(blip, blip_out+SAMPLE_COUNT, blip_samples_avail(blip), 0); // blip_out can hold SAMPLE+100
-            }
-            cycle = 0;
-        }
-
-        uint8_t nr52 = Memory::unsafe_read(0xFF26);
-        Memory::unsafe_write(0xFF26, (nr52 & 0x80) | (channel4.is_enabled() << 3 | channel3.is_enabled() << 2 | channel2.is_enabled() << 1 | channel1.is_enabled()));
-    }
+    blip_out[sample_count++] = f1 + f2 + f3;
 }
 
 void APU::tick_div_apu() {
-    uint8_t bit_shift = 4;//CPU::double_spd_mode?5:4;
-    uint8_t div = Memory::read(0xFF04);
-    uint8_t current_div_bit = (div >> bit_shift) & 0x1;
-    if (current_div_bit == 0 && pre_div_bit == 1) {
-        div_apu_cycle = (div_apu_cycle + 1) % 8;
-        if (div_apu_cycle % 2 == 0) {
-            channel1.tick_length_timer();
-            channel2.tick_length_timer();
-            channel3.tick_length_timer();
-            channel4.tick_length_timer();
-        }
-        if (div_apu_cycle == 2 || div_apu_cycle == 6) {
-            channel1.tick_period_sweep();
-        }
-        if (div_apu_cycle == 7) {
-            channel1.tick_volume_env();
-            channel2.tick_volume_env();
-            channel4.tick_volume_env();
-        }
+    div_apu_cycle = (div_apu_cycle + 1) % 8;
+    if (div_apu_cycle % 2 == 0) {
+        channel1.tick_length_timer();
+        channel2.tick_length_timer();
+        channel3.tick_length_timer();
+        channel4.tick_length_timer();
     }
-    pre_div_bit = current_div_bit;
-}
-
-template<class T>
-void AudioChannel<T>::tick() {
-    update_registers_content();
-    static_cast<T*>(this)->trigger();
-    static_cast<T*>(this)->check_dac_status();
-    if (!enabled) return;
-    static_cast<T*>(this)->tick_period_timer();
+    if (div_apu_cycle == 2 || div_apu_cycle == 6) {
+        channel1.tick_period_sweep();
+    }
+    if (div_apu_cycle == 7) {
+        channel1.tick_volume_env();
+        channel2.tick_volume_env();
+        channel4.tick_volume_env();
+    }
 }
 
 template<class T>
@@ -93,32 +51,13 @@ void AudioChannel<T>::tick_length_timer() {
 }
 
 template<class T>
-void AudioChannel<T>::update_registers_content() {
-    NRx0 = Memory::unsafe_read(NRx0_addr);
-    NRx1 = Memory::unsafe_read(NRx1_addr);
-    NRx2 = Memory::unsafe_read(NRx2_addr);
-    NRx3 = Memory::unsafe_read(NRx3_addr);
-    NRx4 = Memory::unsafe_read(NRx4_addr);
-}
-
-template<class T>
 void AudioChannel<T>::reset_length_counter() {
     length_counter = NRx1 & static_cast<T*>(this)->LENGTH_OVERFLOW;
 }
 
 template<class T>
 void AudioChannel<T>::reset_period_counter() {
-    period_counter = (NRx4 & 0x7) << 8| NRx3;
-}
-
-template<class T>
-bool AudioChannel<T>::is_dac_enabled() {
-    return dac_enabled;
-}
-
-template<class T>
-bool AudioChannel<T>::is_enabled() {
-    return enabled;
+    initial_period_counter = (NRx4 & 0x7) << 8| NRx3;
 }
 
 template<class T>
@@ -126,37 +65,30 @@ uint8_t AudioChannel<T>::get_current_sample() {
     return current_sample;
 }
 
-template<class T>
-void AudioChannel<T>::set_trigger(bool *trigger_flag) {
-    this->trigger_flag = trigger_flag;
-}
-
 void SquareWaveChannel::trigger() {
-    if (*trigger_flag) {
-        uint8_t sweep_pace = (NRx0 >> 4) & 0x7;
-        uint8_t sweep_step = NRx0 & 0x7;
-        // logger.get_logger()->debug("Channel turned off. Trigger: {:X}, Length timer: {:d}", trigger, length_counter);
-        reset_period_counter();
-        if(length_counter > LENGTH_OVERFLOW) reset_length_counter();
-        shadow_period_register = period_counter;
-        period_sweep_counter = 0;
-        sweep_internal_enable = sweep_pace != 0 || sweep_step != 0;
-        if (sweep_step != 0) tick_period_sweep();
-        volume = (NRx2 >> 4) & 0xF;
-        volume_sweep_counter = 0;
-        enabled = dac_enabled;
-        *trigger_flag = false;
-    }
+    uint8_t sweep_pace = (NRx0 >> 4) & 0x7;
+    uint8_t sweep_step = NRx0 & 0x7;
+    // logger.get_logger()->debug("Channel turned off. Trigger: {:X}, Length timer: {:d}", trigger, length_counter);
+    reset_period_counter();
+    if(length_counter > LENGTH_OVERFLOW) reset_length_counter();
+    shadow_period_register = initial_period_counter;
+    period_sweep_counter = 0;
+    sweep_internal_enable = sweep_pace != 0 || sweep_step != 0;
+    if (sweep_step != 0) tick_period_sweep();
+    volume = (NRx2 >> 4) & 0xF;
+    volume_sweep_counter = 0;
+    enabled = dac_enabled;
+    SchedulerEvent period_overflow_event = channel_number == 1 ? SQUARE1_PERIOD_OVERFLOW : SQUARE2_PERIOD_OVERFLOW;
+    if (enabled) Scheduler::schedule(period_overflow_event, 0x800 - initial_period_counter);
 }
 
-void SquareWaveChannel::tick_period_timer() {
-    period_counter++;
-    if (period_counter > 0x7FF) { // When period counter overflow -> Sample a step from square wave
-        reset_period_counter();
-        uint8_t duty = NRx1 & 0x3;
-        current_sample = ((square_wave[duty] >> (7-current_step)) & 0x1) * volume;
-        current_step = (current_step + 1) % 8;
-    }
+void SquareWaveChannel::on_period_overflow() {
+    reset_period_counter();
+    uint8_t duty = NRx1 & 0x3;
+    current_sample = ((square_wave[duty] >> (7-current_step)) & 0x1) * volume;
+    current_step = (current_step + 1) % 8;
+    SchedulerEvent period_overflow_event = channel_number == 1 ? SQUARE1_PERIOD_OVERFLOW : SQUARE2_PERIOD_OVERFLOW;
+    Scheduler::schedule(period_overflow_event, 0x800 - initial_period_counter);
 }
 
 void SquareWaveChannel::tick_volume_env() {
@@ -186,8 +118,8 @@ void SquareWaveChannel::tick_period_sweep() {
                 return;
             }
             shadow_period_register = temp_period;
-            Memory::unsafe_write(NRx3_addr, shadow_period_register & 0xFF);
-            Memory::unsafe_write(NRx4_addr, (Memory::unsafe_read(NRx4_addr) & 0xF8) | ((shadow_period_register >> 8) & 0x7));
+            NRx3 =  shadow_period_register & 0xFF;
+            NRx4 = (NRx4 & 0xF8) | ((shadow_period_register >> 8) & 0x7);
             // Calculate again???
             if (direction == 0) temp_period = shadow_period_register + (shadow_period_register >> step);
             else temp_period = shadow_period_register - (shadow_period_register >> step);
@@ -206,28 +138,24 @@ void SquareWaveChannel::check_dac_status() { // Should be same across channels
 }
 
 void WaveChannel::trigger() {
-    if (*trigger_flag) {
-        reset_period_counter();
-        if (length_counter > LENGTH_OVERFLOW) reset_length_counter();
-        current_step = 0;
-        volume = ((NRx2 >> 5) & 0x3) - 1;
-        enabled = dac_enabled;
-        *trigger_flag = false;
-    }
+    reset_period_counter();
+    if (length_counter > LENGTH_OVERFLOW) reset_length_counter();
+    current_step = 0;
+    volume = ((NRx2 >> 5) & 0x3) - 1;
+    enabled = dac_enabled;
+    if (enabled) Scheduler::schedule(WAVE_PERIOD_OVERFLOW, (0x800 - initial_period_counter) / 2);
 }
 
-void WaveChannel::tick_period_timer() {
-    period_counter++;
-    if (period_counter > 0x7FF) { // When period counter overflow
-        reset_period_counter();
-        uint16_t wram_addr = 0xFF30;
-        uint8_t current_sample_byte = Memory::unsafe_read(wram_addr + (current_step >> 1));
-        uint8_t current_nibble = (current_sample_byte >> 4) & 0xF;
-        if (current_step % 2 == 1) current_nibble = current_sample_byte & 0xF;
-        if (volume != 0xFF) current_sample = current_nibble >> volume;
-        else current_sample = 0;
-        current_step = (current_step + 1) % 32;
-    }
+void WaveChannel::on_period_overflow() {
+    reset_period_counter();
+    uint16_t wram_addr = 0xFF30;
+    uint8_t current_sample_byte = Memory::unsafe_read(wram_addr + (current_step >> 1));
+    uint8_t current_nibble = (current_sample_byte >> 4) & 0xF;
+    if (current_step % 2 == 1) current_nibble = current_sample_byte & 0xF;
+    if (volume != 0xFF) current_sample = current_nibble >> volume;
+    else current_sample = 0;
+    current_step = (current_step + 1) % 32;
+    Scheduler::schedule(WAVE_PERIOD_OVERFLOW, (0x800 - initial_period_counter) / 2);
 }
 
 void WaveChannel::check_dac_status() { // Should be same across channels
@@ -236,22 +164,19 @@ void WaveChannel::check_dac_status() { // Should be same across channels
 }
 
 void NoiseChannel::trigger() {
-    if (*trigger_flag) {
-        lfsr = 0;
-        if(length_counter > LENGTH_OVERFLOW) reset_length_counter();
-        volume = (NRx2 >> 4) & 0xF;
-        volume_sweep_counter = 0;
-        enabled = dac_enabled;
-        *trigger_flag = false;
-    }
+    lfsr = 0;
+    if(length_counter > LENGTH_OVERFLOW) reset_length_counter();
+    volume = (NRx2 >> 4) & 0xF;
+    volume_sweep_counter = 0;
+    enabled = dac_enabled;
 }
 
-void NoiseChannel::tick_period_timer() {
-    period_counter++;
+void NoiseChannel::on_period_overflow() {
+    initial_period_counter++;
     uint8_t shift = (NRx3 >> 4) & 0xF;
     uint8_t divider = NRx3 & 0x7;
-    if (period_counter > (divider_lookup[divider] << shift)) {
-        period_counter = 0;
+    if (initial_period_counter > (divider_lookup[divider] << shift)) {
+        initial_period_counter = 0;
         tick_lfsr();
         current_sample = (lfsr & 0x1) * volume;
     }

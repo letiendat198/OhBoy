@@ -10,10 +10,8 @@ namespace DMA {
 };
 
 namespace HDMA {
-    inline uint8_t hdma_start_addr1 = 0;
-    inline uint8_t hdma_start_addr2 = 0;
-    inline uint8_t hdma_end_addr1 = 0;
-    inline uint8_t hdma_end_addr2 = 0;
+    inline uint16_t hdma_src = 0;
+    inline uint16_t hdma_dest = 0;
     inline uint8_t hdma_length = 0;
     inline uint8_t hdma_type = 0;
     inline bool is_hdma_running = false;

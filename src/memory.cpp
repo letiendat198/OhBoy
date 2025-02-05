@@ -33,13 +33,13 @@ uint8_t Memory::read(uint16_t addr) {
         case 0xFF46:
             return DMA::dma_addr;
         case 0xFF51:
-            return HDMA::hdma_start_addr1;
+            return (HDMA::hdma_src >> 8) & 0xFF;
         case 0xFF52:
-            return HDMA::hdma_start_addr2;
+            return HDMA::hdma_src & 0xFF;
         case 0xFF53:
-            return HDMA::hdma_end_addr1;
+            return (HDMA::hdma_dest >> 8) & 0xFF;
         case 0xFF54:
-            return HDMA::hdma_end_addr2;
+            return HDMA::hdma_dest & 0xFF;
         case 0xFF55: {
             logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!HDMA::is_hdma_running) << 7 | (HDMA::hdma_length & 0x7F), HDMA::is_hdma_running);
             return (!HDMA::is_hdma_running) << 7 | (HDMA::hdma_length & 0x7F);
@@ -50,6 +50,64 @@ uint8_t Memory::read(uint16_t addr) {
             return PPU::lyc;
         case 0xFF41: // STAT
             return PPU::stat_mode_selection | ((PPU::lyc == PPU::ly) << 2) | PPU::mode & 0x3;
+        case 0xFF26: { // NR52
+            return scheduler->apu.is_enabled << 7 | scheduler->apu.channel4.enabled << 3 | scheduler->apu.channel3.enabled << 2 |
+                scheduler->apu.channel2.enabled << 1 | scheduler->apu.channel1.enabled;
+        }
+        case 0xFF10: { // NR10
+            return scheduler->apu.channel1.NRx0;
+        }
+        case 0xFF11: { // NR11
+            return scheduler->apu.channel1.NRx1;
+        }
+        case 0xFF12: { // NR12
+            return scheduler->apu.channel1.NRx2;
+        }
+        case 0xFF13: { // NR13
+            return scheduler->apu.channel1.NRx3;
+        }
+        case 0xFF14: { // NR14
+            return scheduler->apu.channel1.NRx4;
+        }
+        case 0xFF16: { // NR21
+            return scheduler->apu.channel2.NRx1;
+        }
+        case 0xFF17: { // NR22
+            return scheduler->apu.channel2.NRx2;
+        }
+        case 0xFF18: { // NR23
+            return scheduler->apu.channel2.NRx3;
+        }
+        case 0xFF19: { // NR24
+            return scheduler->apu.channel2.NRx4;
+        }
+        case 0xFF1A: { // NR30
+            return scheduler->apu.channel3.NRx0;
+        }
+        case 0xFF1B: { // NR31
+            return scheduler->apu.channel3.NRx1;
+        }
+        case 0xFF1C: { // NR32
+            return scheduler->apu.channel3.NRx2;
+        }
+        case 0xFF1D: { // NR33
+            return scheduler->apu.channel3.NRx3;
+        }
+        case 0xFF1E: { // NR34
+            return scheduler->apu.channel3.NRx4;
+        }
+        case 0xFF20: { // NR41
+            return scheduler->apu.channel4.NRx1;
+        }
+        case 0xFF21: { // NR42
+            return scheduler->apu.channel4.NRx2;
+        }
+        case 0xFF22: { // NR43
+            return scheduler->apu.channel4.NRx3;
+        }
+        case 0xFF23: { // NR44
+            return scheduler->apu.channel4.NRx4;
+        }
     }
     return unsafe_read(addr);
 }
@@ -88,7 +146,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
         case 0xFF05: { //TIMA
             if (Timer::current_tac.enable) Timer::schedule_tima_overflow(data);
             else Timer::paused_tima = data;
-            logger.get_logger()->debug("Write: {:d} to TIMA at cycle: {:d}. Overflow at: {:d}. DIV: {:b}", data, Scheduler::current_cycle, Timer::tima_overflow_cycle,  Timer::calc_current_div());
+            // logger.get_logger()->debug("Write: {:d} to TIMA at cycle: {:d}. Overflow at: {:d}. DIV: {:b}", data, Scheduler::current_cycle, Timer::tima_overflow_cycle,  Timer::calc_current_div());
             return;
         }
         case 0xFF07: { // TAC
@@ -134,19 +192,23 @@ void Memory::write(uint16_t addr, uint8_t data) {
             return;
         }
         case 0xFF51: { // HDMA1
-            HDMA::hdma_start_addr1 = data;
+            HDMA::hdma_src &= 0x00F0;
+            HDMA::hdma_src |= data << 8;
             return;
         }
         case 0xFF52: { // HDMA2
-            HDMA::hdma_start_addr2 = data;
+            HDMA::hdma_src &= 0xFF00;
+            HDMA::hdma_src |= data & 0xF0;
             return;
         }
         case 0xFF53: { // HDMA3
-            HDMA::hdma_end_addr1 = data;
+            HDMA::hdma_dest &= 0x00F0;
+            HDMA::hdma_dest |= (data & 0x1F) << 8;
             return;
         }
         case 0xFF54: { // HDMA4
-            HDMA::hdma_end_addr2 = data;
+            HDMA::hdma_dest &= 0xFF00;
+            HDMA::hdma_dest |= data & 0xF0;
             return;
         }
         case 0xFF55: { // HDMA5 - Length/Mode/Start
@@ -156,6 +218,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
                 HDMA::hdma_type = (data >> 7) & 0x1;
                 // logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", HDMA::hdma_type, data & 0x7F);
                 if (HDMA::hdma_type == 0) HDMA::transfer_gdma();
+                else if (HDMA::hdma_type == 1 && PPU::mode == 0) HDMA::transfer_hdma();
             }
             else {
                 uint8_t terminate_bit = (data >> 7) & 0x1;
@@ -163,7 +226,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
                     HDMA::is_hdma_running = false;
                     HDMA::reset_hdma();
                 }
-                // logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
+                logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
             }
             return;
         }
@@ -223,6 +286,85 @@ void Memory::write(uint16_t addr, uint8_t data) {
             wram_bank = bank_number?bank_number:1;
             break;
         }
+        case 0xFF26: { // NR52
+            scheduler->apu.is_enabled = data >> 7 & 0x1;
+        }
+        case 0xFF10: { // NR10
+            scheduler->apu.channel1.NRx0 = data;
+            return;
+        }
+        case 0xFF11: { // NR11
+            scheduler->apu.channel1.NRx1 = data;
+            return;
+        }
+        case 0xFF12: { // NR12
+            scheduler->apu.channel1.NRx2 = data;
+            return;
+        }
+        case 0xFF13: { // NR13
+            scheduler->apu.channel1.NRx3 = data;
+            return;
+        }
+        case 0xFF14: { // NR14
+            scheduler->apu.channel1.NRx4 = data;
+            if ((data >> 7) & 0x1) scheduler->apu.channel1.trigger();
+            return;
+        }
+        case 0xFF16: { // NR21
+            scheduler->apu.channel2.NRx1 = data;
+            return;
+        }
+        case 0xFF17: { // NR22
+            scheduler->apu.channel2.NRx2 = data;
+            return;
+        }
+        case 0xFF18: { // NR23
+            scheduler->apu.channel2.NRx3 = data;
+            return;
+        }
+        case 0xFF19: { // NR24
+            scheduler->apu.channel2.NRx4 = data;
+            if ((data >> 7) & 0x1) scheduler->apu.channel2.trigger();
+            return;
+        }
+        case 0xFF1A: { // NR30
+            scheduler->apu.channel3.NRx0 = data;
+            return;
+        }
+        case 0xFF1B: { // NR31
+            scheduler->apu.channel3.NRx1 = data;
+            return;
+        }
+        case 0xFF1C: { // NR32
+            scheduler->apu.channel3.NRx2 = data;
+            return;
+        }
+        case 0xFF1D: { // NR33
+            scheduler->apu.channel3.NRx3 = data;
+            return;
+        }
+        case 0xFF1E: { // NR34
+            scheduler->apu.channel3.NRx4 = data;
+            if ((data >> 7) & 0x1) scheduler->apu.channel3.trigger();
+            return;
+        }
+        case 0xFF20: { // NR41
+            scheduler->apu.channel4.NRx1 = data;
+            return;
+        }
+        case 0xFF21: { // NR42
+            scheduler->apu.channel4.NRx2 = data;
+            return;
+        }
+        case 0xFF22: { // NR43
+            scheduler->apu.channel4.NRx3 = data;
+            return;
+        }
+        case 0xFF23: { // NR44
+            scheduler->apu.channel4.NRx4 = data;
+            if ((data >> 7) & 0x1) scheduler->apu.channel4.trigger();
+            return;
+        }
     }
 
     unsafe_write(addr, data);
@@ -277,8 +419,9 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
             break;
         case 8:
         case 9:
-            if (PPU::mode != 3) write_vram(addr, data, vram_bank);
-            else logger.get_logger()->warn("Writing VRAM in mode 3 is forbidden");
+            if (PPU::mode != 3)
+                write_vram(addr, data, vram_bank);
+            // else logger.get_logger()->warn("Writing VRAM in mode 3 is forbidden");
             break;
         case 0xA:
         case 0xB:

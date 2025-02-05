@@ -10,15 +10,15 @@ void DMA::transfer_dma() {
 }
 
 void HDMA::transfer_gdma() {
-    uint16_t src_addr = ((hdma_start_addr1 << 8) | hdma_start_addr2) & 0xFFF0;
-    uint16_t dest_addr = 0x8000 + ((hdma_end_addr1 << 8 | hdma_end_addr2) & 0x1FF0);
 
-    // logger.get_logger()->debug("GDMA transfer from: {:#X} to: {:#X} with length: {:d}", src_addr, dest_addr, (hdma_length+1) * 0x10);
+    logger.get_logger()->debug("GDMA transfer from: {:#X} to: {:#X} with length: {:d}", hdma_src, 0x8000 + hdma_dest, (hdma_length+1) * 0x10);
 
     uint8_t length = hdma_length;
 
     for (int cycle = 0; cycle<(length+1) * 0x10; cycle++) {
-        Memory::unsafe_write(dest_addr + cycle, Memory::unsafe_read(src_addr + cycle));
+        Memory::unsafe_write(0x8000 + hdma_dest, Memory::unsafe_read(hdma_src));
+        hdma_dest++;
+        hdma_src++;
     }
 
     is_hdma_running = false;
@@ -27,13 +27,12 @@ void HDMA::transfer_gdma() {
 
 
 void HDMA::transfer_hdma() {
-    uint16_t src_addr = ((hdma_start_addr1 << 8) | hdma_start_addr2) & 0xFFF0;
-    uint16_t dest_addr = 0x8000 + ((hdma_end_addr1 << 8 | hdma_end_addr2) & 0x1FF0);
-
-    // logger.get_logger()->debug("HDMA transfer from: {:#X} to: {:#X}", src_addr+cycle, dest_addr+cycle);
+    logger.get_logger()->debug("HDMA transfer from: {:#X} to: {:#X}", hdma_src, 0x8000 + hdma_dest);
 
      for(int i=cycle;i<cycle+16;i++) {
-         Memory::unsafe_write(dest_addr + i, Memory::unsafe_read(src_addr + i));
+         Memory::unsafe_write(0x8000 + hdma_dest, Memory::unsafe_read(hdma_src));
+         hdma_src++;
+         hdma_dest++;
      }
 
     cycle += 16;
