@@ -9,12 +9,13 @@ Scheduler::Scheduler() {
     Timer::schedule_next_div_overflow();
 
     schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
+    // schedule(DIV_APU_TICK, 2048); // NAIVE
 }
 
 // Schedule an event a number of cycle from this point on
 void Scheduler::schedule(SchedulerEvent event, uint32_t cycle_to_go) {
     SchedulerEventInfo event_info;
-    if (CPU::double_spd_mode && static_cast<int>(event)<=4) event_info = SchedulerEventInfo{event, cycle_to_go * 2 + current_cycle, cycle_to_go};
+    if (CPU::double_spd_mode && static_cast<int>(event)<=DRAW) event_info = SchedulerEventInfo{event, cycle_to_go * 2 + current_cycle, cycle_to_go};
     else event_info = SchedulerEventInfo{event, cycle_to_go + current_cycle, cycle_to_go};
     event_queue.insert(event_info);
     // logger.get_logger()->debug("Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
@@ -42,7 +43,7 @@ void Scheduler::remove_schedule(SchedulerEvent event) {
 void Scheduler::remove_ppu_schedules() {
     std::set<SchedulerEventInfo> temp;
     for(auto event_info : event_queue) {
-        if (event_info.event > DRAW) temp.insert(event_info);
+        if (event_info.event > DRAW || event_info.event < HBLANK) temp.insert(event_info);
     }
     event_queue.swap(temp);
 }
@@ -141,22 +142,25 @@ void Scheduler::tick_frame() {
                 Interrupts::set_interrupt_flag(2);
                 Timer::schedule_tima_overflow(Timer::tma);
                 break;
+            // case DIV_APU_TICK:
+            //     apu.tick_div_apu();
+            //     break;
             case SQUARE1_PERIOD_OVERFLOW:
                 apu.channel1.on_period_overflow();
                 break;
             case SQUARE2_PERIOD_OVERFLOW:
                 apu.channel2.on_period_overflow();
                 break;
-            case WAVE_PERIOD_OVERFLOW:
-                apu.channel3.on_period_overflow();
-                break;
-            case NOISE_PERIOD_OVERFLOW:
-                apu.channel4.on_period_overflow();
-                break;
+            // case WAVE_PERIOD_OVERFLOW:
+            //     apu.channel3.on_period_overflow();
+            //     break;
+            // case NOISE_PERIOD_OVERFLOW:
+            //     apu.channel4.on_period_overflow();
+            //     break;
             case SAMPLE_APU:
-                // apu.sample();
-                // if (apu.sample_count == SAMPLE_COUNT) return;
-                // schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
+                schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
+                apu.sample();
+                if (apu.sample_count == SAMPLE_COUNT) return;
                 break;
             default:
                 logger.get_logger()->debug("Not yet implemented event");

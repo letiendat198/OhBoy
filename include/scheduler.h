@@ -9,7 +9,9 @@
 
 class Debugger;
 
-enum SchedulerEvent {
+enum SchedulerEvent: uint8_t {
+    SAMPLE_APU,
+
     // PPU
     HBLANK,
     VBLANK,
@@ -22,11 +24,11 @@ enum SchedulerEvent {
     TIMA_OVERFLOW,
 
     // APU
+    DIV_APU_TICK,
     SQUARE1_PERIOD_OVERFLOW,
     SQUARE2_PERIOD_OVERFLOW,
     WAVE_PERIOD_OVERFLOW,
     NOISE_PERIOD_OVERFLOW,
-    SAMPLE_APU,
 
     ILLEGAL
 };

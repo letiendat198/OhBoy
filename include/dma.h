@@ -15,12 +15,10 @@ namespace HDMA {
     inline uint8_t hdma_length = 0;
     inline uint8_t hdma_type = 0;
     inline bool is_hdma_running = false;
-    inline uint16_t cycle = 0;
     inline Logger logger = Logger("HDMA");
 
     void transfer_gdma();
     void transfer_hdma();
-    void reset_hdma();
 };
 
 #endif //DMA_H

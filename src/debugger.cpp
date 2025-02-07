@@ -42,7 +42,7 @@ Debugger::Debugger(Scheduler *scheduler, bool debug) {
 
     SDL_AudioSpec spec;
     spec.freq = OUTPUT_FREQUENCY;
-    spec.format = AUDIO_F32;
+    spec.format = AUDIO_S16SYS;
     spec.channels = 1;
     spec.samples = SAMPLE_COUNT;
     spec.callback = nullptr;
@@ -228,14 +228,15 @@ void Debugger::render_registers(const ImGuiIO& io) {
     ImGui::End();
 }
 
-void audio_callback(void *userdata, Uint8 *stream, int len) {
-    // blip_read_samples(static_cast<APU*>(userdata)->blip, reinterpret_cast<short *>(stream), len / sizeof(short), 0);
-    memcpy(stream, static_cast<APU*>(userdata)->blip_out, len);
-}
+// void audio_callback(void *userdata, Uint8 *stream, int len) {
+//     // blip_read_samples(static_cast<APU*>(userdata)->blip, reinterpret_cast<short *>(stream), len / sizeof(short), 0);
+//     memcpy(stream, static_cast<APU*>(userdata)->sample_output, len);
+//     static_cast<APU*>(userdata)->sample_count = 0;
+// }
 
 void Debugger::queue_audio() {
-    SDL_QueueAudio(audioDeviceID, scheduler->apu.blip_out, scheduler->apu.sample_count*sizeof(float));
     while(SDL_GetQueuedAudioSize(audioDeviceID) != 0) {}
+    SDL_QueueAudio(audioDeviceID, scheduler->apu.sample_output, SAMPLE_COUNT*sizeof(short));
 }
 
 

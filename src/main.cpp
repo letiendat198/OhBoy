@@ -58,13 +58,16 @@ int main(int argc , char **argv){
         double elapse = chrono::duration<double, std::milli>(t2-t1).count();
         debugger.last_frame_duration = elapse;
 
-        if (elapse < MS_PER_FRAME) { // If still have some time left in this frame -> Sleep
-            std::this_thread::sleep_for(chrono::duration<double, milli>(MS_PER_FRAME - elapse));
-        }
-        t1 = std::chrono::steady_clock::now(); // Capture time at the start of new frame
+        // if (elapse < MS_PER_FRAME) { // If still have some time left in this frame -> Sleep
+        //     std::this_thread::sleep_for(chrono::duration<double, milli>(MS_PER_FRAME - elapse));
+        // }
+        // t1 = std::chrono::steady_clock::now(); // Capture time at the start of new frame
 
-        debugger.render();
-        // debugger.queue_audio();
+        // debugger.render();
+        if (scheduler.apu.sample_count == SAMPLE_COUNT) {
+            debugger.queue_audio();
+            scheduler.apu.sample_count = 0;
+        }
         debugger.capture_keyboard();
     }
     debugger.end();

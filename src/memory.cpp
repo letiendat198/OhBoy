@@ -32,16 +32,13 @@ uint8_t Memory::read(uint16_t addr) {
         }
         case 0xFF46:
             return DMA::dma_addr;
-        case 0xFF51:
-            return (HDMA::hdma_src >> 8) & 0xFF;
-        case 0xFF52:
-            return HDMA::hdma_src & 0xFF;
-        case 0xFF53:
-            return (HDMA::hdma_dest >> 8) & 0xFF;
-        case 0xFF54:
-            return HDMA::hdma_dest & 0xFF;
+        case 0xFF51: // HDMA1
+        case 0xFF52: // HDMA2
+        case 0xFF53: // HDMA3
+        case 0xFF54: // HDMA4
+            return 0xFF; // Read-only
         case 0xFF55: {
-            logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!HDMA::is_hdma_running) << 7 | (HDMA::hdma_length & 0x7F), HDMA::is_hdma_running);
+            // logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!HDMA::is_hdma_running) << 7 | (HDMA::hdma_length & 0x7F), HDMA::is_hdma_running);
             return (!HDMA::is_hdma_running) << 7 | (HDMA::hdma_length & 0x7F);
         }
         case 0xFF44: // LY
@@ -51,8 +48,8 @@ uint8_t Memory::read(uint16_t addr) {
         case 0xFF41: // STAT
             return PPU::stat_mode_selection | ((PPU::lyc == PPU::ly) << 2) | PPU::mode & 0x3;
         case 0xFF26: { // NR52
-            return scheduler->apu.is_enabled << 7 | scheduler->apu.channel4.enabled << 3 | scheduler->apu.channel3.enabled << 2 |
-                scheduler->apu.channel2.enabled << 1 | scheduler->apu.channel1.enabled;
+            return scheduler->apu.is_enabled << 7 | scheduler->apu.channel4.is_enabled << 3 | scheduler->apu.channel3.is_enabled << 2 |
+                scheduler->apu.channel2.is_enabled << 1 | scheduler->apu.channel1.is_enabled;
         }
         case 0xFF10: { // NR10
             return scheduler->apu.channel1.NRx0;
@@ -224,9 +221,8 @@ void Memory::write(uint16_t addr, uint8_t data) {
                 uint8_t terminate_bit = (data >> 7) & 0x1;
                 if (terminate_bit == 0) {
                     HDMA::is_hdma_running = false;
-                    HDMA::reset_hdma();
                 }
-                logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
+                // logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
             }
             return;
         }
@@ -345,7 +341,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF1E: { // NR34
             scheduler->apu.channel3.NRx4 = data;
-            if ((data >> 7) & 0x1) scheduler->apu.channel3.trigger();
+            // if ((data >> 7) & 0x1) scheduler->apu.channel3.trigger();
             return;
         }
         case 0xFF20: { // NR41
@@ -362,7 +358,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF23: { // NR44
             scheduler->apu.channel4.NRx4 = data;
-            if ((data >> 7) & 0x1) scheduler->apu.channel4.trigger();
+            // if ((data >> 7) & 0x1) scheduler->apu.channel4.trigger();
             return;
         }
     }
