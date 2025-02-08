@@ -130,14 +130,20 @@ void Memory::write(uint16_t addr, uint8_t data) {
             CPU::switch_armed = data & 0x1;
             return;
         }
-        case 0xFF04: // DIV RESET
-        {
+        case 0xFF04: { // DIV RESET
             logger.get_logger()->debug("DIV reset at cycle: {:d}", Scheduler::current_cycle);
+
+            // When DIV is written and causing a falling edge on selected TIMA bit, tick once
+            uint16_t current_div = Timer::calc_current_div();
+            if (((current_div >> Timer::current_tac.bit_select) & 0x1) == 1) Timer::tick_tima_once();
+
             Scheduler::remove_schedule(DIV_OVERFLOW);
             Timer::schedule_next_div_overflow();
+
             // If DIV reset and TIMA currently enable, reschedule to match. DON'T SCHEDULE WHEN OFF - KIRBY 2 DMG CARE FOR THIS
             // Also should not reschedule TIMA every DIV overflow, or it will be push back into oblivion!
             if (Timer::current_tac.enable) Timer::schedule_tima_overflow(Timer::calc_current_tima());
+            scheduler->apu.schedule_div_apu();
             return;
         }
         case 0xFF05: { //TIMA
@@ -295,6 +301,11 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF12: { // NR12
             scheduler->apu.channel1.NRx2 = data;
+            if ((data >> 3) == 0) {
+                scheduler->apu.channel1.is_dac_enabled = false;
+                scheduler->apu.channel1.disable();
+            }
+            else scheduler->apu.channel1.is_dac_enabled = true;
             return;
         }
         case 0xFF13: { // NR13
@@ -312,6 +323,11 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF17: { // NR22
             scheduler->apu.channel2.NRx2 = data;
+            if ((data >> 3) == 0) {
+                scheduler->apu.channel2.is_dac_enabled = false;
+                scheduler->apu.channel2.disable();
+            }
+            else scheduler->apu.channel2.is_dac_enabled = true;
             return;
         }
         case 0xFF18: { // NR23
@@ -325,6 +341,11 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF1A: { // NR30
             scheduler->apu.channel3.NRx0 = data;
+            if ((data >> 7 & 0x1) == 0) {
+                scheduler->apu.channel3.is_dac_enabled = false;
+                scheduler->apu.channel3.disable();
+            }
+            else scheduler->apu.channel3.is_dac_enabled = true;
             return;
         }
         case 0xFF1B: { // NR31
@@ -341,7 +362,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF1E: { // NR34
             scheduler->apu.channel3.NRx4 = data;
-            // if ((data >> 7) & 0x1) scheduler->apu.channel3.trigger();
+            if ((data >> 7) & 0x1) scheduler->apu.channel3.trigger();
             return;
         }
         case 0xFF20: { // NR41

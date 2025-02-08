@@ -4,12 +4,14 @@
 #include <joypad.h>
 #include <scheduler.h>
 
+#define DEBUG_SCHEDULER
+
 Scheduler::Scheduler() {
     Timer::current_tac = Timer::read_tac(Memory::read(0xFF07));
     Timer::schedule_next_div_overflow();
 
+    apu.schedule_div_apu();
     schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
-    // schedule(DIV_APU_TICK, 2048); // NAIVE
 }
 
 // Schedule an event a number of cycle from this point on
@@ -17,13 +19,18 @@ void Scheduler::schedule(SchedulerEvent event, uint32_t cycle_to_go) {
     SchedulerEventInfo event_info;
     if (CPU::double_spd_mode && static_cast<int>(event)<=DRAW) event_info = SchedulerEventInfo{event, cycle_to_go * 2 + current_cycle, cycle_to_go};
     else event_info = SchedulerEventInfo{event, cycle_to_go + current_cycle, cycle_to_go};
+#ifdef DEBUG_SCHEDULER
+    for(auto iter = event_queue.begin(); iter != event_queue.end(); ++iter) {
+        assert(("Only one event of a type should be scheduled!", iter->event != event_info.event));
+    }
+#endif
     event_queue.insert(event_info);
     // logger.get_logger()->debug("Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
 }
 
 // Schedule an event at this exact cycle
 // Must only be used to schedule TIMA
-// Will have a problem when switching speed mode if scheduling different events
+// Will have a problem when switching speed mode if scheduling different events cause no relative cycle info available
 void Scheduler::schedule_absolute(SchedulerEvent event, uint32_t cycle) {
     assert(("Schedule absolute MUST NOT be used to schedule event OTHER THAN TIMA", event == TIMA_OVERFLOW));
     SchedulerEventInfo event_info{event, cycle};
@@ -142,25 +149,30 @@ void Scheduler::tick_frame() {
                 Interrupts::set_interrupt_flag(2);
                 Timer::schedule_tima_overflow(Timer::tma);
                 break;
-            // case DIV_APU_TICK:
-            //     apu.tick_div_apu();
-            //     break;
+            case DIV_APU_TICK:
+                apu.on_div_apu_tick();
+                apu.schedule_div_apu();
+                break;
             case SQUARE1_PERIOD_OVERFLOW:
                 apu.channel1.on_period_overflow();
                 break;
             case SQUARE2_PERIOD_OVERFLOW:
                 apu.channel2.on_period_overflow();
                 break;
-            // case WAVE_PERIOD_OVERFLOW:
-            //     apu.channel3.on_period_overflow();
-            //     break;
+            case WAVE_PERIOD_OVERFLOW:
+                apu.channel3.on_period_overflow();
+                break;
             // case NOISE_PERIOD_OVERFLOW:
             //     apu.channel4.on_period_overflow();
             //     break;
             case SAMPLE_APU:
+                if (debugger == nullptr) break;
                 schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
                 apu.sample();
-                if (apu.sample_count == SAMPLE_COUNT) return;
+                if (apu.sample_count == SAMPLE_COUNT) {
+                    debugger->queue_audio();
+                    apu.sample_count = 0;
+                }
                 break;
             default:
                 logger.get_logger()->debug("Not yet implemented event");
@@ -179,9 +191,6 @@ void Scheduler::tick_frame() {
     event_queue.swap(temp);
 }
 
-void Scheduler::set_render_callback(Debugger *debugger) {
+void Scheduler::set_debugger(Debugger *debugger) {
     this->debugger = debugger;
 }
-
-
-

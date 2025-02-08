@@ -8,12 +8,11 @@ Looking for the minimal version that can run on a Pi Pico 2? Check the [pico bra
 
 ## Images
 
-![](images/image1.png)
-![](images/image2.png)
-![](images/image3.png)
-![](images/image4.png)
-![](images/image5.png)
-![](images/image6.png)
+|                        |                        |                        |
+|------------------------|------------------------|------------------------|
+| ![](images/image1.png) | ![](images/image2.png) | ![](images/image3.png) |
+| ![](images/image4.png) | ![](images/image5.png) | ![](images/image6.png) | 
+| ![](images/image7.png) | ![](images/image8.png) | ![](images/image9.png) | 
 
 ## Keyboard Mapping
 ```
@@ -30,34 +29,33 @@ Keyboard:
 ```
 
 ## How to build
-#### This is a guide for MinGW only! MSVC is probably the same.
+GCC 13, MinGW and MSVC is supported.
+### Prerequisite
 - You will need to install [Rust](https://www.rust-lang.org/tools/install) and MinGW
-- Download pre-built [SDL2](https://github.com/libsdl-org/SDL/releases/tag/release-2.30.8) (the devel-mingw variant), 
-rename it SDL2 then put it inside `deps` folder
+- Download pre-built [SDL2](https://github.com/libsdl-org/SDL/releases/tag/release-2.30.8) (the `devel-mingw` variant for MinGW, `devel-VC` variant for MSVC), 
+rename it SDL2 (or SDL2-VC if using MSVC) then put it inside `deps` folder.  Install `libsdl2-dev` if you're on Linux
+- Download [imgui_memory_editor.h](https://raw.githubusercontent.com/ocornut/imgui_club/refs/heads/main/imgui_memory_editor/imgui_memory_editor.h) 
+and put it inside `deps/imgui` after the git clone step (TODO: Make this a submodule)
+### Building
 ```
 # Clone this repository and its dependencies
 git clone --recurse-submodules https://github.com/letiendat198/OhBoy.git
 
-# My Rust setup uses MSVC by default so I need to target it to build for MinGW
-# If your Rust setup is using MinGW already then skip this
-rustup target add --toolchain stable-x86_64-pc-windows-msvc x86_64-pc-windows-gnu
-
 # Run CMake
 mkdir build
 cd build
-cmake .. -G 'MinGW Makefiles'
+cmake .. 
 cmake --build .
 ```
 
-## TODO
-
-- Re-write APU
-- Re-do RTC
-- Debugger:
-  - Add ability to reset CPU state
-  - Allow toggling file logging
+#### Note: If you're on Windows, copy `SDL2.dll` and place it in the same folder as `OhBoy.exe`
 
 ## Known Issues
 
-- PPU:
-  - LY = 153 oddities bug
+- Not passing many tests. Some hard to emulate games will fail. Although crazy accuracy is not
+the goal of this project, please open an issue if you encounter a bug, and I'll look into it.
+
+## License
+
+OhBoy is licensed under the MIT license. Its dependencies, however, may not share the same license. Please look at the individual
+dependencies and check their licenses yourself.

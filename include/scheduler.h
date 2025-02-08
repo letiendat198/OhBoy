@@ -67,7 +67,7 @@ public:
     SchedulerEventInfo progress();
     void tick_frame();
 
-    void set_render_callback(Debugger *debugger);
+    void set_debugger(Debugger *debugger);
 };
 
 #endif //SCHEDULER_H

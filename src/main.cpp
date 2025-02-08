@@ -49,7 +49,7 @@ int main(int argc , char **argv){
     scheduler.ppu.set_cgb_mode(Memory::cartridge.is_cgb);
     // measure_frame_without_render(&scheduler);
     Debugger debugger(&scheduler, debug_mode);
-    scheduler.set_render_callback(&debugger);
+    scheduler.set_debugger(&debugger);
 
     auto t1 = std::chrono::steady_clock::now();
     while (!debugger.done){
@@ -64,10 +64,6 @@ int main(int argc , char **argv){
         // t1 = std::chrono::steady_clock::now(); // Capture time at the start of new frame
 
         // debugger.render();
-        if (scheduler.apu.sample_count == SAMPLE_COUNT) {
-            debugger.queue_audio();
-            scheduler.apu.sample_count = 0;
-        }
         debugger.capture_keyboard();
     }
     debugger.end();

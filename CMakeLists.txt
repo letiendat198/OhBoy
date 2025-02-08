@@ -44,7 +44,6 @@ add_executable(OhBoy src/main.cpp
         include/scheduler.h
         src/mbc.cpp
         src/apu.cpp
-        deps/miniaudio/miniaudio.h
 )
 
 set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
@@ -81,7 +80,6 @@ include_directories("deps/imgui/misc/cpp")
 include_directories("deps/popl/include")
 include_directories("deps/spdlog/include")
 include_directories("deps/blip_buf")
-include_directories("deps/miniaudio")
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") 
     include_directories("deps/SDL2-VC/include")
