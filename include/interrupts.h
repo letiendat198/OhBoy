@@ -2,7 +2,6 @@
 #define INTERRUPTS_H
 #include <cstdint>
 #include <logger.h>
-#include <types.h>
 
 namespace Interrupts {
     inline Logger logger = Logger("Interrupt");

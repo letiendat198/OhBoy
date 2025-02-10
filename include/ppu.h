@@ -52,6 +52,7 @@ private:
     inline static Logger logger = Logger("PPU");
     // uint8_t dmg_palette[4][3] = {{224, 248, 208}, {136, 192, 112}, {52, 104, 86}, {8, 24, 32}};
     uint16_t dmg_palette[4] = {0xB633, 0x8CEF, 0x638A, 0x31C4};
+    uint8_t gamma_lookup[32] = {0,6,8,10,11,12,14,15,16,17,18,18,19,20,21,22,22,23,24,24,25,26,26,27,27,28,28,29,29,30,30,31};
     ObjAttribute obj_queue[10]{};
     uint8_t obj_queue_index = 0;
     bool is_cgb = false;

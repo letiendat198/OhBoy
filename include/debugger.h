@@ -1,21 +1,13 @@
 #ifndef DEBUGGER_H
 #define DEBUGGER_H
 
-#include <apu.h>
-#include <cpu.h>
-#include <ppu.h>
-#include <deque>
-
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
 #include "imgui_memory_editor.h"
 #include <SDL.h>
-#include <iostream>
-#include <vector>
 
 #include "scheduler.h"
-#include "timer.h"
 
 void audio_callback(void *userdata, Uint8 *stream, int len);
 

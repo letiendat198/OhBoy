@@ -1,17 +1,18 @@
 cmake_minimum_required(VERSION 3.29)
 project(OhBoy)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address")
-endif()
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+else()
+    set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+endif ()
+set(CMAKE_CXX_FLAGS_RELEASE "-g -O3")
 
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 
@@ -21,7 +22,6 @@ add_executable(OhBoy src/main.cpp
         src/memory.cpp
         src/cartridge.cpp
         src/logger.cpp
-        src/util.cpp
         src/opcode_prefixed.cpp
         deps/imgui/imgui.cpp
         deps/imgui/imgui_demo.cpp
@@ -61,6 +61,9 @@ add_dependencies(OhBoy OhBoyGUI)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog)
 target_link_libraries(OhBoy spdlog)
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt)
+target_link_libraries(OhBoy fmt::fmt)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") 
     target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2-VC/lib/x64/SDL2main.lib)

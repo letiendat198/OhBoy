@@ -1,3 +1,4 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use std::path::Path;
 use iced::{Task, Element, Padding, Theme};
 use iced::alignment;

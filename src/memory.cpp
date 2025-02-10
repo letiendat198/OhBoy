@@ -23,7 +23,7 @@ uint8_t Memory::read(uint16_t addr) {
             return (Timer::calc_current_div() >> 6) & 0xFF;
         }
         case 0xFF05: { // TIMA
-            logger.get_logger()->debug("Read TIMA: {:d} at cycle: {:d}, DIV: {:b}", Timer::calc_current_tima(), Scheduler::current_cycle, Timer::calc_current_div());
+            // logger.get_logger()->debug("Read TIMA: {:d} at cycle: {:d}, DIV: {:b}", Timer::calc_current_tima(), Scheduler::current_cycle, Timer::calc_current_div());
             if (Timer::current_tac.enable) return Timer::calc_current_tima();
             else return Timer::paused_tima;
         }
@@ -47,65 +47,8 @@ uint8_t Memory::read(uint16_t addr) {
             return PPU::lyc;
         case 0xFF41: // STAT
             return PPU::stat_mode_selection | ((PPU::lyc == PPU::ly) << 2) | PPU::mode & 0x3;
-        case 0xFF26: { // NR52
-            return scheduler->apu.is_enabled << 7 | scheduler->apu.channel4.is_enabled << 3 | scheduler->apu.channel3.is_enabled << 2 |
-                scheduler->apu.channel2.is_enabled << 1 | scheduler->apu.channel1.is_enabled;
-        }
-        case 0xFF10: { // NR10
-            return scheduler->apu.channel1.NRx0;
-        }
-        case 0xFF11: { // NR11
-            return scheduler->apu.channel1.NRx1;
-        }
-        case 0xFF12: { // NR12
-            return scheduler->apu.channel1.NRx2;
-        }
-        case 0xFF13: { // NR13
-            return scheduler->apu.channel1.NRx3;
-        }
-        case 0xFF14: { // NR14
-            return scheduler->apu.channel1.NRx4;
-        }
-        case 0xFF16: { // NR21
-            return scheduler->apu.channel2.NRx1;
-        }
-        case 0xFF17: { // NR22
-            return scheduler->apu.channel2.NRx2;
-        }
-        case 0xFF18: { // NR23
-            return scheduler->apu.channel2.NRx3;
-        }
-        case 0xFF19: { // NR24
-            return scheduler->apu.channel2.NRx4;
-        }
-        case 0xFF1A: { // NR30
-            return scheduler->apu.channel3.NRx0;
-        }
-        case 0xFF1B: { // NR31
-            return scheduler->apu.channel3.NRx1;
-        }
-        case 0xFF1C: { // NR32
-            return scheduler->apu.channel3.NRx2;
-        }
-        case 0xFF1D: { // NR33
-            return scheduler->apu.channel3.NRx3;
-        }
-        case 0xFF1E: { // NR34
-            return scheduler->apu.channel3.NRx4;
-        }
-        case 0xFF20: { // NR41
-            return scheduler->apu.channel4.NRx1;
-        }
-        case 0xFF21: { // NR42
-            return scheduler->apu.channel4.NRx2;
-        }
-        case 0xFF22: { // NR43
-            return scheduler->apu.channel4.NRx3;
-        }
-        case 0xFF23: { // NR44
-            return scheduler->apu.channel4.NRx4;
-        }
     }
+    if (0xFF10 <= addr && addr <= 0xFF2F) return scheduler->apu.read_apu_register(addr);
     return unsafe_read(addr);
 }
 
@@ -131,7 +74,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
             return;
         }
         case 0xFF04: { // DIV RESET
-            logger.get_logger()->debug("DIV reset at cycle: {:d}", Scheduler::current_cycle);
+            // logger.get_logger()->debug("DIV reset at cycle: {:d}", Scheduler::current_cycle);
 
             // When DIV is written and causing a falling edge on selected TIMA bit, tick once
             uint16_t current_div = Timer::calc_current_div();
@@ -288,100 +231,11 @@ void Memory::write(uint16_t addr, uint8_t data) {
             wram_bank = bank_number?bank_number:1;
             break;
         }
-        case 0xFF26: { // NR52
-            scheduler->apu.is_enabled = data >> 7 & 0x1;
-        }
-        case 0xFF10: { // NR10
-            scheduler->apu.channel1.NRx0 = data;
-            return;
-        }
-        case 0xFF11: { // NR11
-            scheduler->apu.channel1.NRx1 = data;
-            return;
-        }
-        case 0xFF12: { // NR12
-            scheduler->apu.channel1.NRx2 = data;
-            if ((data >> 3) == 0) {
-                scheduler->apu.channel1.is_dac_enabled = false;
-                scheduler->apu.channel1.disable();
-            }
-            else scheduler->apu.channel1.is_dac_enabled = true;
-            return;
-        }
-        case 0xFF13: { // NR13
-            scheduler->apu.channel1.NRx3 = data;
-            return;
-        }
-        case 0xFF14: { // NR14
-            scheduler->apu.channel1.NRx4 = data;
-            if ((data >> 7) & 0x1) scheduler->apu.channel1.trigger();
-            return;
-        }
-        case 0xFF16: { // NR21
-            scheduler->apu.channel2.NRx1 = data;
-            return;
-        }
-        case 0xFF17: { // NR22
-            scheduler->apu.channel2.NRx2 = data;
-            if ((data >> 3) == 0) {
-                scheduler->apu.channel2.is_dac_enabled = false;
-                scheduler->apu.channel2.disable();
-            }
-            else scheduler->apu.channel2.is_dac_enabled = true;
-            return;
-        }
-        case 0xFF18: { // NR23
-            scheduler->apu.channel2.NRx3 = data;
-            return;
-        }
-        case 0xFF19: { // NR24
-            scheduler->apu.channel2.NRx4 = data;
-            if ((data >> 7) & 0x1) scheduler->apu.channel2.trigger();
-            return;
-        }
-        case 0xFF1A: { // NR30
-            scheduler->apu.channel3.NRx0 = data;
-            if ((data >> 7 & 0x1) == 0) {
-                scheduler->apu.channel3.is_dac_enabled = false;
-                scheduler->apu.channel3.disable();
-            }
-            else scheduler->apu.channel3.is_dac_enabled = true;
-            return;
-        }
-        case 0xFF1B: { // NR31
-            scheduler->apu.channel3.NRx1 = data;
-            return;
-        }
-        case 0xFF1C: { // NR32
-            scheduler->apu.channel3.NRx2 = data;
-            return;
-        }
-        case 0xFF1D: { // NR33
-            scheduler->apu.channel3.NRx3 = data;
-            return;
-        }
-        case 0xFF1E: { // NR34
-            scheduler->apu.channel3.NRx4 = data;
-            if ((data >> 7) & 0x1) scheduler->apu.channel3.trigger();
-            return;
-        }
-        case 0xFF20: { // NR41
-            scheduler->apu.channel4.NRx1 = data;
-            return;
-        }
-        case 0xFF21: { // NR42
-            scheduler->apu.channel4.NRx2 = data;
-            return;
-        }
-        case 0xFF22: { // NR43
-            scheduler->apu.channel4.NRx3 = data;
-            return;
-        }
-        case 0xFF23: { // NR44
-            scheduler->apu.channel4.NRx4 = data;
-            // if ((data >> 7) & 0x1) scheduler->apu.channel4.trigger();
-            return;
-        }
+    }
+
+    if (0xFF10 <= addr && addr <= 0xFF2F) {
+        scheduler->apu.write_apu_register(addr, data);
+        return;
     }
 
     unsafe_write(addr, data);
@@ -438,7 +292,7 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
         case 9:
             if (PPU::mode != 3)
                 write_vram(addr, data, vram_bank);
-            // else logger.get_logger()->warn("Writing VRAM in mode 3 is forbidden");
+            else logger.get_logger()->warn("Writing VRAM in mode 3 is forbidden");
             break;
         case 0xA:
         case 0xB:

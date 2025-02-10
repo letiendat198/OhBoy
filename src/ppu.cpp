@@ -4,7 +4,7 @@
 
 #include "scheduler.h"
 
-uint16_t fetch_tile_data(uint8_t x, uint8_t y, uint16_t tile_map_region, uint16_t tile_data_area, uint8_t bank, bool y_flip) {
+inline uint16_t fetch_tile_data(uint8_t x, uint8_t y, uint16_t tile_map_region, uint16_t tile_data_area, uint8_t bank, bool y_flip) {
     uint16_t tile_map_addr = tile_map_region + ((x / 8) + 32 * (y/8));
     uint8_t tile_index = Memory::read_vram(tile_map_addr, 0);
     uint16_t tile_data_region = tile_data_area;
@@ -17,7 +17,7 @@ uint16_t fetch_tile_data(uint8_t x, uint8_t y, uint16_t tile_map_region, uint16_
     return tile_data;
 }
 
-uint16_t fetch_obj_tile_data(ObjAttribute obj, LCDC lcdc, uint8_t ly) {
+inline uint16_t fetch_obj_tile_data(ObjAttribute obj, LCDC lcdc, uint8_t ly) {
     uint8_t tile_index = obj.tile_index;
     if (lcdc.obj_size == 16) {
         if ((ly-obj.y_pos+16)%16 < 8) tile_index = tile_index & 0xFE;
@@ -168,10 +168,19 @@ void PPU::read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj
         uint8_t p2 = is_obj ? Memory::read_obj_cram(color_addr + 1) : Memory::read_bg_cram(color_addr + 1);
 
         uint8_t r = p1 & 0x1F;
-        uint8_t g = ((p1 >> 5) & 0x07) << 1 | (p2 & 0x03) << 4;
+        uint8_t g = ((p1 >> 5) & 0x7) | (p2 & 0x3) << 3;
         uint8_t b = (p2 >> 2) & 0x1F;
 
-        palette[color_id] = (r << 11) | (g << 5) | b;
+        // Color correction. From: https://www.pokecommunity.com/threads/built-in-color-correction-for-gbc-games.448482/
+        uint8_t rx = (13*r + 2*g +    b) >> 4;
+        uint8_t gx = (       3*g +    b) >> 2;
+        uint8_t bx = (       2*g + 14*b) >> 4;
+
+        r = gamma_lookup[rx];
+        g = gamma_lookup[gx];
+        b = gamma_lookup[bx];
+
+        palette[color_id] = (r << 11) | (g << 6) | b;
     }
 }
 

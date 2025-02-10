@@ -2,7 +2,6 @@
 
 #include <config.h>
 #include <cstdio>
-#include <format>
 #include <imgui_internal.h>
 
 #include "dma.h"
@@ -179,51 +178,51 @@ void Debugger::render_registers(const ImGuiIO& io) {
     if (cpu.halt) ImGui::TextColored(ImVec4(255,255,0,255), "CPU Halted!");
     else ImGui::Text("");
 
-    ImGui::Text(std::format("A: {:02X}", cpu.a).c_str());
+    ImGui::Text(fmt::format("A: {:02X}", cpu.a).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("B: {:02X}", cpu.b).c_str());
+    ImGui::Text(fmt::format("B: {:02X}", cpu.b).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("C: {:02X}", cpu.c).c_str());
+    ImGui::Text(fmt::format("C: {:02X}", cpu.c).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("D: {:02X}", cpu.d).c_str());
+    ImGui::Text(fmt::format("D: {:02X}", cpu.d).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("E: {:02X}", cpu.e).c_str());
+    ImGui::Text(fmt::format("E: {:02X}", cpu.e).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("H: {:02X}", cpu.h).c_str());
+    ImGui::Text(fmt::format("H: {:02X}", cpu.h).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("L: {:02X}", cpu.l).c_str());
+    ImGui::Text(fmt::format("L: {:02X}", cpu.l).c_str());
 
-    ImGui::Text(std::format("PC: {:04X}", cpu.pc).c_str());
+    ImGui::Text(fmt::format("PC: {:04X}", cpu.pc).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("SP: {:04X}", cpu.sp).c_str());
+    ImGui::Text(fmt::format("SP: {:04X}", cpu.sp).c_str());
 
-    ImGui::Text(std::format("Current: {:02X}", Memory::read(cpu.pc)).c_str());
+    ImGui::Text(fmt::format("Current: {:02X}", Memory::read(cpu.pc)).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("Next 1: {:02X}", Memory::read(cpu.pc+1)).c_str());
+    ImGui::Text(fmt::format("Next 1: {:02X}", Memory::read(cpu.pc+1)).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("Next 2: {:02X}", Memory::read(cpu.pc+2)).c_str());
+    ImGui::Text(fmt::format("Next 2: {:02X}", Memory::read(cpu.pc+2)).c_str());
 
     ImGui::SeparatorText("Flags");
 
-    ImGui::Text(std::format("Z: {}", cpu.z_flag).c_str());
+    ImGui::Text(fmt::format("Z: {}", cpu.z_flag).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("N: {}", cpu.n_flag).c_str());
+    ImGui::Text(fmt::format("N: {}", cpu.n_flag).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("H: {}", cpu.h_flag).c_str());
+    ImGui::Text(fmt::format("H: {}", cpu.h_flag).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("C: {}", cpu.c_flag).c_str());
+    ImGui::Text(fmt::format("C: {}", cpu.c_flag).c_str());
 
     ImGui::SeparatorText("Interrupts");
 
-    ImGui::Text(std::format("IME: {}", cpu.ime).c_str());
+    ImGui::Text(fmt::format("IME: {}", cpu.ime).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("IE: {:X}", Memory::read(0xFFFF)).c_str());
+    ImGui::Text(fmt::format("IE: {:X}", Memory::read(0xFFFF)).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("IF: {:X}", Memory::read(0xFF0F)).c_str());
+    ImGui::Text(fmt::format("IF: {:X}", Memory::read(0xFF0F)).c_str());
     ImGui::SameLine();
-    ImGui::Text(std::format("STAT: {:08b}", Memory::read(0xFF41)).c_str());
+    ImGui::Text(fmt::format("STAT: {:08b}", Memory::read(0xFF41)).c_str());
 
-    ImGui::Text(std::format("LYC: {}", Memory::read(0xFF45)).c_str());
+    ImGui::Text(fmt::format("LYC: {}", Memory::read(0xFF45)).c_str());
 
     ImGui::End();
 }

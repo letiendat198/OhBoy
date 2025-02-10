@@ -29,7 +29,7 @@ Keyboard:
 ```
 
 ## How to build
-GCC 13, MinGW and MSVC is supported.
+Require GCC, MinGW or MSVC version that supports C++ 17.
 ### Prerequisite
 - You will need to install [Rust](https://www.rust-lang.org/tools/install) and MinGW
 - Download pre-built [SDL2](https://github.com/libsdl-org/SDL/releases/tag/release-2.30.8) (the `devel-mingw` variant for MinGW, `devel-VC` variant for MSVC), 

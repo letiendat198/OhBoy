@@ -5,7 +5,6 @@
 
 #include "logger.h"
 #include "memory.h"
-#include "types.h"
 
 class CPU{
 private:

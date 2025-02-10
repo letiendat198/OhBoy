@@ -6,15 +6,21 @@
 
 enum SchedulerEvent: uint8_t;
 
-class SquareWaveChannel {
-public:
-    Logger logger;
-    uint8_t square_wave[4] = {0b00000001, 0b10000001, 0b10000111, 0b01111110};
+struct ChannelRegisters {
     uint8_t NRx0 = 0;
     uint8_t NRx1 = 0;
     uint8_t NRx2 = 0;
     uint8_t NRx3 = 0;
     uint8_t NRx4 = 0;
+};
+
+void reset_channel_registers(ChannelRegisters *regs);
+
+class SquareWaveChannel {
+public:
+    Logger logger;
+    uint8_t square_wave[4] = {0b00000001, 0b10000001, 0b10000111, 0b01111110};
+    ChannelRegisters reg;
 
     bool is_enabled = false;
     bool is_dac_enabled = true;
@@ -39,11 +45,7 @@ public:
 class WaveChannel {
 public:
     Logger logger = Logger("WAVE_CHANNEL");
-    uint8_t NRx0 = 0;
-    uint8_t NRx1 = 0;
-    uint8_t NRx2 = 0;
-    uint8_t NRx3 = 0;
-    uint8_t NRx4 = 0;
+    ChannelRegisters reg;
 
     bool is_enabled = false;
     bool is_dac_enabled = false;
@@ -62,11 +64,7 @@ public:
 
 class NoiseChannel {
 public:
-    uint8_t NRx0 = 0;
-    uint8_t NRx1 = 0;
-    uint8_t NRx2 = 0;
-    uint8_t NRx3 = 0;
-    uint8_t NRx4 = 0;
+    ChannelRegisters reg;
 
     bool is_enabled = false;
 };
@@ -75,6 +73,41 @@ class APU {
 private:
     Logger logger = Logger("APU");
     uint8_t div_apu_cycle = 0;
+
+    inline static const uint8_t IO_READ_VALUE_DMG_CGB[32] = { // READ MASK
+        0x80, // NR10
+        0x3F, // NR11
+        0x00, // NR12
+        0xFF, // NR13
+        0xBF, // NR14
+        0xFF,
+        0x3F, // NR21
+        0x00, // NR22
+        0xFF, // NR23
+        0xBF, // NR24
+        0x7F, // NR30
+        0xFF, // NR31
+        0x9F, // NR32
+        0xFF, // NR33
+        0xBF, // NR34
+        0xFF,
+        0xFF, // NR41
+        0x00, // NR42
+        0x00, // NR43
+        0xBF, // NR44
+        0x00, // NR50
+        0x00, // NR51
+        0x70, // NR52
+        0xFF, // 0x27
+        0xFF, // 0x28
+        0xFF, // 0x29
+        0xFF, // 0x2A
+        0xFF, // 0x2B
+        0xFF, // 0x2C
+        0xFF, // 0x2D
+        0xFF, // 0x2E
+        0xFF // 0x2F
+    };
 public:
     SquareWaveChannel channel1 = SquareWaveChannel(1);
     SquareWaveChannel channel2 = SquareWaveChannel(2);
@@ -82,6 +115,8 @@ public:
     NoiseChannel channel4 = NoiseChannel();
 
     bool is_enabled = true;
+    uint8_t sound_panning = 0xFF;
+    uint8_t master_volume = 0xFF;
 
     short *sample_output = new short[SAMPLE_COUNT];
     int sample_count = 0;
@@ -89,8 +124,10 @@ public:
     void sample();
     void schedule_div_apu();
     void on_div_apu_tick();
+    void disable();
 
-    // void clear_sample_queue();
+    void write_apu_register(uint16_t addr, uint8_t data);
+    uint8_t read_apu_register(uint16_t addr);
 };
 
 #endif //APU_H
