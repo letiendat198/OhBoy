@@ -29,13 +29,11 @@ Keyboard:
 ```
 
 ## How to build
-Require GCC, MinGW or MSVC version that supports C++ 17.
+Require GCC, MinGW or MSVC versions that support C++ 17.
 ### Prerequisite
-- You will need to install [Rust](https://www.rust-lang.org/tools/install) and MinGW
+- You will need to install [Rust](https://www.rust-lang.org/tools/install)
 - Download pre-built [SDL2](https://github.com/libsdl-org/SDL/releases/tag/release-2.30.8) (the `devel-mingw` variant for MinGW, `devel-VC` variant for MSVC), 
 rename it SDL2 (or SDL2-VC if using MSVC) then put it inside `deps` folder.  Install `libsdl2-dev` if you're on Linux
-- Download [imgui_memory_editor.h](https://raw.githubusercontent.com/ocornut/imgui_club/refs/heads/main/imgui_memory_editor/imgui_memory_editor.h) 
-and put it inside `deps/imgui` after the git clone step (TODO: Make this a submodule)
 ### Building
 ```
 # Clone this repository and its dependencies

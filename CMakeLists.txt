@@ -12,7 +12,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 else()
     set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 endif ()
-set(CMAKE_CXX_FLAGS_RELEASE "-g -O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 
@@ -28,13 +28,13 @@ add_executable(OhBoy src/main.cpp
         deps/imgui/imgui_draw.cpp
         deps/imgui/imgui_tables.cpp
         deps/imgui/imgui_widgets.cpp
-        deps/imgui/imgui_memory_editor.h
+        deps/imgui_club/imgui_memory_editor/imgui_memory_editor.h
         deps/imgui/misc/cpp/imgui_stdlib.cpp
         deps/imgui/backends/imgui_impl_sdl2.cpp
         deps/imgui/backends/imgui_impl_sdlrenderer2.cpp
         src/debugger.cpp
         src/ppu.cpp
-        src/interrupts.cpp
+        src/interrupt.cpp
         src/timer.cpp
         src/dma.cpp
         src/joypad.cpp
@@ -80,6 +80,7 @@ include_directories("include")
 include_directories("deps/imgui")
 include_directories("deps/imgui/backends")
 include_directories("deps/imgui/misc/cpp")
+include_directories("deps/imgui_club/imgui_memory_editor")
 include_directories("deps/popl/include")
 include_directories("deps/spdlog/include")
 include_directories("deps/blip_buf")

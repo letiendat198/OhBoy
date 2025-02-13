@@ -2,14 +2,13 @@
 #include <cpu.h>
 #include "scheduler.h"
 
-void reset_channel_registers(ChannelRegisters *regs) {
+inline void reset_channel_registers(ChannelRegisters *regs) {
     regs->NRx0 = 0;
     regs->NRx1 = 0;
     regs->NRx2 = 0;
     regs->NRx3 = 0;
     regs->NRx4 = 0;
 }
-
 
 SquareWaveChannel::SquareWaveChannel(uint8_t channel_num): logger(Logger("SQUARE_CHANNEL_"+std::to_string(channel_num))) {
     PERIOD_OVERFLOW_EVENT = channel_num == 1 ? SQUARE1_PERIOD_OVERFLOW : SQUARE2_PERIOD_OVERFLOW;
@@ -20,6 +19,12 @@ void SquareWaveChannel::trigger() {
     volume = (reg.NRx2 >> 4) & 0xF;
     if (length_counter > LENGTH_OVERFLOW) length_counter = reg.NRx1 & 0x3F;
     volume_envelope_counter = 0;
+
+    sweep.shadow_reg = ((reg.NRx4 & 0x7) << 8) | reg.NRx3;
+    sweep.is_enabled = (sweep_pace != 0) || (sweep_step != 0);
+
+    if (sweep_step != 0) calc_freq_sweep(false);
+    sweep.sweep_timer = sweep_pace;
 
     if (!is_enabled) return;
     uint16_t freq = 0x800 - (((reg.NRx4 & 0x7) << 8) | reg.NRx3);
@@ -55,6 +60,30 @@ void SquareWaveChannel::tick_volume_envelope() {
             if (env_direction == 0 && volume > 0) volume -= 1;
             else if (env_direction == 1 && volume < 0xF) volume += 1;
         }
+    }
+}
+
+void SquareWaveChannel::calc_freq_sweep(bool update_value) {
+    uint16_t new_period = 0;
+    if (sweep_direction == 0) new_period = sweep.shadow_reg + (sweep.shadow_reg >> sweep_step);
+    else new_period = sweep.shadow_reg - (sweep.shadow_reg >> sweep_step);
+
+    if (new_period > 0x7FF) disable();
+    else if (sweep_step && update_value) {
+        sweep.shadow_reg = new_period;
+        reg.NRx3 = new_period & 0xFF;
+        reg.NRx4 = (reg.NRx4 & 0xFFF8) | (new_period >> 8 & 0x7);
+    }
+}
+
+
+void SquareWaveChannel::tick_freq_sweep() {
+    if (!sweep.is_enabled || sweep_pace == 0) return;
+    sweep.sweep_timer--;
+    if (sweep.sweep_timer == 0) {
+        sweep.sweep_timer = sweep_pace;
+        calc_freq_sweep(true);
+        calc_freq_sweep(false); // Do it again to check for overflow, no write back
     }
 }
 
@@ -99,15 +128,82 @@ void WaveChannel::tick_length_timer() {
     if (length_counter > LENGTH_OVERFLOW) disable();
 }
 
+void NoiseChannel::trigger() {
+    is_enabled = is_dac_enabled;
+    volume = (reg.NRx2 >> 4) & 0xF;
+    if (length_counter > LENGTH_OVERFLOW) length_counter = reg.NRx1 & 0x3F;
+    volume_envelope_counter = 0;
+    lfsr = 0;
+
+    if (!is_enabled) return;
+    uint16_t freq = divider_lookup[reg.NRx3 & 0x7] << ((reg.NRx3 >> 4) & 0xF);
+    // logger.get_logger()->debug("Noise period overflow scheduled at: {:d}", freq);
+    Scheduler::reschedule(NOISE_PERIOD_OVERFLOW, freq);
+}
+
+void NoiseChannel::disable() {
+    is_enabled = false;
+    Scheduler::remove_schedule(NOISE_PERIOD_OVERFLOW);
+}
+
+void NoiseChannel::on_period_overflow() {
+    uint8_t temp = ~((lfsr & 0x1) ^ ((lfsr >> 1) & 0x1));
+    lfsr = (lfsr & 0x7FFF) | (temp << 15);
+    if (((reg.NRx3 >> 3) & 0x1) == 1) lfsr = (lfsr & 0xFF7F) | (temp << 7);
+    lfsr = lfsr >> 1;
+    // logger.get_logger()->debug("Current LFSR: {:04X}", lfsr);
+
+    sample = (lfsr & 0x1) * volume;
+    uint16_t freq = divider_lookup[reg.NRx3 & 0x7] << ((reg.NRx3 >> 4) & 0xF);
+    // logger.get_logger()->debug("Noise period overflow scheduled at: {:d}", freq);
+    Scheduler::schedule(NOISE_PERIOD_OVERFLOW, freq);
+}
+
+void NoiseChannel::tick_length_timer() {
+    if (reg.NRx4 >> 6 & 0x1) length_counter++;
+    if (length_counter > LENGTH_OVERFLOW) disable();
+}
+
+void NoiseChannel::tick_volume_envelope() {
+    uint8_t sweep_pace = reg.NRx2 & 0x7;
+    uint8_t env_direction = reg.NRx2 >> 3 & 0x1;
+    if (sweep_pace != 0) {
+        volume_envelope_counter = (volume_envelope_counter+1) % 8;
+        if (volume_envelope_counter % sweep_pace == 0) {
+            if (env_direction == 0 && volume > 0) volume -= 1;
+            else if (env_direction == 1 && volume < 0xF) volume += 1;
+        }
+    }
+}
+
+
+// Panning should be 4-bit
+inline short mix_sample(uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4, uint8_t panning) {
+    short sample = 0;
+    sample += s1 * (panning & 0x1);
+    sample += s2 * ((panning >> 1) & 0x1);
+    sample += s3 * ((panning >> 2) & 0x1);
+    sample += s4 * ((panning >> 3) & 0x1);
+    return sample;
+}
+
 void APU::sample() {
     uint8_t sample1 = channel1.sample;
     uint8_t sample2 =channel2.sample;
     uint8_t sample3 = channel3.sample;
-    // uint8_t sample4 = channel4.enabled?channel4.get_current_sample():0;
+    uint8_t sample4 = channel4.sample;
 
-    short sample = (sample1 + sample2 +sample3) * 100; // If this overflow, will cause crackling noise
+    short left_sample = mix_sample(sample1, sample2, sample3, sample4, sound_panning >> 4 & 0xFF);
+    short right_sample = mix_sample(sample1, sample2, sample3, sample4, sound_panning & 0xFF);
 
-    sample_output[sample_count++] = sample;
+    uint8_t left_volume = master_volume >> 4 & 0x7;
+    uint8_t right_volume = master_volume & 0x7;
+
+    left_volume = left_volume ? left_volume : 1;
+    right_volume = right_volume ? right_volume : 1;
+
+    sample_output[sample_count++] = (left_sample * left_volume + right_sample * right_volume) * 10;
+    // sample_output[sample_count++] = sample4 * 100;
 }
 
 void APU::schedule_div_apu() {
@@ -123,15 +219,15 @@ void APU::on_div_apu_tick() {
         channel1.tick_length_timer();
         channel2.tick_length_timer();
         channel3.tick_length_timer();
-        // channel4.tick_length_timer();
+        channel4.tick_length_timer();
     }
-    // if (div_apu_cycle == 2 || div_apu_cycle == 6) {
-    //     channel1.tick_period_sweep();
-    // }
+    if (div_apu_cycle == 2 || div_apu_cycle == 6) {
+        channel1.tick_freq_sweep();
+    }
     if (div_apu_cycle == 7) {
         channel1.tick_volume_envelope();
         channel2.tick_volume_envelope();
-        // channel4.tick_volume_env();
+        channel4.tick_volume_envelope();
     }
 }
 
@@ -145,7 +241,7 @@ void APU::disable() {
     reset_channel_registers(&channel2.reg);
     channel3.disable();
     reset_channel_registers(&channel3.reg);
-    // channel4.disable();
+    channel4.disable();
     reset_channel_registers(&channel4.reg);
 }
 
@@ -155,6 +251,12 @@ void APU::write_apu_register(uint16_t addr, uint8_t data) {
    switch (addr) {
         case 0xFF10: { // NR10
             channel1.reg.NRx0 = data;
+
+            uint8_t temp_pace = data >> 4 & 0x7;
+            if (temp_pace != 0 && channel1.sweep_pace == 0) channel1.sweep.sweep_timer = temp_pace;
+            channel1.sweep_pace = temp_pace;
+            channel1.sweep_direction = data >> 3 & 0x1;
+            channel1.sweep_step = data & 0x7;
             break;
         }
         case 0xFF11: { // NR11
@@ -233,6 +335,11 @@ void APU::write_apu_register(uint16_t addr, uint8_t data) {
         }
         case 0xFF21: { // NR42
             channel4.reg.NRx2 = data;
+            if ((data >> 3) == 0) {
+                channel4.is_dac_enabled = false;
+                channel4.disable();
+            }
+            else channel4.is_dac_enabled = true;
             break;
         }
         case 0xFF22: { // NR43
@@ -241,7 +348,7 @@ void APU::write_apu_register(uint16_t addr, uint8_t data) {
         }
         case 0xFF23: { // NR44
             channel4.reg.NRx4 = data;
-            // if ((data >> 7) & 0x1) channel4.trigger();
+            if ((data >> 7) & 0x1) channel4.trigger();
             break;
         }
        case 0xFF24: { // NR50

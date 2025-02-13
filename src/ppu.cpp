@@ -1,6 +1,6 @@
 #include <ppu.h>
 #include <algorithm>
-#include <interrupts.h>
+#include <interrupt.h>
 
 #include "scheduler.h"
 
@@ -192,13 +192,13 @@ void PPU::check_stat_interrupt() {
         uint8_t is_bit_changed = (changes >> i) & 0x1;
         if (!is_bit_changed) continue;
         if (i == 2 || i == 6) {
-            if ((data >> 6 & 0x1) == 1 && lyc_eq == 1) Interrupts::set_interrupt_flag(1);
+            if ((data >> 6 & 0x1) == 1 && lyc_eq == 1) Interrupt::set_flag(STAT_INTR);
         }
         else {
             // if (((data >> (mode+3)) & 0x1) == 1) Interrupts::set_interrupt_flag(1); // WILL SOMEHOW CAUSE CATASTROPHIC ERROR
-            if ((data >> 3 & 0x1) == 1 && mode == 0) Interrupts::set_interrupt_flag(1);
-            else if ((data >> 4 & 0x1) == 1 && mode == 1) Interrupts::set_interrupt_flag(1);
-            else if ((data >> 5 & 0x1) == 1 && mode == 2) Interrupts::set_interrupt_flag(1);
+            if ((data >> 3 & 0x1) == 1 && mode == 0) Interrupt::set_flag(STAT_INTR);
+            else if ((data >> 4 & 0x1) == 1 && mode == 1) Interrupt::set_flag(STAT_INTR);
+            else if ((data >> 5 & 0x1) == 1 && mode == 2) Interrupt::set_flag(STAT_INTR);
         }
     }
     prev_stat = data;

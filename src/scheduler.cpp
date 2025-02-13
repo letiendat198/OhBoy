@@ -1,6 +1,6 @@
 #include <debugger.h>
 #include <dma.h>
-#include <interrupts.h>
+#include <interrupt.h>
 #include <joypad.h>
 #include <scheduler.h>
 
@@ -136,7 +136,7 @@ void Scheduler::tick_frame() {
                 if (PPU::ly == 144) {
                     PPU::mode = 1;
                     ppu.window_ly = 0;
-                    Interrupts::set_interrupt_flag(0);
+                    Interrupt::set_flag(VBLANK_INTR);
                     if (debugger != nullptr) debugger->render(); // WILL HANG IF PPU IS OFF
                 }
                 PPU::check_stat_interrupt();
@@ -146,7 +146,7 @@ void Scheduler::tick_frame() {
                 Timer::schedule_next_div_overflow();
                 break;
             case TIMA_OVERFLOW:
-                Interrupts::set_interrupt_flag(2);
+                Interrupt::set_flag(TIMER_INTR);
                 Timer::schedule_tima_overflow(Timer::tma);
                 break;
             case DIV_APU_TICK:
@@ -162,9 +162,9 @@ void Scheduler::tick_frame() {
             case WAVE_PERIOD_OVERFLOW:
                 apu.channel3.on_period_overflow();
                 break;
-            // case NOISE_PERIOD_OVERFLOW:
-            //     apu.channel4.on_period_overflow();
-            //     break;
+            case NOISE_PERIOD_OVERFLOW:
+                apu.channel4.on_period_overflow();
+                break;
             case SAMPLE_APU:
                 if (debugger == nullptr) break;
                 schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);

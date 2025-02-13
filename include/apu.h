@@ -14,6 +14,12 @@ struct ChannelRegisters {
     uint8_t NRx4 = 0;
 };
 
+struct SweepUnit {
+    bool is_enabled = false;
+    uint8_t sweep_timer = 0;
+    uint16_t shadow_reg = 0;
+};
+
 void reset_channel_registers(ChannelRegisters *regs);
 
 class SquareWaveChannel {
@@ -21,6 +27,7 @@ public:
     Logger logger;
     uint8_t square_wave[4] = {0b00000001, 0b10000001, 0b10000111, 0b01111110};
     ChannelRegisters reg;
+    SweepUnit sweep;
 
     bool is_enabled = false;
     bool is_dac_enabled = true;
@@ -29,6 +36,10 @@ public:
     uint8_t duty_step = 0;
     uint8_t length_counter = 0;
     uint8_t volume_envelope_counter = 0;
+
+    uint8_t sweep_pace = 0;
+    uint8_t sweep_direction = 0;
+    uint8_t sweep_step = 0;
 
     uint8_t LENGTH_OVERFLOW = 64;
 
@@ -40,6 +51,8 @@ public:
     void on_period_overflow();
     void tick_length_timer();
     void tick_volume_envelope();
+    void tick_freq_sweep();
+    void calc_freq_sweep(bool update_value);
 };
 
 class WaveChannel {
@@ -64,9 +77,26 @@ public:
 
 class NoiseChannel {
 public:
+    Logger logger = Logger("NOISE_CHANNEL");
     ChannelRegisters reg;
 
+    const uint8_t divider_lookup[8] = {2, 4, 8, 12, 16, 20, 24, 28};
+
     bool is_enabled = false;
+    bool is_dac_enabled = false;
+    uint8_t sample = 0;
+    uint16_t lfsr = 0;
+    uint8_t volume = 0;
+    uint8_t length_counter = 0;
+    uint8_t volume_envelope_counter = 0;
+
+    uint8_t LENGTH_OVERFLOW = 64;
+
+    void trigger();
+    void disable();
+    void on_period_overflow();
+    void tick_length_timer();
+    void tick_volume_envelope();
 };
 
 class APU {

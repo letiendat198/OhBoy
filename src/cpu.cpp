@@ -1,6 +1,6 @@
 #include "cpu.h"
 #include "scheduler.h"
-#include "interrupts.h"
+#include "interrupt.h"
 using namespace std;
 
 CPU::CPU() {
@@ -42,10 +42,10 @@ uint32_t CPU::tick(){
 }
 
 bool CPU::handle_interrupts() {
-    if (Interrupts::is_pending()) { // This guarantee IF & IE != 0
+    if (Interrupt::is_pending()) { // This guarantee IF & IE != 0
         halt = 0;
         if (!ime) return false;
-        uint8_t interrupt_addr = Interrupts::check_and_service(ime); // Check interrupts
+        uint8_t interrupt_addr = Interrupt::check_and_service(ime); // Check interrupts
         if (interrupt_addr == 0) return false; // TODO: NOT EXACTLY NEEDED
         Scheduler::current_cycle += 5;
 

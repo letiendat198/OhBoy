@@ -2,16 +2,16 @@
 
 #include <debugger.h>
 #include <dma.h>
-#include <interrupts.h>
+#include <interrupt.h>
 #include <joypad.h>
 
 uint8_t Memory::read(uint16_t addr) {
     switch (addr) {
         case 0xFFFF: { // IE
-            return Interrupts::IE;
+            return Interrupt::IE;
         }
         case 0xFF0F: { // IF
-            return Interrupts::IF;
+            return Interrupt::IF;
         }
         case 0xFF4D: { // Double SPD mode
             return (CPU::double_spd_mode << 7) | CPU::switch_armed;
@@ -58,11 +58,11 @@ void Memory::write(uint16_t addr, uint8_t data) {
     // Put this in unsafe_write will write 0 everytime timer want to be incremented
     switch (addr) {
         case 0xFFFF: { // IE
-            Interrupts::IE = data;
+            Interrupt::IE = data;
             return;
         }
         case 0xFF0F: { // IF
-            Interrupts::IF = data;
+            Interrupt::IF = data;
             return;
         }
         case 0xFF00: { // Joypad
@@ -110,7 +110,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
                 if (((div>>tac.bit_select) & 0x1) == 1) {
                     Timer::paused_tima = (Timer::paused_tima + 1) & 0xFF;
                     if (Timer::paused_tima == 0) {
-                        Interrupts::set_interrupt_flag(2);
+                        Interrupt::set_flag(TIMER_INTR);
                         Timer::paused_tima = Timer::tma;
                     }
                 }

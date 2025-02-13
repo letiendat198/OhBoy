@@ -2,7 +2,6 @@
 
 #include <config.h>
 #include <memory.h>
-#include "interrupts.h"
 #include "scheduler.h"
 
 uint16_t Timer::calc_current_div() {
