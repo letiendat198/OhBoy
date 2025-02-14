@@ -1114,6 +1114,7 @@ void CPU::op_D2() {
     else mcycle = 3;
 } // JP NC a16
 void CPU::op_D3() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_D3
 void CPU::op_D4() {
     if (!c_flag) mcycle = 6;
@@ -1155,6 +1156,7 @@ void CPU::op_DA() {
     else mcycle = 3;
 } // JP C a16
 void CPU::op_DB() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_DB
 void CPU::op_DC() {
     if (c_flag) mcycle = 6;
@@ -1163,6 +1165,7 @@ void CPU::op_DC() {
     callc(c_flag); // May override opskip if jump
 } // CALL C a16
 void CPU::op_DD() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_DD
 void CPU::op_DE() {
     sbc8(a, Memory::read(pc+1));
@@ -1190,8 +1193,10 @@ void CPU::op_E2() {
     Memory::write(0xFF << 8 | c, a);
 } // LD [C] A
 void CPU::op_E3() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_E3
 void CPU::op_E4() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_E4
 void CPU::op_E5() {
     opskip = 1;
@@ -1224,10 +1229,13 @@ void CPU::op_EA() {
     Memory::write(read16_mem(pc+1), a);
 } // LD [a16] A
 void CPU::op_EB() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_EB
 void CPU::op_EC() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_EC
 void CPU::op_ED() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_ED
 void CPU::op_EE() {
     xor8(a, Memory::read(pc+1));
@@ -1266,6 +1274,7 @@ void CPU::op_F3() {
     ime = 0;
 } // DI
 void CPU::op_F4() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_F4
 void CPU::op_F5() {
     opskip = 1;
@@ -1307,8 +1316,10 @@ void CPU::op_FB() {
     ime_next = 1;
 } // EI
 void CPU::op_FC() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_FC
 void CPU::op_FD() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_FD
 void CPU::op_FE() {
     cp8(a, Memory::read(pc+1));

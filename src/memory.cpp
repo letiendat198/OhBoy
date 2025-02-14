@@ -135,6 +135,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
         {
             DMA::dma_addr = data;
             DMA::transfer_dma();
+            // logger.get_logger()->debug("DMA initiated");
             return;
         }
         case 0xFF51: { // HDMA1
@@ -256,11 +257,12 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
             return *(cartridge.rom_data + (addr - 0x4000) + cartridge.rom_bank*0x4000);
         case 8:
         case 9:
-            if (PPU::mode != 3) return read_vram(addr, vram_bank);
-            else {
-                logger.get_logger()->warn("Reading VRAM in mode 3");
-                return 0xFF;
-            }
+            // if (PPU::mode != 3)
+                return read_vram(addr, vram_bank);
+            // else {
+            //     logger.get_logger()->warn("Reading VRAM in mode 3");
+            //     return 0xFF;
+            // }
         case 0xA:
         case 0xB:
             if (cartridge.rtc_access) return 0x0; // Shouldn't be accessible without RAM enable, but it's stubbed so doesn't really matter
@@ -290,9 +292,9 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
             break;
         case 8:
         case 9:
-            if (PPU::mode != 3)
+            // if (PPU::mode != 3)
                 write_vram(addr, data, vram_bank);
-            else logger.get_logger()->warn("Writing VRAM in mode 3 is forbidden");
+            // else logger.get_logger()->warn("Writing VRAM in mode 3 is forbidden");
             break;
         case 0xA:
         case 0xB:

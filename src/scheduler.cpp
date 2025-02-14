@@ -16,14 +16,20 @@ Scheduler::Scheduler() {
 
 // Schedule an event a number of cycle from this point on
 void Scheduler::schedule(SchedulerEvent event, uint32_t cycle_to_go) {
+    // Only OAM SCAN should be schedule for 0 cycle (PPU enable)
+    // Other events with self-scheduling property will hang emulator
+    assert(event == OAM_SCAN || cycle_to_go != 0);
+
     SchedulerEventInfo event_info;
     if (CPU::double_spd_mode && static_cast<int>(event)<=DRAW) event_info = SchedulerEventInfo{event, cycle_to_go * 2 + current_cycle, cycle_to_go};
     else event_info = SchedulerEventInfo{event, cycle_to_go + current_cycle, cycle_to_go};
+
 #ifdef DEBUG_SCHEDULER
     for(auto iter = event_queue.begin(); iter != event_queue.end(); ++iter) {
         assert(("Only one event of a type should be scheduled!", iter->event != event_info.event));
     }
 #endif
+
     event_queue.insert(event_info);
     // logger.get_logger()->debug("Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
 }
