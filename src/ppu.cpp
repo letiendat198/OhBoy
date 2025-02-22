@@ -1,9 +1,10 @@
 #include <ppu.h>
 #include <algorithm>
+#include <interrupt.h>
 
 #include "scheduler.h"
 
-uint16_t fetch_tile_data(uint8_t x, uint8_t y, uint16_t tile_map_region, uint16_t tile_data_area, uint8_t bank, bool y_flip) {
+inline uint16_t fetch_tile_data(uint8_t x, uint8_t y, uint16_t tile_map_region, uint16_t tile_data_area, uint8_t bank, bool y_flip) {
     uint16_t tile_map_addr = tile_map_region + ((x / 8) + 32 * (y/8));
     uint8_t tile_index = Memory::read_vram(tile_map_addr, 0);
     uint16_t tile_data_region = tile_data_area;
@@ -16,7 +17,7 @@ uint16_t fetch_tile_data(uint8_t x, uint8_t y, uint16_t tile_map_region, uint16_
     return tile_data;
 }
 
-uint16_t fetch_obj_tile_data(ObjAttribute obj, LCDC lcdc, uint8_t ly) {
+inline uint16_t fetch_obj_tile_data(ObjAttribute obj, LCDC lcdc, uint8_t ly) {
     uint8_t tile_index = obj.tile_index;
     if (lcdc.obj_size == 16) {
         if ((ly-obj.y_pos+16)%16 < 8) tile_index = tile_index & 0xFE;
@@ -40,16 +41,6 @@ uint16_t fetch_obj_tile_data(ObjAttribute obj, LCDC lcdc, uint8_t ly) {
 void PPU::draw_scanline() {
     Scroll scroll = read_scroll();
     LCDC lcdc = read_lcdc();
-
-    // Handle LCDC enable TODO: MOVE THIS OUT OF HERE
-    if (lcdc.lcd_enable == false) {
-        ly = 0;
-        update_ly();
-        update_stat(0); // STAT update won't work if not enable
-        enable = false;
-        return;
-    }
-    else enable = true;
 
     uint16_t tile_data = 0;
     BgAttribute tile_bg_attribute{};
@@ -151,7 +142,6 @@ void PPU::draw_scanline() {
 }
 
 void PPU::oam_scan() {
-    if (!enable) return;
     LCDC lcdc = read_lcdc();
     obj_queue_index = 0;
     for (uint16_t addr=0xFE00; addr<=0xFE9F; addr+=4) {
@@ -178,42 +168,68 @@ void PPU::read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj
         uint8_t p2 = is_obj ? Memory::read_obj_cram(color_addr + 1) : Memory::read_bg_cram(color_addr + 1);
 
         uint8_t r = p1 & 0x1F;
-        uint8_t g = ((p1 >> 5) & 0x07) << 1 | (p2 & 0x03) << 4;
+        uint8_t g = ((p1 >> 5) & 0x7) | (p2 & 0x3) << 3;
         uint8_t b = (p2 >> 2) & 0x1F;
 
-        palette[color_id] = (r << 11) | (g << 5) | b;
+        // Color correction. From: https://www.pokecommunity.com/threads/built-in-color-correction-for-gbc-games.448482/
+        uint8_t rx = (13*r + 2*g +    b) >> 4;
+        uint8_t gx = (       3*g +    b) >> 2;
+        uint8_t bx = (       2*g + 14*b) >> 4;
+
+        r = gamma_lookup[rx];
+        g = gamma_lookup[gx];
+        b = gamma_lookup[bx];
+
+        palette[color_id] = (r << 11) | (g << 6) | b;
     }
 }
+
+void PPU::check_stat_interrupt() {
+    uint8_t data = stat_mode_selection | (lyc==ly) << 2 | mode & 0x3;
+    uint8_t changes = prev_stat ^ data;
+    uint8_t lyc_eq = ly==lyc;
+    for(uint8_t i = 0; i < 7; i++) {
+        uint8_t is_bit_changed = (changes >> i) & 0x1;
+        if (!is_bit_changed) continue;
+        if (i == 2 || i == 6) {
+            if ((data >> 6 & 0x1) == 1 && lyc_eq == 1) Interrupt::set_flag(STAT_INTR);
+        }
+        else {
+            // if (((data >> (mode+3)) & 0x1) == 1) Interrupts::set_interrupt_flag(1); // WILL SOMEHOW CAUSE CATASTROPHIC ERROR
+            if ((data >> 3 & 0x1) == 1 && mode == 0) Interrupt::set_flag(STAT_INTR);
+            else if ((data >> 4 & 0x1) == 1 && mode == 1) Interrupt::set_flag(STAT_INTR);
+            else if ((data >> 5 & 0x1) == 1 && mode == 2) Interrupt::set_flag(STAT_INTR);
+        }
+    }
+    prev_stat = data;
+}
+
+
+bool is_lyc_bug_executed = false;
 
 void PPU::schedule_next_mode(uint8_t current_mode) {
     switch (current_mode) {
         case 0: // HBLANK
-            if (ly<143) Scheduler::schedule(SchedulerEvent::OAM_SCAN, 51);
-            else Scheduler::schedule(SchedulerEvent::VBLANK, 51);
+            if (ly<143) Scheduler::schedule(EVENT_ID::OAM_SCAN, 51);
+            else Scheduler::schedule(EVENT_ID::VBLANK, 51);
             break;
         case 1: // VBLANK
-            Scheduler::schedule(SchedulerEvent::OAM_SCAN, 1140);
+            if (ly != 0 && ly < 153) Scheduler::schedule(VBLANK, 114);
+            else { // LY = 0 or 153
+                if (!is_lyc_bug_executed) Scheduler::schedule(VBLANK, 1);
+                else Scheduler::schedule(EVENT_ID::OAM_SCAN, 114);
+                is_lyc_bug_executed = !is_lyc_bug_executed;
+                first_line = true;
+            }
             break;
         case 2: // OAM SCAN
-            Scheduler::schedule(SchedulerEvent::DRAW, 20);
+            Scheduler::schedule(EVENT_ID::DRAW, 20);
             break;
         case 3: // DRAW
-            Scheduler::schedule(SchedulerEvent::HBLANK, 43);
+            Scheduler::schedule(EVENT_ID::HBLANK, 43);
             break;
         default: ;
     }
-}
-
-void PPU::update_stat(uint8_t mode) {
-    if (!enable) return;
-    uint8_t prev_stat = Memory::unsafe_read(0xFF41);
-    uint8_t lyc = Memory::unsafe_read(0xFF45);
-    uint8_t write_data = (lyc == ly) << 2 |  mode;
-    uint8_t new_stat = (prev_stat & 0xF8) | write_data;
-    // spdlog::info("Current mode: {}", mode);
-    // spdlog::info("Current LYC and LY: {} {}", lyc, read_ly());
-    // spdlog::info("New stat: {:08b}", new_stat);
-    Memory::write(0xFF41, new_stat);
 }
 
 ObjAttribute PPU::read_obj(uint16_t addr) {
@@ -270,7 +286,14 @@ Scroll PPU::read_scroll() {
     return scroll;
 }
 
-void PPU::update_ly() {
-    ly = (ly + 1) % 154;
-    Memory::unsafe_write(0xFF44, ly);
+void PPU::disable() {
+    ly = 0;
+    mode = 0;
+
+    Scheduler::remove_ppu_schedules();
+}
+
+void PPU::enable() {
+    first_line = true;
+    Scheduler::schedule(OAM_SCAN, 0);
 }

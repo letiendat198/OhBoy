@@ -1,63 +1,46 @@
 #include "dma.h"
 
 void DMA::transfer_dma() {
-    dma_addr = Memory::read(0xFF46);
     uint16_t dest = 0xFE00;
     uint16_t src = dma_addr * 0x100;
 
+    // Memory::dma(dest, src, 160);
     for (uint8_t cycle = 0; cycle < 160; cycle++) Memory::unsafe_write(dest + cycle, Memory::unsafe_read(src + cycle));
 }
 
 void HDMA::transfer_gdma() {
-    uint8_t src1 = Memory::read(0xFF51);
-    uint8_t src2 = Memory::read(0xFF52);
-    uint16_t src_addr = ((src1 << 8) | src2) & 0xFFF0;
 
-    uint8_t dest1 = Memory::read(0xFF53);
-    uint8_t dest2 = Memory::read(0xFF54);
-    uint16_t dest_addr = 0x8000 + ((dest1 << 8 | dest2) & 0x1FF0);
+    // logger.get_logger()->debug("GDMA transfer from: {:#X} to: {:#X} with length: {:d}", hdma_src, 0x8000 + hdma_dest, (hdma_length+1) * 0x10);
 
-    uint8_t length = Memory::unsafe_read(0xFF55) & 0x7F;
+    uint16_t length = (hdma_length+1) * 0x10;
 
-    for (int cycle = 0; cycle<(length+1) * 0x10; cycle++) {
-        Memory::unsafe_write(dest_addr + cycle, Memory::unsafe_read(src_addr + cycle));
+    for (uint16_t i = 0; i<length; i++) {
+        Memory::unsafe_write(0x8000 + hdma_dest + i, Memory::unsafe_read(hdma_src + i));
     }
+    // Memory::dma(0x8000 + hdma_dest, hdma_src, length);
+    hdma_src += length;
+    hdma_dest += length;
 
-    Memory::resolve_hdma();
-    Memory::unsafe_write(0xFF55, 0xFF);
+    is_hdma_running = false;
+    hdma_length = 0xFF;
 }
 
 
-void HDMA::transfer_hdma() {
-    uint8_t src1 = Memory::read(0xFF51);
-    uint8_t src2 = Memory::read(0xFF52);
-    uint16_t src_addr = ((src1 << 8) | src2) & 0xFFF0;
+void HDMA::transfer_hdma() { // TODO: HDMA stop prematurely if dest addr overflow (including ignored upper 3 bits)
+    // logger.get_logger()->debug("HDMA transfer from: {:#X} to: {:#X}", hdma_src, 0x8000 + hdma_dest);
 
-    uint8_t dest1 = Memory::read(0xFF53);
-    uint8_t dest2 = Memory::read(0xFF54);
-    uint16_t dest_addr = 0x8000 + ((dest1 << 8 | dest2) & 0x1FF0);
-
-    uint8_t ppu_mode = Memory::read(0xFF41) & 0x3;
-
-     for(int i=cycle;i<cycle+16;i++) {
-         Memory::unsafe_write(dest_addr + i, Memory::unsafe_read(src_addr + i));
+     for(uint8_t i=0;i<16;i++) {
+         Memory::unsafe_write(0x8000 + hdma_dest + i, Memory::unsafe_read(hdma_src + i));
      }
 
-    cycle += 16;
+    // Memory::dma(0x8000 + hdma_dest, hdma_src, 0x10);
 
-    uint8_t new_progress = (Memory::unsafe_read(0xFF55) & 0x7F) - 1;
+    hdma_src += 16;
+    hdma_dest += 16;
+
+    hdma_length -= 1;
     // logger.get_logger()->debug("Remaining progress: {:#X}", new_progress);
-    if (new_progress == 0xFF) {
-        Memory::unsafe_write(0xFF55, (1<<7) | (new_progress & 0x7F));
-        cycle = 0;
-        Memory::resolve_hdma();
+    if (hdma_length == 0xFF) {
+        is_hdma_running = false;
     }
-    else Memory::unsafe_write(0xFF55, 0 << 7 | (new_progress & 0x7F));
 }
-
-void HDMA::reset_hdma() {
-    cycle = 0;
-}
-
-
-

@@ -50,6 +50,7 @@ class PPU {
 private:
     // uint8_t dmg_palette[4][3] = {{224, 248, 208}, {136, 192, 112}, {52, 104, 86}, {8, 24, 32}};
     uint16_t dmg_palette[4] = {0xB633, 0x8CEF, 0x638A, 0x31C4};
+    uint8_t gamma_lookup[32] = {0,6,8,10,11,12,14,15,16,17,18,18,19,20,21,22,22,23,24,24,25,26,26,27,27,28,28,29,29,30,30,31};
     ObjAttribute obj_queue[10]{};
     uint8_t obj_queue_index = 0;
     bool is_cgb = false;
@@ -58,17 +59,22 @@ private:
     void read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj);
 public:
     uint16_t *frame_buffer = new uint16_t[160*144]();
-
-    uint8_t ly = 0;
+    inline static uint8_t ly = 0;
     uint8_t window_ly = 0;
-    bool enable = true;
+    inline static bool is_enable = false;
+    inline static bool first_line = true;
+    inline static uint8_t mode = 0;
+    inline static uint8_t lyc = 0;
+    inline static uint8_t prev_stat = 0;
+    inline static uint8_t stat_mode_selection = 0;
 
     void oam_scan();
     void draw_scanline();
-    void schedule_next_mode(uint8_t current_mode);
-    void update_ly();
-    void update_stat(uint8_t mode);
     void set_cgb_mode(bool is_cgb);
+    void schedule_next_mode(uint8_t mode);
+    static void enable();
+    static void disable();
+    static void check_stat_interrupt();
 
     ObjAttribute read_obj(uint16_t addr);
 

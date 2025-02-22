@@ -1,7 +1,7 @@
 #include "memory.h"
 
 #include <dma.h>
-#include <interrupts.h>
+#include <interrupt.h>
 #include <timer.h>
 #include "scheduler.h"
 #include <joypad.h>
@@ -9,10 +9,13 @@
 uint8_t Memory::read(uint16_t addr) {
     switch (addr) {
         case 0xFFFF: { // IE
-            return Interrupts::IE;
+            return Interrupt::IE;
         }
         case 0xFF0F: { // IF
-            return Interrupts::IF;
+            return Interrupt::IF;
+        }
+        case 0xFF4D: { // Double SPD mode
+            return (CPU::double_spd_mode << 7) | CPU::switch_armed;
         }
         case 0xFF00: { // Joypad
             return Joypad::read();
@@ -27,10 +30,25 @@ uint8_t Memory::read(uint16_t addr) {
         case 0xFF06: { // TMA
             return Timer::tma;
         }
+        case 0xFF46:
+            return DMA::dma_addr;
+        case 0xFF51: // HDMA1
+        case 0xFF52: // HDMA2
+        case 0xFF53: // HDMA3
+        case 0xFF54: // HDMA4
+            return 0xFF; // Read-only
         case 0xFF55: {
-            return (!hdma_requested & 0x1) << 7 | (unsafe_read(addr) & 0x7F);
+            // logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!HDMA::is_hdma_running) << 7 | (HDMA::hdma_length & 0x7F), HDMA::is_hdma_running);
+            return (!HDMA::is_hdma_running) << 7 | (HDMA::hdma_length & 0x7F);
         }
+        case 0xFF44: // LY
+            return PPU::ly;
+        case 0xFF45: // LYC
+            return PPU::lyc;
+        case 0xFF41: // STAT
+            return PPU::stat_mode_selection | ((PPU::lyc == PPU::ly) << 2) | PPU::mode & 0x3;
     }
+    if (0xFF10 <= addr && addr <= 0xFF2F) return scheduler->apu.read_apu_register(addr);
     return unsafe_read(addr);
 }
 
@@ -40,24 +58,35 @@ void Memory::write(uint16_t addr, uint8_t data) {
     // Put this in unsafe_write will write 0 everytime timer want to be incremented
     switch (addr) {
         case 0xFFFF: { // IE
-            Interrupts::IE = data;
+            Interrupt::IE = data;
             return;
         }
         case 0xFF0F: { // IF
-            Interrupts::IF = data;
+            Interrupt::IF = data;
             return;
         }
         case 0xFF00: { // Joypad
             Joypad::select(data >> 4 & 0x3);
             return;
         }
-        case 0xFF04: // DIV RESET
-        {
+        case 0xFF4D: { // Double SPD mode
+            CPU::switch_armed = data & 0x1;
+            return;
+        }
+        case 0xFF04: { // DIV RESET
+            // logger.get_logger()->debug("DIV reset at cycle: {:d}", Scheduler::current_cycle);
+
+            // When DIV is written and causing a falling edge on selected TIMA bit, tick once
+            uint16_t current_div = Timer::calc_current_div();
+            if (((current_div >> Timer::current_tac.bit_select) & 0x1) == 1) Timer::tick_tima_once();
+
             Scheduler::remove_schedule(DIV_OVERFLOW);
             Timer::schedule_next_div_overflow();
+
             // If DIV reset and TIMA currently enable, reschedule to match. DON'T SCHEDULE WHEN OFF - KIRBY 2 DMG CARE FOR THIS
             // Also should not reschedule TIMA every DIV overflow, or it will be push back into oblivion!
             if (Timer::current_tac.enable) Timer::schedule_tima_overflow(Timer::calc_current_tima());
+            scheduler->apu.schedule_div_apu();
             return;
         }
         case 0xFF05: { //TIMA
@@ -80,7 +109,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
                 if (((div>>tac.bit_select) & 0x1) == 1) {
                     Timer::paused_tima = (Timer::paused_tima + 1) & 0xFF;
                     if (Timer::paused_tima == 0) {
-                        Interrupts::set_interrupt_flag(2);
+                        Interrupt::set_flag(TIMER_INTR);
                         Timer::paused_tima = Timer::tma;
                     }
                 }
@@ -103,54 +132,66 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
         case 0xFF46: // Capture DMA
         {
-            Scheduler::schedule(DMA_TRANSFER, 0);
-            break;
+            DMA::dma_addr = data;
+            DMA::transfer_dma();
+            // logger.get_logger()->debug("DMA initiated");
+            return;
         }
-        case 0xFF55: {
-            if (hdma_requested == false) {
-                hdma_requested = true;
-                hdma_type = (data >> 7) & 0x1;
-                // logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", hdma_type, data & 0x7F);
-                if (hdma_type == 0) Scheduler::schedule(GDMA_TRANSFER, 0);
+        case 0xFF51: { // HDMA1
+            HDMA::hdma_src &= 0x00F0;
+            HDMA::hdma_src |= data << 8;
+            return;
+        }
+        case 0xFF52: { // HDMA2
+            HDMA::hdma_src &= 0xFF00;
+            HDMA::hdma_src |= data & 0xF0;
+            return;
+        }
+        case 0xFF53: { // HDMA3
+            HDMA::hdma_dest &= 0x00F0;
+            HDMA::hdma_dest |= (data & 0x1F) << 8;
+            return;
+        }
+        case 0xFF54: { // HDMA4
+            HDMA::hdma_dest &= 0xFF00;
+            HDMA::hdma_dest |= data & 0xF0;
+            return;
+        }
+        case 0xFF55: { // HDMA5 - Length/Mode/Start
+            HDMA::hdma_length = data & 0x7F;
+            if (HDMA::is_hdma_running == false) {
+                HDMA::is_hdma_running = true;
+                HDMA::hdma_type = (data >> 7) & 0x1;
+                // logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", HDMA::hdma_type, data & 0x7F);
+                if (HDMA::hdma_type == 0) HDMA::transfer_gdma();
+                else if (HDMA::hdma_type == 1 && PPU::mode == 0) HDMA::transfer_hdma();
             }
             else {
                 uint8_t terminate_bit = (data >> 7) & 0x1;
                 if (terminate_bit == 0) {
-                    hdma_requested = false;
-                    HDMA::reset_hdma();
+                    HDMA::is_hdma_running = false;
                 }
                 // logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
             }
+            return;
+        }
+        case 0xFF40: { //LCDC
+            uint8_t lcdc_enable = data >> 7 & 0x1;
+            if (lcdc_enable && !PPU::is_enable) PPU::enable();
+            else if (!lcdc_enable && PPU::is_enable) PPU::disable();
+            PPU::is_enable = lcdc_enable;
             break;
         }
         case 0xFF45: // LYC
         {
-            uint8_t stat = unsafe_read(0xFF41);
-            uint8_t lyc_eq = data == unsafe_read(0xFF44);
-            uint8_t new_stat = (stat & 0xFB) | (lyc_eq << 2);
-            write(0xFF41, new_stat);
-            break;
+            PPU::lyc = data;
+            PPU::check_stat_interrupt();
+            return;
         }
         case 0xFF41: // Capture STAT change
         {
-            uint8_t prev_stat = unsafe_read(0xFF41);
-            uint8_t changes = prev_stat ^ data;
-            unsafe_write(addr, data);
-            uint8_t mode = data & 0x3;
-            uint8_t lyc_eq = data >> 2 & 0x1;
-            for(uint8_t i = 0; i < 7; i++) {
-                uint8_t is_bit_changed = (changes >> i) & 0x1;
-                if (!is_bit_changed) continue;
-                if (i == 2 || i == 6) {
-                    if ((data >> 6 & 0x1) == 1 && lyc_eq == 1) Interrupts::set_interrupt_flag(1);
-                }
-                else {
-                    // if (((data >> (mode+3)) & 0x1) == 1) Interrupts::set_interrupt_flag(1); // WILL SOMEHOW CAUSE CATASTROPHIC ERROR
-                    if ((data >> 3 & 0x1) == 1 && mode == 0) Interrupts::set_interrupt_flag(1);
-                    else if ((data >> 4 & 0x1) == 1 && mode == 1) Interrupts::set_interrupt_flag(1);
-                    else if ((data >> 5 & 0x1) == 1 && mode == 2) Interrupts::set_interrupt_flag(1);
-                }
-            }
+            PPU::stat_mode_selection = data & 0xF8; // 3 lower bit is read-only
+            PPU::check_stat_interrupt();
             return;
         }
         case 0xFF68: // Capture BGPI change event
@@ -192,6 +233,11 @@ void Memory::write(uint16_t addr, uint8_t data) {
         }
     }
 
+    if (0xFF10 <= addr && addr <= 0xFF2F) {
+        scheduler->apu.write_apu_register(addr, data);
+        return;
+    }
+
     unsafe_write(addr, data);
 }
 
@@ -210,7 +256,12 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
             return *(cartridge.rom_data + (addr - 0x4000) + cartridge.rom_bank*0x4000);
         case 8:
         case 9:
-            return read_vram(addr, vram_bank);
+            // if (PPU::mode != 3)
+                return read_vram(addr, vram_bank);
+            // else {
+            //     logger.get_logger()->warn("Reading VRAM in mode 3");
+            //     return 0xFF;
+            // }
         case 0xA:
         case 0xB:
             if (cartridge.rtc_access) return 0x0; // Shouldn't be accessible without RAM enable, but it's stubbed so doesn't really matter
@@ -240,7 +291,9 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
             break;
         case 8:
         case 9:
-            write_vram(addr, data, vram_bank);
+            // if (PPU::mode != 3)
+                write_vram(addr, data, vram_bank);
+            // else logger.get_logger()->warn("Writing VRAM in mode 3 is forbidden");
             break;
         case 0xA:
         case 0xB:
@@ -257,6 +310,65 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
             *(memory+addr - 0xE000) = data;
     }
 }
+
+inline uint8_t block_lookup(uint16_t addr) {
+    switch ((addr & 0xF000) >> 12) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+            return 0;
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+            return 1;
+        case 8:
+        case 9:
+            return 2;
+        case 0xA:
+        case 0xB:
+            return 3;
+        case 0xC:
+            return 4;
+        case 0xD:
+            return 5;
+        default:
+            return 6;
+    }
+}
+
+inline uint16_t min_length(uint16_t a, uint16_t b) {
+    return a<b ? a : b;
+}
+
+// Worse performance than just looping function call? Probably cache
+void Memory::dma(uint16_t dest_addr, uint16_t src_addr, uint16_t length) {
+    uint16_t block_start[7] = {0x0000, 0x4000, 0x8000, 0xA000, 0xC000, 0xD000, 0xE000};
+    uint16_t block_end[7] = {0x3FFF, 0x7FFF, 0x9FFF, 0xBFFF, 0xCFFF, 0xDFFF, 0xFFFF};
+    uint8_t *block_ptr[7] = {cartridge.rom_data, cartridge.rom_data + cartridge.rom_bank*0x4000,
+        vram + vram_bank*0x2000, cartridge.external_ram + cartridge.ram_bank*0x2000,
+        wram, wram + wram_bank*0x1000, memory};
+
+    uint16_t progress = 0;
+    while (progress < length) {
+        uint8_t src_index = block_lookup(src_addr);
+        uint8_t dest_index = block_lookup(dest_addr);
+
+        uint16_t src_cut_off = block_end[src_index] - src_addr + progress;
+        uint16_t dest_cut_off = block_end[dest_index] - dest_addr + progress;
+        uint16_t remaining_length = length - progress;
+
+        uint16_t min_size = min_length(min_length(src_cut_off, dest_cut_off), remaining_length);
+
+        std::memcpy(block_ptr[dest_index] + dest_addr - block_start[dest_index], block_ptr[src_index] + src_addr - block_start[src_index] , min_size);
+
+        progress += min_size;
+        src_addr += min_size;
+        dest_addr += min_size;
+    }
+}
+
 
 uint8_t Memory::read_vram(uint16_t addr, uint8_t bank) { // Low level VRAM access - Won't automatically use current bank
     uint16_t real_addr = addr - 0x8000;
@@ -283,16 +395,4 @@ uint8_t Memory::read_obj_cram(uint8_t addr) {
 
 void Memory::write_obj_cram(uint8_t addr, uint8_t data) {
     obj_cram[addr] = data;
-}
-
-bool Memory::check_hdma() {
-    return hdma_requested;
-}
-
-uint8_t Memory::get_hdma_type() {
-    return hdma_type;
-}
-
-void Memory::resolve_hdma() {
-    hdma_requested = false;
 }

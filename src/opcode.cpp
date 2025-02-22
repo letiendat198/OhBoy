@@ -90,15 +90,11 @@ void CPU::op_0F() {
 void CPU::op_10() {
     mcycle = 1;
     if (Memory::cartridge.is_cgb) {
-        uint8_t spd_switch_req = Memory::read(0xFF4D);
-        uint8_t switch_armed = spd_switch_req & 0x1;
-        uint8_t current_spd = (spd_switch_req >> 7) & 0x1;
-
         if (switch_armed) {
             Memory::write(0xFF04, 0); // Reset DIV
-            double_spd_mode = !current_spd;
+            double_spd_mode = !double_spd_mode;
+            switch_armed = false;
             Scheduler::switch_speed(double_spd_mode);
-            Memory::write(0xFF4D, (double_spd_mode & 0x1) << 7);
             // mcycle = 2050; // Avoid overwhelming scheduler and cause early turn around
         }
     }
@@ -1117,6 +1113,7 @@ void CPU::op_D2() {
     else mcycle = 3;
 } // JP NC a16
 void CPU::op_D3() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_D3
 void CPU::op_D4() {
     if (!c_flag) mcycle = 6;
@@ -1158,6 +1155,7 @@ void CPU::op_DA() {
     else mcycle = 3;
 } // JP C a16
 void CPU::op_DB() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_DB
 void CPU::op_DC() {
     if (c_flag) mcycle = 6;
@@ -1166,6 +1164,7 @@ void CPU::op_DC() {
     callc(c_flag); // May override opskip if jump
 } // CALL C a16
 void CPU::op_DD() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_DD
 void CPU::op_DE() {
     sbc8(a, Memory::read(pc+1));
@@ -1193,8 +1192,10 @@ void CPU::op_E2() {
     Memory::write(0xFF << 8 | c, a);
 } // LD [C] A
 void CPU::op_E3() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_E3
 void CPU::op_E4() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_E4
 void CPU::op_E5() {
     opskip = 1;
@@ -1227,10 +1228,13 @@ void CPU::op_EA() {
     Memory::write(read16_mem(pc+1), a);
 } // LD [a16] A
 void CPU::op_EB() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_EB
 void CPU::op_EC() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_EC
 void CPU::op_ED() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_ED
 void CPU::op_EE() {
     xor8(a, Memory::read(pc+1));
@@ -1269,6 +1273,7 @@ void CPU::op_F3() {
     ime = 0;
 } // DI
 void CPU::op_F4() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_F4
 void CPU::op_F5() {
     opskip = 1;
@@ -1310,8 +1315,10 @@ void CPU::op_FB() {
     ime_next = 1;
 } // EI
 void CPU::op_FC() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_FC
 void CPU::op_FD() {
+    std::cerr<<"ILLEGAL OPCODE!\n";
 } // ILLEGAL_FD
 void CPU::op_FE() {
     cp8(a, Memory::read(pc+1));

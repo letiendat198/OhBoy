@@ -1,8 +1,6 @@
 #include "timer.h"
 
 #include <config.h>
-#include <memory.h>
-#include "interrupts.h"
 #include "scheduler.h"
 
 uint16_t Timer::calc_current_div() {
@@ -12,9 +10,6 @@ uint16_t Timer::calc_current_div() {
 }
 
 void Timer::schedule_next_div_overflow() {
-    uint16_t current_div = calc_current_div();
-    if (((current_div >> current_tac.bit_select) & 0x1) == 1) tick_tima_once();
-
     Scheduler::schedule(DIV_OVERFLOW, DIV_OVERFLOW_CYCLE);
     div_overflow_cycle = Scheduler::current_cycle;
 }

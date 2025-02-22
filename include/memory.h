@@ -3,6 +3,8 @@
 
 #include "cartridge.h"
 
+class Scheduler;
+
 namespace Memory{
     inline uint8_t* memory = new uint8_t[0x2000]();
     inline uint8_t* vram = new uint8_t[0x2000*2]();
@@ -16,12 +18,10 @@ namespace Memory{
     inline uint8_t vram_bank = 0;
     inline uint8_t wram_bank = 1;
 
-    inline bool hdma_requested = false;
-    inline uint8_t hdma_type = 0; // 0 - GDMA, 1 - HDMA
-
     inline bool is_boot = true;
 
     inline Cartridge cartridge;
+    inline Scheduler *scheduler;
 
     uint8_t read(uint16_t addr);
     void write(uint16_t addr, uint8_t data);
@@ -34,11 +34,7 @@ namespace Memory{
     uint8_t unsafe_read(uint16_t addr);
     void unsafe_write(uint16_t addr, uint8_t data);
 
-    void memcpy(uint16_t dest_addr, uint16_t src_addr, uint16_t length);
-
-    bool check_hdma();
-    uint8_t get_hdma_type();
-    void resolve_hdma();
+    void dma(uint16_t dest_addr, uint16_t src_addr, uint16_t length);
 };
 
 #endif

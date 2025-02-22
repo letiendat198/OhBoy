@@ -71,7 +71,7 @@ void MBC::update_registers(uint16_t addr, uint8_t data) {
             else if (0x2000 <= addr && addr <= 0x2FFF) {
                 rom_bank_low = data & 0xFF;
             }
-            else if (0x3000 <= addr && addr <= 0x3FFFF) {
+            else if (0x3000 <= addr && addr <= 0x3FFF) {
                 rom_bank_high = data & 0x1;
             }
             else if (0x4000 <= addr && addr <= 0x5FFF) {

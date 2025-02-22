@@ -1,9 +1,6 @@
 #include "cpu.h"
-#include "util.h"
-#include <iomanip>
-
-#include "interrupts.h"
 #include "scheduler.h"
+#include "interrupt.h"
 using namespace std;
 
 CPU::CPU() {
@@ -29,15 +26,7 @@ void CPU::log_cpu() {
 }
 
 uint32_t CPU::tick(){
-    // if (handle_interrupts()) return mcycle;
     if (halt == 1) return 1; // No HALT bug
-    // if (Memory::check_hdma()) { // CPU halted during HDMA
-    //     if (Memory::get_hdma_type()==0) return 1;
-    //     else {
-    //         uint8_t ppu_mode = Memory::unsafe_read(0xFF41) & 0x3;
-    //         if (ppu_mode==0) return 1;
-    //     }
-    // }
 
     if (ime_next) {
         ime = 1;
@@ -51,11 +40,11 @@ uint32_t CPU::tick(){
 }
 
 bool CPU::handle_interrupts() {
-    if (Interrupts::is_pending()) { // This guarantee IF & IE != 0
+    if (Interrupt::is_pending()) { // This guarantee IF & IE != 0
         halt = 0;
         if (!ime) return false;
-        uint8_t interrupt_addr = Interrupts::check_and_service(ime); // Check interrupts
-        if (interrupt_addr == 0) return false;
+        uint8_t interrupt_addr = Interrupt::check_and_service(ime); // Check interrupts
+        if (interrupt_addr == 0) return false; // TODO: NOT EXACTLY NEEDED
         Scheduler::current_cycle += 5;
 
         // logger.get_logger()->debug("Servicing interrupt {:02X}", interrupt_addr);
@@ -81,8 +70,7 @@ void CPU::ld16_imm(uint8_t &a, uint8_t &b, uint16_t imm) {
 }
 
 void CPU::inc8(uint8_t &a) {
-    auto [result, carry] = SafeOperations::safe_add(a, 1);
-    a = result;
+    ++a;
 
     if ((a & 0xF) == 0) h_flag = 1; // Lower 4 bit carry
     else h_flag=0;
@@ -92,21 +80,18 @@ void CPU::inc8(uint8_t &a) {
 
 void CPU::inc16(uint8_t &a, uint8_t &b) {
     uint16_t t = a << 8 | b;
-    auto [result, carry] = SafeOperations::safe_add(t, 1);
-    t = result;
+    ++t;
     a = t >> 8;
     b = t & 0xFF;
 }
 
 void CPU::inc_sp() {
-    auto [result, carry] = SafeOperations::safe_add(sp, 1);
-    sp = result;
+    ++sp;
 }
 
 void CPU::inc_ind_hl() {
     uint8_t data = Memory::read(h<<8|l);
-    auto [result, carry] = SafeOperations::safe_add(data, 1);
-    data = result;
+    ++data;
     Memory::write(h<<8|l, data);
     if ((data & 0xF) == 0) h_flag = 1; // Lower 4 bit carry
     else h_flag=0;
@@ -116,8 +101,7 @@ void CPU::inc_ind_hl() {
 }
 
 void CPU::dec8(uint8_t &a) {
-    auto [result, carry] = SafeOperations::safe_sub(a, 1);
-    a = result;
+    --a;
 
     if ((a & 0xF) == 0xF) h_flag = 1; // Lower 4 bit carry
     else h_flag=0;
@@ -128,21 +112,18 @@ void CPU::dec8(uint8_t &a) {
 
 void CPU::dec16(uint8_t &a, uint8_t &b) {
     uint16_t t = a << 8 | b;
-    auto [result, carry] = SafeOperations::safe_sub(t, 1);
-    t = result;
+    --t;
     a = t >> 8;
     b = t & 0xFF;
 }
 
 void CPU::dec_sp() {
-    auto [result, carry] = SafeOperations::safe_sub(sp, 1);
-    sp = result;
+    --sp;
 }
 
 void CPU::dec_ind_hl() {
     uint8_t data = Memory::read(h<<8|l);
-    auto [result, carry] = SafeOperations::safe_sub(data, 1);
-    data = result;
+    --data;
     Memory::write(h<<8|l, data);
     if ((data & 0xF) == 0xF) h_flag = 1; // Lower 4 bit carry
     else h_flag=0;
@@ -152,38 +133,35 @@ void CPU::dec_ind_hl() {
 }
 
 void CPU::add8(uint8_t &a, uint8_t b) {
-    auto [result, carry] = SafeOperations::safe_add(a , b);
     h_flag = (((a & 0xF) + (b & 0xF)) & 0x10) >> 4;
-
-    a = result;
+    c_flag  = ((a+b) & 0xFF) < a;
+    a = a+b;
     n_flag = 0;
     z_flag = a==0;
-    c_flag  = carry;
 }
 
 void CPU::add_hl(uint16_t imm) {
-    auto [result, carry] = SafeOperations::safe_add(h<<8|l, imm);
+    uint16_t reg = h<<8|l;
+    uint16_t result = reg + imm;
     h_flag = ((((h<<8|l) & 0x0FFF) + (imm & 0x0FFF)) & 0x1000) >> 12;
     h = result >> 8;
     l = result & 0xFF;
 
     n_flag = 0;
-    c_flag = carry;
+    c_flag = result < reg;
 }
 
 void CPU::add_sp(uint8_t imm) {
     if ((imm & 0x80) >> 7 == 0) {
-        auto [result, carry] = SafeOperations::safe_add(sp, (int8_t) imm);
         h_flag = (((sp & 0x0F) + (imm & 0x0F)) & 0x10) >> 4;
         c_flag = (((sp & 0xFF) + imm) & 0x100) >> 8;
-        sp = result;
+        sp = sp + imm;
     }
     else {
-        auto [result, carry] = SafeOperations::safe_sub(sp,  -((int8_t) imm));
         // Carry and half carry still get calculated by addition
         c_flag = (((sp & 0xFF) + imm) & 0x100) >> 8;
         h_flag = (((sp & 0xF) + ((imm) & 0xF)) & 0x10) >> 4;
-        sp = result;
+        sp = sp + static_cast<int8_t>(imm);
     }
     z_flag = 0;
     n_flag = 0;
@@ -191,11 +169,11 @@ void CPU::add_sp(uint8_t imm) {
 
 
 void CPU::adc8(uint8_t&a, uint8_t b) {
-    auto [result_c, carry_c] = SafeOperations::safe_add(b,c_flag);
-    auto [result, carry] = SafeOperations::safe_add(a, result_c);
-
+    uint8_t carry_c = ((b + c_flag) & 0xFF) < b;
+    uint8_t carry = ((a + b + c_flag) & 0xFF) < a;
     h_flag = (((a & 0xF) + (b & 0xF) + c_flag) & 0x10) >> 4;
-    a = result;
+
+    a = a + b + c_flag;
     n_flag = 0;
     z_flag = a==0;
     c_flag  = carry > carry_c ? carry : carry_c;
@@ -203,20 +181,19 @@ void CPU::adc8(uint8_t&a, uint8_t b) {
 
 
 void CPU::sub8(uint8_t &a, uint8_t b) {
-    auto [result, carry] = SafeOperations::safe_sub(a, b);
     h_flag = ((a & 0xF) < (b & 0xF));
-    a = result;
+    c_flag  = ((a-b) & 0xFF) > a;
+    a = a - b;
     n_flag = 1;
     z_flag = a==0;
-    c_flag  = carry;
 }
 
 void CPU::sbc8(uint8_t &a, uint8_t b) { // A - B - C
-    auto [result_c, carry_c] = SafeOperations::safe_sub(a,b);
-    auto [result, carry] = SafeOperations::safe_sub(result_c, c_flag);
+    uint8_t carry_c = ((a-b) & 0xFF) > a;
+    uint8_t carry = ((a-b-c_flag) & 0xFF) > ((a-b) & 0xFF);
     h_flag = (((a & 0xF) - (b & 0xF) - c_flag) & 0x10) >> 4;
-    a = result;
 
+    a = a - b - c_flag;
     n_flag = 1;
     z_flag = a==0;
     c_flag  = carry > carry_c ? carry : carry_c;
@@ -247,11 +224,11 @@ void CPU::xor8(uint8_t &a, uint8_t b) {
 }
 
 void CPU::cp8(uint8_t a, uint8_t b) {
-    auto [result, carry] = SafeOperations::safe_sub(a, b);
+    uint8_t result = a - b;
 
     n_flag = 1;
     z_flag = result==0;
-    c_flag  = carry;
+    c_flag  = result > a;
     h_flag = ((a & 0xF) < (b & 0xF));
 }
 
