@@ -1,12 +1,13 @@
 #include <debugger.h>
 #include <dma.h>
 #include <interrupt.h>
-#include <joypad.h>
+#include <timer.h>
 #include <scheduler.h>
 
-#define DEBUG_SCHEDULER
-
 Scheduler::Scheduler() {
+    // Pre-fill event slots with correct event id for easy comparison
+    for(uint8_t i=0;i<MAX_EVENT;i++) event_queue[i].event_id = static_cast<EVENT_ID>(i);
+
     Timer::current_tac = Timer::read_tac(Memory::read(0xFF07));
     Timer::schedule_next_div_overflow();
 
@@ -15,108 +16,108 @@ Scheduler::Scheduler() {
 }
 
 // Schedule an event a number of cycle from this point on
-void Scheduler::schedule(SchedulerEvent event, uint32_t cycle_to_go) {
+void Scheduler::schedule(EVENT_ID event_id, uint32_t cycle_to_go) {
     // Only OAM SCAN should be schedule for 0 cycle (PPU enable)
     // Other events with self-scheduling property will hang emulator
-    assert(event == OAM_SCAN || cycle_to_go != 0);
+    assert(event_id == OAM_SCAN || cycle_to_go != 0);
+    assert(cycle_to_go != NO_EVENT_SCHEDULED);
+    assert(("Only one event of a type should be scheduled!", event_queue[event_id].cycle == NO_EVENT_SCHEDULED));
 
-    SchedulerEventInfo event_info;
-    if (CPU::double_spd_mode && static_cast<int>(event)<=DRAW) event_info = SchedulerEventInfo{event, cycle_to_go * 2 + current_cycle, cycle_to_go};
-    else event_info = SchedulerEventInfo{event, cycle_to_go + current_cycle, cycle_to_go};
+    if (CPU::double_spd_mode && static_cast<int>(event_id)<=DRAW)
+        event_queue[event_id].cycle = cycle_to_go * 2 + current_cycle;
+    else event_queue[event_id].cycle = cycle_to_go + current_cycle;
 
-#ifdef DEBUG_SCHEDULER
-    for(auto iter = event_queue.begin(); iter != event_queue.end(); ++iter) {
-        assert(("Only one event of a type should be scheduled!", iter->event != event_info.event));
-    }
-#endif
+    event_queue[event_id].relative_cycle = cycle_to_go;
 
-    event_queue.insert(event_info);
+    if (next_event == nullptr || event_queue[event_id] < *next_event) next_event = &event_queue[event_id];
+
     // logger.get_logger()->debug("Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
 }
 
 // Schedule an event at this exact cycle
 // Must only be used to schedule TIMA
 // Will have a problem when switching speed mode if scheduling different events cause no relative cycle info available
-void Scheduler::schedule_absolute(SchedulerEvent event, uint32_t cycle) {
-    assert(("Schedule absolute MUST NOT be used to schedule event OTHER THAN TIMA", event == TIMA_OVERFLOW));
-    SchedulerEventInfo event_info{event, cycle};
-    event_queue.insert(event_info);
+void Scheduler::schedule_absolute(EVENT_ID event_id, uint32_t cycle) {
+    assert(cycle != NO_EVENT_SCHEDULED);
+    assert(("Schedule absolute MUST NOT be used to schedule event OTHER THAN TIMA", event_id == TIMA_OVERFLOW));
+    assert(("Only one event of a type should be scheduled!", event_queue[event_id].cycle == NO_EVENT_SCHEDULED));
+
+    event_queue[event_id].cycle = cycle;
+    if (next_event == nullptr ||  event_queue[event_id] < *next_event) next_event = &event_queue[event_id];
 }
 
 
-void Scheduler::remove_schedule(SchedulerEvent event) {
-    for(auto iter = event_queue.begin(); iter != event_queue.end(); ++iter) {
-        if (iter->event == event) {
-            event_queue.erase(iter);
-            return;
-        }
-    }
+void Scheduler::remove_schedule(EVENT_ID event_id) {
+    event_queue[event_id].cycle = NO_EVENT_SCHEDULED;
+    if (next_event == &event_queue[event_id]) find_next_event();
 }
 
 void Scheduler::remove_ppu_schedules() {
-    std::set<SchedulerEventInfo> temp;
-    for(auto event_info : event_queue) {
-        if (event_info.event > DRAW || event_info.event < HBLANK) temp.insert(event_info);
+    for (uint8_t i = HBLANK; i<=DRAW; i++) {
+        event_queue[i].cycle = NO_EVENT_SCHEDULED;
     }
-    event_queue.swap(temp);
+    find_next_event();
 }
 
-
 // Re-schedule an event (cycle) into the future from this point on
-void Scheduler::reschedule(SchedulerEvent event, uint32_t cycle) {
+void Scheduler::reschedule(EVENT_ID event, uint32_t cycle) {
     remove_schedule(event);
     schedule(event, cycle);
 }
 
-void Scheduler::switch_speed(bool is_double_spd) {
-    CYCLE_PER_FRAME = is_double_spd ? 17556*2 : 17556;
-    std::set<SchedulerEventInfo> temp;
-    logger.get_logger()->debug("Speed switch at cycle: {:d}", current_cycle);
-    if (is_double_spd) {
-        for(auto event_info : event_queue) {
-            if (event_info.event <= DRAW) {
-                event_info.cycle += event_info.relative_cycle;
-                logger.get_logger()->debug("Reschedule event: {:d} from cycle: {:d} to {:d}", static_cast<int>(event_info.event), event_info.cycle-event_info.relative_cycle, event_info.cycle);
-            }
-            temp.insert(event_info);
-        }
+void Scheduler::find_next_event() {
+    for (uint8_t i = 0; i<MAX_EVENT;i++) {
+        if (event_queue[i].cycle != NO_EVENT_SCHEDULED && (next_event == nullptr || event_queue[i] < *next_event)) next_event = &event_queue[i];
     }
-    else {
-     for(auto event_info : event_queue) {
-         if (event_info.event <= DRAW) {
-             event_info.cycle -= event_info.relative_cycle;
-         }
-         temp.insert(event_info);
-     }
-    }
-    event_queue.swap(temp);
 }
 
 
-SchedulerEventInfo Scheduler::progress() {
-    if (event_queue.begin() == event_queue.end()) {
-        logger.get_logger()->debug("Event queue empty!");
+void Scheduler::switch_speed(bool is_double_spd) {
+    CYCLE_PER_FRAME = is_double_spd ? 17556*2 : 17556;
+    logger.get_logger()->debug("Speed switch at cycle: {:d}", current_cycle);
+
+    if (is_double_spd) {
+        for(uint8_t i = 0; i <= DRAW; i++) {
+            if (event_queue[i].cycle == NO_EVENT_SCHEDULED) continue;
+            event_queue[i].cycle += event_queue[i].relative_cycle;
+            logger.get_logger()->debug("Reschedule event: {:d} from cycle: {:d} to {:d}", i, event_queue[i].cycle - event_queue[i].relative_cycle, event_queue[i].cycle);
+        }
     }
+    else {
+        for(uint8_t i = 0; i <= DRAW; i++) {
+            if (event_queue[i].cycle == NO_EVENT_SCHEDULED) continue;
+            event_queue[i].cycle -= event_queue[i].relative_cycle;
+        }
+    }
+
+    find_next_event();
+}
+
+
+SchedulerEvent Scheduler::progress() {
+    assert(next_event != nullptr);
     // logger.get_logger()->debug("Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
-    while(current_cycle < event_queue.begin()->cycle) {
+    while(current_cycle < next_event->cycle) {
         cpu.handle_interrupts();
         if (cpu.halt) { // Skip to next event if halt, cause CPU do nothing anyway
-            current_cycle = event_queue.begin()->cycle;
+            current_cycle = next_event->cycle;
             break;
         }
         current_cycle += cpu.tick();
     }
-    // logger.get_logger()->debug("Current DIV: {:d}. Current cycle: {:d}. Overflow cycle: {:d}", Timer::calc_current_div(), current_cycle, Timer::div_overflow_cycle);
-    return event_queue.extract(event_queue.begin()).value();
+    SchedulerEvent old_event = *next_event;
+    next_event->cycle = NO_EVENT_SCHEDULED;
+    find_next_event();
+    return old_event;
 }
 
 void Scheduler::tick_frame() {
     // WARN: Scheduler may not clear event with cycle before limit if current cycle hit turn around limit
-    while (current_cycle < CYCLE_PER_FRAME || event_queue.begin()->cycle <= CYCLE_PER_FRAME) {
-        SchedulerEventInfo event_info = this->progress();
+    while (current_cycle < CYCLE_PER_FRAME || next_event->cycle <= CYCLE_PER_FRAME) {
+        SchedulerEvent event_info = this->progress();
         uint32_t cycle_backup = current_cycle;
         current_cycle = event_info.cycle; // Set cycle context to the cycle event supposed to happen
-        switch (event_info.event) {
+        switch (event_info.event_id) {
             case OAM_SCAN:
                 if (!ppu.first_line) PPU::ly = (PPU::ly + 1) % 154;
                 else ppu.first_line = false;
@@ -172,11 +173,10 @@ void Scheduler::tick_frame() {
                 apu.channel4.on_period_overflow();
                 break;
             case SAMPLE_APU:
-                if (debugger == nullptr) break;
                 schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
                 apu.sample();
                 if (apu.sample_count == SAMPLE_COUNT) {
-                    debugger->queue_audio();
+                    if (debugger != nullptr) debugger->queue_audio();
                     apu.sample_count = 0;
                 }
                 break;
@@ -187,14 +187,12 @@ void Scheduler::tick_frame() {
     }
     // logger.get_logger()->debug("Turn around at cycle: {:d}", current_cycle);
     current_cycle -= CYCLE_PER_FRAME;
-    std::set<SchedulerEventInfo> temp;
-    for(auto event_info : event_queue) {
-        if (event_info.cycle > CYCLE_PER_FRAME) event_info.cycle -= CYCLE_PER_FRAME;
-        else logger.get_logger()->warn("Scheduler will miss event: {:d} at: {:d}", static_cast<int>(event_info.event), event_info.cycle);
-        if (event_info.event == TIMA_OVERFLOW && Timer::tima_overflow_cycle > CYCLE_PER_FRAME) Timer::tima_overflow_cycle -= CYCLE_PER_FRAME;
-        temp.insert(event_info);
+
+    for(uint8_t i=0;i<MAX_EVENT;i++) {
+        if (event_queue[i].cycle != NO_EVENT_SCHEDULED && event_queue[i].cycle > CYCLE_PER_FRAME) event_queue[i].cycle -= CYCLE_PER_FRAME;
+        else logger.get_logger()->warn("Scheduler will miss event: {:d} at: {:d}", i, event_queue[i].cycle);
+        if (i == TIMA_OVERFLOW && Timer::tima_overflow_cycle > CYCLE_PER_FRAME) Timer::tima_overflow_cycle -= CYCLE_PER_FRAME;
     }
-    event_queue.swap(temp);
 }
 
 void Scheduler::set_debugger(Debugger *debugger) {

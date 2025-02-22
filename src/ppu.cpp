@@ -210,23 +210,23 @@ bool is_lyc_bug_executed = false;
 void PPU::schedule_next_mode(uint8_t current_mode) {
     switch (current_mode) {
         case 0: // HBLANK
-            if (ly<143) Scheduler::schedule(SchedulerEvent::OAM_SCAN, 51);
-            else Scheduler::schedule(SchedulerEvent::VBLANK, 51);
+            if (ly<143) Scheduler::schedule(EVENT_ID::OAM_SCAN, 51);
+            else Scheduler::schedule(EVENT_ID::VBLANK, 51);
             break;
         case 1: // VBLANK
             if (ly != 0 && ly < 153) Scheduler::schedule(VBLANK, 114);
             else { // LY = 0 or 153
                 if (!is_lyc_bug_executed) Scheduler::schedule(VBLANK, 1);
-                else Scheduler::schedule(SchedulerEvent::OAM_SCAN, 114);
+                else Scheduler::schedule(EVENT_ID::OAM_SCAN, 114);
                 is_lyc_bug_executed = !is_lyc_bug_executed;
                 first_line = true;
             }
             break;
         case 2: // OAM SCAN
-            Scheduler::schedule(SchedulerEvent::DRAW, 20);
+            Scheduler::schedule(EVENT_ID::DRAW, 20);
             break;
         case 3: // DRAW
-            Scheduler::schedule(SchedulerEvent::HBLANK, 43);
+            Scheduler::schedule(EVENT_ID::HBLANK, 43);
             break;
         default: ;
     }

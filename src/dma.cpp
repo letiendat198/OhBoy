@@ -6,6 +6,7 @@ void DMA::transfer_dma() {
     uint16_t dest = 0xFE00;
     uint16_t src = dma_addr * 0x100;
 
+    // Memory::dma(dest, src, 160);
     for (uint8_t cycle = 0; cycle < 160; cycle++) Memory::unsafe_write(dest + cycle, Memory::unsafe_read(src + cycle));
 }
 
@@ -18,6 +19,7 @@ void HDMA::transfer_gdma() {
     for (uint16_t i = 0; i<length; i++) {
         Memory::unsafe_write(0x8000 + hdma_dest + i, Memory::unsafe_read(hdma_src + i));
     }
+    // Memory::dma(0x8000 + hdma_dest, hdma_src, length);
     hdma_src += length;
     hdma_dest += length;
 
@@ -32,6 +34,8 @@ void HDMA::transfer_hdma() { // TODO: HDMA stop prematurely if dest addr overflo
      for(uint8_t i=0;i<16;i++) {
          Memory::unsafe_write(0x8000 + hdma_dest + i, Memory::unsafe_read(hdma_src + i));
      }
+
+    // Memory::dma(0x8000 + hdma_dest, hdma_src, 0x10);
 
     hdma_src += 16;
     hdma_dest += 16;

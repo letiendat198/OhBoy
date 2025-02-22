@@ -1,7 +1,5 @@
 #include "interrupt.h"
 
-#include <memory.h>
-
 uint16_t Interrupt::check_and_service(uint8_t &ime) { // Need to make sure that IE & IF != 0 and ime != 0
     uint8_t interrupt_status = IE & IF;
     for (int i=0;i<=4;i++) {

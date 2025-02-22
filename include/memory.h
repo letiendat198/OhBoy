@@ -36,7 +36,7 @@ namespace Memory{
     uint8_t unsafe_read(uint16_t addr);
     void unsafe_write(uint16_t addr, uint8_t data);
 
-    void memcpy(uint16_t dest_addr, uint16_t src_addr, uint16_t length);
+    void dma(uint16_t dest_addr, uint16_t src_addr, uint16_t length);
 };
 
 #endif

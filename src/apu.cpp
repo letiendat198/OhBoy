@@ -1,6 +1,7 @@
-#include "apu.h"
+#include <apu.h>
 #include <cpu.h>
-#include "scheduler.h"
+#include <scheduler.h>
+#include <timer.h>
 
 inline void reset_channel_registers(ChannelRegisters *regs) {
     regs->NRx0 = 0;

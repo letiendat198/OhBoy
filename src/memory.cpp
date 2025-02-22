@@ -4,6 +4,7 @@
 #include <dma.h>
 #include <interrupt.h>
 #include <joypad.h>
+#include <timer.h>
 
 uint8_t Memory::read(uint16_t addr) {
     switch (addr) {
@@ -311,6 +312,65 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
             *(memory+addr - 0xE000) = data;
     }
 }
+
+inline uint8_t block_lookup(uint16_t addr) {
+    switch ((addr & 0xF000) >> 12) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+            return 0;
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+            return 1;
+        case 8:
+        case 9:
+            return 2;
+        case 0xA:
+        case 0xB:
+            return 3;
+        case 0xC:
+            return 4;
+        case 0xD:
+            return 5;
+        default:
+            return 6;
+    }
+}
+
+inline uint16_t min_length(uint16_t a, uint16_t b) {
+    return a<b ? a : b;
+}
+
+// Worse performance than just looping function call? Probably cache
+void Memory::dma(uint16_t dest_addr, uint16_t src_addr, uint16_t length) {
+    uint16_t block_start[7] = {0x0000, 0x4000, 0x8000, 0xA000, 0xC000, 0xD000, 0xE000};
+    uint16_t block_end[7] = {0x3FFF, 0x7FFF, 0x9FFF, 0xBFFF, 0xCFFF, 0xDFFF, 0xFFFF};
+    uint8_t *block_ptr[7] = {cartridge.rom_data, cartridge.rom_data + cartridge.rom_bank*0x4000,
+        vram + vram_bank*0x2000, cartridge.external_ram + cartridge.ram_bank*0x2000,
+        wram, wram + wram_bank*0x1000, memory};
+
+    uint16_t progress = 0;
+    while (progress < length) {
+        uint8_t src_index = block_lookup(src_addr);
+        uint8_t dest_index = block_lookup(dest_addr);
+
+        uint16_t src_cut_off = block_end[src_index] - src_addr + progress;
+        uint16_t dest_cut_off = block_end[dest_index] - dest_addr + progress;
+        uint16_t remaining_length = length - progress;
+
+        uint16_t min_size = min_length(min_length(src_cut_off, dest_cut_off), remaining_length);
+
+        std::memcpy(block_ptr[dest_index] + dest_addr - block_start[dest_index], block_ptr[src_index] + src_addr - block_start[src_index] , min_size);
+
+        progress += min_size;
+        src_addr += min_size;
+        dest_addr += min_size;
+    }
+}
+
 
 uint8_t Memory::read_vram(uint16_t addr, uint8_t bank) { // Low level VRAM access - Won't automatically use current bank
     uint16_t real_addr = addr - 0x8000;

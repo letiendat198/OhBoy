@@ -4,12 +4,12 @@
 #include <cpu.h>
 #include <ppu.h>
 #include <apu.h>
-#include <set>
-#include <timer.h>
+
+#define NO_EVENT_SCHEDULED UINT32_MAX
 
 class Debugger;
 
-enum SchedulerEvent: uint8_t {
+enum EVENT_ID: uint8_t {
     SAMPLE_APU,
 
     // PPU
@@ -33,19 +33,21 @@ enum SchedulerEvent: uint8_t {
     ILLEGAL
 };
 
-struct SchedulerEventInfo {
-    SchedulerEvent event = ILLEGAL;
-    uint32_t cycle = 0;
-    uint32_t relative_cycle = 0;
-    bool operator < (SchedulerEventInfo a) const {
-        if (cycle == a.cycle) return event < a.event; // If 2 event occur on same cycle, sort by priority
+struct SchedulerEvent {
+    EVENT_ID event_id = ILLEGAL;
+    uint32_t cycle = NO_EVENT_SCHEDULED;
+    uint32_t relative_cycle = NO_EVENT_SCHEDULED;
+    bool operator < (SchedulerEvent a) const {
+        if (cycle == a.cycle) return event_id < a.event_id; // If 2 event occur on same cycle, sort by priority
         return cycle < a.cycle;
     }
 };
 
 class Scheduler {
 private:
-    inline static std::set<SchedulerEventInfo> event_queue;
+    inline static const uint8_t MAX_EVENT = ILLEGAL + 1;
+    inline static SchedulerEvent *event_queue = new SchedulerEvent[MAX_EVENT+1];
+    inline static SchedulerEvent *next_event = nullptr;
 
     Debugger *debugger = nullptr;
 public:
@@ -58,13 +60,14 @@ public:
     bool pause = false;
 
     Scheduler();
-    static void schedule(SchedulerEvent event, uint32_t cycle_to_go);
-    static void schedule_absolute(SchedulerEvent event, uint32_t cycle);
-    static void remove_schedule(SchedulerEvent event);
+    static void schedule(EVENT_ID event_id, uint32_t cycle_to_go);
+    static void schedule_absolute(EVENT_ID event_id, uint32_t cycle);
+    static void remove_schedule(EVENT_ID event_id);
     static void remove_ppu_schedules();
-    static void reschedule(SchedulerEvent event, uint32_t cycle);
+    static void reschedule(EVENT_ID event, uint32_t cycle);
+    static void find_next_event();
     static void switch_speed(bool is_double_spd);
-    SchedulerEventInfo progress();
+    SchedulerEvent progress();
     void tick_frame();
 
     void set_debugger(Debugger *debugger);

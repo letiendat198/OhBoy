@@ -1,7 +1,5 @@
 #include "joypad.h"
 
-#include <memory.h>
-
 void Joypad::select(uint8_t selection) {
     input_select = selection;
 }

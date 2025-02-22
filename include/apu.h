@@ -4,7 +4,7 @@
 #include <logger.h>
 #include <config.h>
 
-enum SchedulerEvent: uint8_t;
+enum EVENT_ID: uint8_t;
 
 struct ChannelRegisters {
     uint8_t NRx0 = 0;
@@ -43,7 +43,7 @@ public:
 
     uint8_t LENGTH_OVERFLOW = 64;
 
-    SchedulerEvent PERIOD_OVERFLOW_EVENT;
+    EVENT_ID PERIOD_OVERFLOW_EVENT;
 
     SquareWaveChannel(uint8_t channel_num);
     void trigger();
