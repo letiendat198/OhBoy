@@ -146,7 +146,7 @@ void Scheduler::tick_frame() {
                     PPU::mode = 1;
                     ppu.window_ly = 0;
                     Interrupt::set_flag(VBLANK_INTR);
-                    if (render_callback != nullptr) (*render_callback)(); // WILL HANG IF PPU IS OFF
+                    if (render_frame_callback != nullptr) (*render_frame_callback)(ppu.frame_buffer); // WILL HANG IF PPU IS OFF
                 }
                 PPU::check_stat_interrupt();
                 ppu.schedule_next_mode(1);
@@ -178,7 +178,7 @@ void Scheduler::tick_frame() {
                 schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
                 apu.sample();
                 if (apu.sample_count == SAMPLE_COUNT) {
-                    if (audio_callback != nullptr) (*audio_callback)();
+                    if (queue_audio_callback != nullptr) (*queue_audio_callback)(apu.sample_output);
                     apu.sample_count = 0;
                 }
                 break;
@@ -200,10 +200,10 @@ void Scheduler::tick_frame() {
     if (frame_count==10) frame_count = 0;
 }
 
-void Scheduler::set_audio_callback(callback *audio_callback) {
-    this->audio_callback = audio_callback;
+void Scheduler::set_audio_callback(audio_callback callback) {
+    this->queue_audio_callback = callback;
 }
 
-void Scheduler::set_render_callback(callback *render_callback) {
-    this->render_callback = render_callback;
+void Scheduler::set_render_callback(render_callback callback) {
+    this->render_frame_callback = callback;
 }
