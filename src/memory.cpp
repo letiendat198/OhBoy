@@ -6,6 +6,8 @@
 #include "scheduler.h"
 #include <joypad.h>
 
+#include <cstring>
+
 uint8_t Memory::read(uint16_t addr) {
     switch (addr) {
         case 0xFFFF: { // IE

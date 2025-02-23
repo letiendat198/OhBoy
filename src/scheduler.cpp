@@ -1,3 +1,4 @@
+#include <cassert>
 #include <dma.h>
 #include <interrupt.h>
 #include <timer.h>
@@ -74,13 +75,13 @@ void Scheduler::find_next_event() {
 
 void Scheduler::switch_speed(bool is_double_spd) {
     CYCLE_PER_FRAME = is_double_spd ? 17556*2 : 17556;
-    logger.get_logger()->debug("Speed switch at cycle: {:d}", current_cycle);
+    // logger.get_logger()->debug("Speed switch at cycle: {:d}", current_cycle);
 
     if (is_double_spd) {
         for(uint8_t i = 0; i <= DRAW; i++) {
             if (event_queue[i].cycle == NO_EVENT_SCHEDULED) continue;
             event_queue[i].cycle += event_queue[i].relative_cycle;
-            logger.get_logger()->debug("Reschedule event: {:d} from cycle: {:d} to {:d}", i, event_queue[i].cycle - event_queue[i].relative_cycle, event_queue[i].cycle);
+            // logger.get_logger()->debug("Reschedule event: {:d} from cycle: {:d} to {:d}", i, event_queue[i].cycle - event_queue[i].relative_cycle, event_queue[i].cycle);
         }
     }
     else {
@@ -92,8 +93,6 @@ void Scheduler::switch_speed(bool is_double_spd) {
 
     find_next_event();
 }
-
-uint8_t frame_count = 0;
 
 SchedulerEvent Scheduler::progress() {
     assert(next_event != nullptr);
@@ -111,6 +110,8 @@ SchedulerEvent Scheduler::progress() {
     find_next_event();
     return old_event;
 }
+
+uint8_t frame_count = 0;
 
 void Scheduler::tick_frame() {
     // WARN: Scheduler may not clear event with cycle before limit if current cycle hit turn around limit
@@ -145,7 +146,7 @@ void Scheduler::tick_frame() {
                     PPU::mode = 1;
                     ppu.window_ly = 0;
                     Interrupt::set_flag(VBLANK_INTR);
-                    if (debugger != nullptr) debugger->render(); // WILL HANG IF PPU IS OFF
+                    if (render_callback != nullptr) (*render_callback)(); // WILL HANG IF PPU IS OFF
                 }
                 PPU::check_stat_interrupt();
                 ppu.schedule_next_mode(1);
@@ -177,7 +178,7 @@ void Scheduler::tick_frame() {
                 schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
                 apu.sample();
                 if (apu.sample_count == SAMPLE_COUNT) {
-                    if (debugger != nullptr) debugger->queue_audio();
+                    if (audio_callback != nullptr) (*audio_callback)();
                     apu.sample_count = 0;
                 }
                 break;
@@ -191,14 +192,18 @@ void Scheduler::tick_frame() {
 
     for(uint8_t i=0;i<MAX_EVENT;i++) {
         if (event_queue[i].cycle != NO_EVENT_SCHEDULED && event_queue[i].cycle > CYCLE_PER_FRAME) event_queue[i].cycle -= CYCLE_PER_FRAME;
-        else logger.get_logger()->warn("Scheduler will miss event: {:d} at: {:d}", i, event_queue[i].cycle);
+        // else logger.get_logger()->warn("Scheduler will miss event: {:d} at: {:d}", i, event_queue[i].cycle);
         if (i == TIMA_OVERFLOW && Timer::tima_overflow_cycle > CYCLE_PER_FRAME) Timer::tima_overflow_cycle -= CYCLE_PER_FRAME;
     }
-}
 
     frame_count++;
     if (frame_count==10) frame_count = 0;
 }
 
-void Scheduler::set_debugger(Debugger *debugger) {
-    this->debugger = debugger;
+void Scheduler::set_audio_callback(callback *audio_callback) {
+    this->audio_callback = audio_callback;
+}
+
+void Scheduler::set_render_callback(callback *render_callback) {
+    this->render_callback = render_callback;
+}

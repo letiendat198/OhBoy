@@ -7,7 +7,7 @@
 
 #define NO_EVENT_SCHEDULED UINT32_MAX
 
-class Debugger;
+typedef void(*callback)();
 
 enum EVENT_ID: uint8_t {
     SAMPLE_APU,
@@ -49,7 +49,8 @@ private:
     inline static SchedulerEvent *event_queue = new SchedulerEvent[MAX_EVENT+1];
     inline static SchedulerEvent *next_event = nullptr;
 
-    Debugger *debugger = nullptr;
+    callback *audio_callback;
+    callback *render_callback;
 public:
     CPU cpu;
     PPU ppu;
@@ -69,7 +70,8 @@ public:
     SchedulerEvent progress();
     void tick_frame();
 
-    void set_debugger(Debugger *debugger);
+    void set_render_callback(callback *render_callback);
+    void set_audio_callback(callback *audio_callback);
 };
 
 #endif //SCHEDULER_H

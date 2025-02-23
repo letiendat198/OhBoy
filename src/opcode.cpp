@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "cpu.h"
 #include "scheduler.h"
 

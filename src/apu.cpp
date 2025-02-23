@@ -11,7 +11,7 @@ inline void reset_channel_registers(ChannelRegisters *regs) {
     regs->NRx4 = 0;
 }
 
-SquareWaveChannel::SquareWaveChannel(uint8_t channel_num): logger(Logger("SQUARE_CHANNEL_"+std::to_string(channel_num))) {
+SquareWaveChannel::SquareWaveChannel(uint8_t channel_num) {
     PERIOD_OVERFLOW_EVENT = channel_num == 1 ? SQUARE1_PERIOD_OVERFLOW : SQUARE2_PERIOD_OVERFLOW;
 }
 
@@ -367,7 +367,8 @@ void APU::write_apu_register(uint16_t addr, uint8_t data) {
             break;
        }
        default:
-           logger.get_logger()->debug("Write invalid or unused APU register address: {:#X}", addr);
+//           logger.get_logger()->debug("Write invalid or unused APU register address: {:#X}", addr);
+            break;
    }
 }
 
@@ -461,7 +462,8 @@ uint8_t APU::read_apu_register(uint16_t addr) {
             break;
         }
         default:
-            logger.get_logger()->debug("Read invalid or unused APU register address: {:#X}", addr);
+//            logger.get_logger()->debug("Read invalid or unused APU register address: {:#X}", addr);
+            break;
     }
     // logger.get_logger()->debug("APU register read at addr {:#X}: {:X}", addr, raw_register_data);
     return raw_register_data | IO_READ_VALUE_DMG_CGB[(addr & 0xFF) - 0x10];

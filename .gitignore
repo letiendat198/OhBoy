@@ -5,9 +5,7 @@ out
 venv
 roms
 deps
-gui/target
-gui/*.ini
-gui/*.log
+gui
 include/boot.h
 include/cgb_boot.h
 include/tetris.h

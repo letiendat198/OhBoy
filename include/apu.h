@@ -1,7 +1,6 @@
 #ifndef APU_H
 #define APU_H
 #include <cstdint>
-#include <logger.h>
 #include <config.h>
 
 enum EVENT_ID: uint8_t;
@@ -24,7 +23,6 @@ void reset_channel_registers(ChannelRegisters *regs);
 
 class SquareWaveChannel {
 public:
-    Logger logger;
     uint8_t square_wave[4] = {0b00000001, 0b10000001, 0b10000111, 0b01111110};
     ChannelRegisters reg;
     SweepUnit sweep;
@@ -57,7 +55,6 @@ public:
 
 class WaveChannel {
 public:
-    Logger logger = Logger("WAVE_CHANNEL");
     ChannelRegisters reg;
 
     bool is_enabled = false;
@@ -77,7 +74,6 @@ public:
 
 class NoiseChannel {
 public:
-    Logger logger = Logger("NOISE_CHANNEL");
     ChannelRegisters reg;
 
     const uint8_t divider_lookup[8] = {2, 4, 8, 12, 16, 20, 24, 28};
@@ -101,7 +97,6 @@ public:
 
 class APU {
 private:
-    Logger logger = Logger("APU");
     uint8_t div_apu_cycle = 0;
 
     inline static const uint8_t IO_READ_VALUE_DMG_CGB[32] = { // READ MASK
