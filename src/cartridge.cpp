@@ -100,5 +100,6 @@ bool Cartridge::save_sram() {
     //     return false;
     // }
     // return write_file(save_file_path.c_str(), external_ram, external_ram_size);
+    return false;
 }
 

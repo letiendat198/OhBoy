@@ -50,8 +50,8 @@ private:
     inline static SchedulerEvent *event_queue = new SchedulerEvent[MAX_EVENT+1];
     inline static SchedulerEvent *next_event = nullptr;
 
-    audio_callback queue_audio_callback;
-    render_callback render_frame_callback;
+    audio_callback queue_audio_callback = nullptr;
+    render_callback render_frame_callback = nullptr;
 public:
     CPU cpu;
     PPU ppu;

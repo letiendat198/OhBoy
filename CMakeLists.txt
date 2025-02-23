@@ -33,6 +33,10 @@ add_library(OhBoy STATIC
         src/apu.cpp
 )
 
+add_executable(OhBoyTest
+        src/main.cpp)
+target_link_libraries(OhBoyTest OhBoy)
+
 set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 include_directories("include")
