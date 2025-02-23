@@ -1,27 +1,41 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
-#include "cartridge.h"
+#include <cartridge.h>
+#include <apu.h>
+#include <dma.h>
+#include <interrupt.h>
+#include <joypad.h>
+#include <ppu.h>
+#include <timer.h>
 
-class Scheduler;
+class Memory{
+public:
+    // Don't need bus access
+    Cartridge cartridge;
+    Timer timer;
+    Joypad joypad;
+    Interrupt interrupt;
+    // Need bus access
+    PPU ppu;
+    APU apu;
+    DMA dma;
 
-namespace Memory{
-    inline uint8_t* memory = new uint8_t[0x2000]();
-    inline uint8_t* vram = new uint8_t[0x2000*2]();
-    inline uint8_t* wram = new uint8_t[0x1000*8]();
+    uint8_t* memory = new uint8_t[0x2000]();
+    uint8_t* vram = new uint8_t[0x2000*2]();
+    uint8_t* wram = new uint8_t[0x1000*8]();
 
-    inline uint8_t* bg_cram = new uint8_t[64]();
-    inline uint8_t* obj_cram = new uint8_t[64]();
-    inline bool bg_auto_inc = false;
-    inline bool obj_auto_inc = false;
+    uint8_t* bg_cram = new uint8_t[64]();
+    uint8_t* obj_cram = new uint8_t[64]();
+    bool bg_auto_inc = false;
+    bool obj_auto_inc = false;
 
-    inline uint8_t vram_bank = 0;
-    inline uint8_t wram_bank = 1;
+    uint8_t vram_bank = 0;
+    uint8_t wram_bank = 1;
 
-    inline bool is_boot = true;
+    bool is_boot = true;
 
-    inline Cartridge cartridge;
-    inline Scheduler *scheduler;
+    Memory(): ppu(PPU(this)), apu(APU(this)), dma(DMA(this)) {};
 
     uint8_t read(uint16_t addr);
     void write(uint16_t addr, uint8_t data);
@@ -34,7 +48,7 @@ namespace Memory{
     uint8_t unsafe_read(uint16_t addr);
     void unsafe_write(uint16_t addr, uint8_t data);
 
-    void dma(uint16_t dest_addr, uint16_t src_addr, uint16_t length);
+    void memcpy(uint16_t dest_addr, uint16_t src_addr, uint16_t length);
 };
 
 #endif

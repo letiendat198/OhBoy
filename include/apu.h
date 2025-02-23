@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <config.h>
 
+class Memory;
 enum EVENT_ID: uint8_t;
 
 struct ChannelRegisters {
@@ -65,6 +66,10 @@ public:
     uint16_t length_counter = 0;
 
     uint16_t LENGTH_OVERFLOW = 0xFF;
+
+    Memory *bus = nullptr;
+
+    explicit WaveChannel(Memory *bus): bus(bus){};
 
     void trigger();
     void disable();
@@ -136,7 +141,7 @@ private:
 public:
     SquareWaveChannel channel1 = SquareWaveChannel(1);
     SquareWaveChannel channel2 = SquareWaveChannel(2);
-    WaveChannel channel3 = WaveChannel();
+    WaveChannel channel3; // Don't initialize WaveChannel right here, or it will have an nullptr bus
     NoiseChannel channel4 = NoiseChannel();
 
     bool is_enabled = true;
@@ -145,6 +150,9 @@ public:
 
     short *sample_output = new short[SAMPLE_COUNT];
     int sample_count = 0;
+
+    Memory *bus = nullptr;
+    explicit APU(Memory *bus): bus(bus), channel3(bus){};
 
     void sample();
     void schedule_div_apu();

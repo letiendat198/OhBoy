@@ -10,10 +10,11 @@ enum INTERRUPTS: uint8_t {
     JOYPAD_INTR = 4
 };
 
-namespace Interrupt {
-    inline uint8_t IF = 0;
-    inline uint8_t IE = 0;
-    inline uint16_t return_addr[5] = {0x0040, 0x0048, 0x0050, 0x0058, 0x0060};
+class Interrupt {
+public:
+    uint8_t IF = 0;
+    uint8_t IE = 0;
+    uint16_t return_addr[5] = {0x0040, 0x0048, 0x0050, 0x0058, 0x0060};
 
     uint16_t check_and_service(uint8_t &ime);
     void set_flag(uint8_t bit);

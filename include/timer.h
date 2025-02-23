@@ -8,14 +8,13 @@ struct TimerControl {
     uint8_t bit_select = 0;
 };
 
-namespace Timer {
-    // inline Logger logger = Logger("Timer");
-
-    inline uint32_t div_overflow_cycle = 0; // In the past
-    inline uint32_t tima_overflow_cycle = 0; // In the future
-    inline uint8_t paused_tima = 0;
-    inline uint8_t tma = 0;
-    inline TimerControl current_tac{};
+class Timer {
+public:
+    uint32_t div_overflow_cycle = 0; // In the past
+    uint32_t tima_overflow_cycle = 0; // In the future
+    uint8_t paused_tima = 0;
+    uint8_t tma = 0;
+    TimerControl current_tac{};
 
     uint16_t calc_current_div();
     uint8_t calc_current_tima();

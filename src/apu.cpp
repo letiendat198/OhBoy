@@ -108,7 +108,7 @@ void WaveChannel::disable() {
 
 void WaveChannel::on_period_overflow() {
     uint16_t wram_addr = 0xFF30;
-    uint8_t current_sample_byte = Memory::unsafe_read(wram_addr + (wave_ram_step >> 1));
+    uint8_t current_sample_byte = bus->unsafe_read(wram_addr + (wave_ram_step >> 1));
 
     uint8_t current_nibble = (current_sample_byte >> 4) & 0xF;
     if (wave_ram_step % 2 == 1) current_nibble = current_sample_byte & 0xF;
@@ -209,7 +209,7 @@ void APU::sample() {
 
 void APU::schedule_div_apu() {
     uint16_t freq = CPU::double_spd_mode ? 4096 : 2048;
-    uint16_t offset = Timer::calc_current_div() % freq;
+    uint16_t offset = bus->timer.calc_current_div() % freq;
 
     Scheduler::reschedule(DIV_APU_TICK, freq - offset);
 }

@@ -54,8 +54,6 @@ private:
     render_callback render_frame_callback = nullptr;
 public:
     CPU cpu;
-    PPU ppu;
-    APU apu;
 
     inline static uint32_t current_cycle = 0;
     bool pause = false;

@@ -3,6 +3,8 @@
 #include <cartridge.h>
 #include <cstdint>
 
+class Memory;
+
 struct LCDC {
     uint8_t lcd_enable;
     uint16_t window_tile_map;
@@ -59,22 +61,25 @@ private:
     void read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj);
 public:
     uint16_t *frame_buffer = new uint16_t[320*240]();
-    inline static uint8_t ly = 0;
+    int8_t ly = 0;
     uint8_t window_ly = 0;
-    inline static bool is_enable = false;
-    inline static bool first_line = true;
-    inline static uint8_t mode = 0;
-    inline static uint8_t lyc = 0;
-    inline static uint8_t prev_stat = 0;
-    inline static uint8_t stat_mode_selection = 0;
+    bool is_enable = false;
+    bool first_line = true;
+    uint8_t mode = 0;
+    uint8_t lyc = 0;
+    uint8_t prev_stat = 0;
+    uint8_t stat_mode_selection = 0;
+
+    Memory *bus = nullptr;
+    explicit PPU(Memory *bus): bus(bus){};
 
     void oam_scan();
     void draw_scanline();
     void set_cgb_mode(bool is_cgb);
     void schedule_next_mode(uint8_t mode);
-    static void enable();
-    static void disable();
-    static void check_stat_interrupt();
+    void enable();
+    void disable();
+    void check_stat_interrupt();
 
     ObjAttribute read_obj(uint16_t addr);
 
