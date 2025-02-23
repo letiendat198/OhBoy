@@ -6,20 +6,20 @@ void DMA::transfer_dma() {
     uint16_t dest = 0xFE00;
     uint16_t src = dma_addr * 0x100;
 
-    // Memory::dma(dest, src, 160);
-    for (uint8_t cycle = 0; cycle < 160; cycle++) Memory::unsafe_write(dest + cycle, Memory::unsafe_read(src + cycle));
+    // bus->dma(dest, src, 160);
+    for (uint8_t cycle = 0; cycle < 160; cycle++) bus->unsafe_write(dest + cycle, bus->unsafe_read(src + cycle));
 }
 
-void HDMA::transfer_gdma() {
+void DMA::transfer_gdma() {
 
     // logger.get_logger()->debug("GDMA transfer from: {:#X} to: {:#X} with length: {:d}", hdma_src, 0x8000 + hdma_dest, (hdma_length+1) * 0x10);
 
     uint16_t length = (hdma_length+1) * 0x10;
 
     for (uint16_t i = 0; i<length; i++) {
-        Memory::unsafe_write(0x8000 + hdma_dest + i, Memory::unsafe_read(hdma_src + i));
+        bus->unsafe_write(0x8000 + hdma_dest + i, bus->unsafe_read(hdma_src + i));
     }
-    // Memory::dma(0x8000 + hdma_dest, hdma_src, length);
+    // bus->dma(0x8000 + hdma_dest, hdma_src, length);
     hdma_src += length;
     hdma_dest += length;
 
@@ -28,14 +28,14 @@ void HDMA::transfer_gdma() {
 }
 
 
-void HDMA::transfer_hdma() { // TODO: HDMA stop prematurely if dest addr overflow (including ignored upper 3 bits)
+void DMA::transfer_hdma() { // TODO: HDMA stop prematurely if dest addr overflow (including ignored upper 3 bits)
     // logger.get_logger()->debug("HDMA transfer from: {:#X} to: {:#X}", hdma_src, 0x8000 + hdma_dest);
 
      for(uint8_t i=0;i<16;i++) {
-         Memory::unsafe_write(0x8000 + hdma_dest + i, Memory::unsafe_read(hdma_src + i));
+         bus->unsafe_write(0x8000 + hdma_dest + i, bus->unsafe_read(hdma_src + i));
      }
 
-    // Memory::dma(0x8000 + hdma_dest, hdma_src, 0x10);
+    // bus->dma(0x8000 + hdma_dest, hdma_src, 0x10);
 
     hdma_src += 16;
     hdma_dest += 16;

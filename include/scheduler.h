@@ -53,8 +53,6 @@ private:
 public:
     inline static Logger logger = Logger("Scheduler");
     CPU cpu;
-    PPU ppu;
-    APU apu;
 
     inline static uint32_t current_cycle = 0;
     bool pause = false;

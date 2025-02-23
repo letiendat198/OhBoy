@@ -33,6 +33,9 @@ public:
 
     unsigned char opskip;
     uint32_t mcycle;
+
+    Memory bus;
+
     CPU();
     uint32_t tick();
     uint32_t fetch_next_length();

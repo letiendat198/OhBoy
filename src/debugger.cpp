@@ -97,11 +97,11 @@ void Debugger::render() {
     if (is_debug) {
         render_registers(io);
         memory_editor.ReadOnly = true;
-        memory_editor.DrawWindow("Memory Bus", Memory::memory, 0x2000);
-        memory_editor.DrawWindow("External RAM", Memory::cartridge.external_ram, Memory::cartridge.external_ram_size);
-        memory_editor.DrawWindow("Video RAM", Memory::vram, 0x2000*2);
-        memory_editor.DrawWindow("Work RAM 0-7", Memory::wram, 0x1000*8);
-        memory_editor.DrawWindow("Frame Buffer", scheduler->ppu.frame_buffer, 160*144*3);
+        memory_editor.DrawWindow("Memory Bus", scheduler->cpu.bus.memory, 0x2000);
+        memory_editor.DrawWindow("External RAM", scheduler->cpu.bus.cartridge.external_ram, scheduler->cpu.bus.cartridge.external_ram_size);
+        memory_editor.DrawWindow("Video RAM", scheduler->cpu.bus.vram, 0x2000*2);
+        memory_editor.DrawWindow("Work RAM 0-7", scheduler->cpu.bus.wram, 0x1000*8);
+        memory_editor.DrawWindow("Frame Buffer", scheduler->cpu.bus.ppu.frame_buffer, 160*144*3);
     }
 
     ImGui::Render();
@@ -119,7 +119,7 @@ void Debugger::render_game() {
         ImGui::SetNextWindowClass(&window_class);
     }
     ImGui::Begin("Game");
-    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)scheduler->ppu.frame_buffer, 160, 144, 16, 160*2, 0x0, 0x0, 0x0, 0x0);
+    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)scheduler->cpu.bus.ppu.frame_buffer, 160, 144, 16, 160*2, 0x0, 0x0, 0x0, 0x0);
     if (surface == nullptr) {
         fprintf(stderr, "Failed to create SDL surface: %s\n", SDL_GetError());
     }
@@ -196,11 +196,11 @@ void Debugger::render_registers(const ImGuiIO& io) {
     ImGui::SameLine();
     ImGui::Text(fmt::format("SP: {:04X}", cpu.sp).c_str());
 
-    ImGui::Text(fmt::format("Current: {:02X}", Memory::read(cpu.pc)).c_str());
+    ImGui::Text(fmt::format("Current: {:02X}", scheduler->cpu.bus.read(cpu.pc)).c_str());
     ImGui::SameLine();
-    ImGui::Text(fmt::format("Next 1: {:02X}", Memory::read(cpu.pc+1)).c_str());
+    ImGui::Text(fmt::format("Next 1: {:02X}", scheduler->cpu.bus.read(cpu.pc+1)).c_str());
     ImGui::SameLine();
-    ImGui::Text(fmt::format("Next 2: {:02X}", Memory::read(cpu.pc+2)).c_str());
+    ImGui::Text(fmt::format("Next 2: {:02X}", scheduler->cpu.bus.read(cpu.pc+2)).c_str());
 
     ImGui::SeparatorText("Flags");
 
@@ -216,13 +216,13 @@ void Debugger::render_registers(const ImGuiIO& io) {
 
     ImGui::Text(fmt::format("IME: {}", cpu.ime).c_str());
     ImGui::SameLine();
-    ImGui::Text(fmt::format("IE: {:X}", Memory::read(0xFFFF)).c_str());
+    ImGui::Text(fmt::format("IE: {:X}", scheduler->cpu.bus.read(0xFFFF)).c_str());
     ImGui::SameLine();
-    ImGui::Text(fmt::format("IF: {:X}", Memory::read(0xFF0F)).c_str());
+    ImGui::Text(fmt::format("IF: {:X}", scheduler->cpu.bus.read(0xFF0F)).c_str());
     ImGui::SameLine();
-    ImGui::Text(fmt::format("STAT: {:08b}", Memory::read(0xFF41)).c_str());
+    ImGui::Text(fmt::format("STAT: {:08b}", scheduler->cpu.bus.read(0xFF41)).c_str());
 
-    ImGui::Text(fmt::format("LYC: {}", Memory::read(0xFF45)).c_str());
+    ImGui::Text(fmt::format("LYC: {}", scheduler->cpu.bus.read(0xFF45)).c_str());
 
     ImGui::End();
 }
@@ -235,21 +235,21 @@ void Debugger::render_registers(const ImGuiIO& io) {
 
 void Debugger::queue_audio() {
     while(SDL_GetQueuedAudioSize(audioDeviceID) != 0) {}
-    SDL_QueueAudio(audioDeviceID, scheduler->apu.sample_output, SAMPLE_COUNT*sizeof(short));
+    SDL_QueueAudio(audioDeviceID, scheduler->cpu.bus.apu.sample_output, SAMPLE_COUNT*sizeof(short));
 }
 
 
 void Debugger::capture_keyboard() {
-    memset(Joypad::key_state, 0, 8);
+    memset(scheduler->cpu.bus.joypad.key_state, 0, 8);
     const Uint8* key = SDL_GetKeyboardState(NULL);
-    if(key[SDL_SCANCODE_Y]) Joypad::key_state[0]=1;
-    if(key[SDL_SCANCODE_T]) Joypad::key_state[1]=1;
-    if(key[SDL_SCANCODE_N]) Joypad::key_state[2]=1;
-    if(key[SDL_SCANCODE_M]) Joypad::key_state[3]=1;
-    if(key[SDL_SCANCODE_S]) Joypad::key_state[4]=1;
-    if(key[SDL_SCANCODE_W]) Joypad::key_state[5]=1;
-    if(key[SDL_SCANCODE_A]) Joypad::key_state[6]=1;
-    if(key[SDL_SCANCODE_D]) Joypad::key_state[7]=1;
+    if(key[SDL_SCANCODE_Y]) scheduler->cpu.bus.joypad.key_state[0]=1;
+    if(key[SDL_SCANCODE_T]) scheduler->cpu.bus.joypad.key_state[1]=1;
+    if(key[SDL_SCANCODE_N]) scheduler->cpu.bus.joypad.key_state[2]=1;
+    if(key[SDL_SCANCODE_M]) scheduler->cpu.bus.joypad.key_state[3]=1;
+    if(key[SDL_SCANCODE_S]) scheduler->cpu.bus.joypad.key_state[4]=1;
+    if(key[SDL_SCANCODE_W]) scheduler->cpu.bus.joypad.key_state[5]=1;
+    if(key[SDL_SCANCODE_A]) scheduler->cpu.bus.joypad.key_state[6]=1;
+    if(key[SDL_SCANCODE_D]) scheduler->cpu.bus.joypad.key_state[7]=1;
 }
 
 void Debugger::end() {

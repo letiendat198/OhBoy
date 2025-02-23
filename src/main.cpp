@@ -24,7 +24,7 @@ void measure_frame_without_render(Scheduler *scheduler) {
     }
 }
 
-Scheduler scheduler;
+
 int main(int argc , char **argv){
     popl::OptionParser op("Allowed Options");
     auto help_options = op.add<popl::Switch>("h", "help", "Get help");
@@ -42,12 +42,13 @@ int main(int argc , char **argv){
     }
 
     cout<<rom_path_option->value().c_str()<<endl;
-    bool cart_init = Memory::cartridge.init(rom_path_option->value().c_str());
+
+    Scheduler scheduler;
+    bool cart_init = scheduler.cpu.bus.cartridge.init(rom_path_option->value().c_str());
     if (!cart_init) return -1;
 
-    Memory::scheduler = &scheduler;
-    scheduler.ppu.set_cgb_mode(Memory::cartridge.is_cgb);
-    measure_frame_without_render(&scheduler);
+    scheduler.cpu.bus.ppu.set_cgb_mode(scheduler.cpu.bus.cartridge.is_cgb);
+    // measure_frame_without_render(&scheduler);
     Debugger debugger(&scheduler, debug_mode);
     scheduler.set_debugger(&debugger);
 
@@ -67,6 +68,6 @@ int main(int argc , char **argv){
         debugger.capture_keyboard();
     }
     debugger.end();
-    Memory::cartridge.save_sram();
+    scheduler.cpu.bus.cartridge.save_sram();
     return 0;
 }
