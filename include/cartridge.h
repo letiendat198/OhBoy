@@ -20,8 +20,8 @@ class Cartridge{
 private:
 public:
     CartridgeHeader header;
-    uint8_t *boot_data = nullptr;
-    uint8_t *rom_data = nullptr;
+    const uint8_t *boot_data = nullptr;
+    const uint8_t *rom_data = nullptr;
     uint8_t *external_ram = nullptr;
     uint32_t rom_bank = 1;
     uint32_t ram_bank = 0;

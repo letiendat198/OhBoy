@@ -43,7 +43,7 @@ bool write_file(const char *file, uint8_t *data, uint32_t size) {
     return true;
 }
 
-CartridgeHeader read_cartridge_header(uint8_t *rom_data) {
+CartridgeHeader read_cartridge_header(const uint8_t *rom_data) {
     CartridgeHeader metadata{};
     // metadata.rom_title = new char[0xF + 1]; // Stub
     // strncpy(metadata.rom_title, reinterpret_cast<const char *>(rom_data+0x0134), 16);
