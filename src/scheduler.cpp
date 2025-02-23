@@ -134,7 +134,7 @@ void Scheduler::tick_frame() {
                 cpu.bus.ppu.schedule_next_mode(3);
                 break;
             case HBLANK:
-                cpu.bus.ppu.draw_scanline();
+                if (frame_count % 2 == 0) cpu.bus.ppu.draw_scanline();
                 cpu.bus.ppu.mode = 0;
                 if (cpu.bus.dma.is_hdma_running && cpu.bus.dma.hdma_type == 1 && !cpu.halt) cpu.bus.dma.transfer_hdma();
                 cpu.bus.ppu.check_stat_interrupt();
