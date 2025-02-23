@@ -1,6 +1,6 @@
 #ifndef DMA_H
 #define DMA_H
-#include <memory.h>
+#include <cstdint>
 
 class Memory;
 

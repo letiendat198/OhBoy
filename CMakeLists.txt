@@ -8,9 +8,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address")
-else()
-    set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+    set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address")
 endif ()
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 

@@ -150,7 +150,6 @@ void PPU::draw_scanline() {
 }
 
 void PPU::oam_scan() {
-    if (!enable) return;
     LCDC lcdc = read_lcdc();
     obj_queue_index = 0;
     for (uint16_t addr=0xFE00; addr<=0xFE9F; addr+=4) {

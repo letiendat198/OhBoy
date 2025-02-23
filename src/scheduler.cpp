@@ -146,7 +146,7 @@ void Scheduler::tick_frame() {
                     cpu.bus.ppu.mode = 1;
                     cpu.bus.ppu.window_ly = 0;
                     cpu.bus.interrupt.set_flag(VBLANK_INTR);
-                    if (render_frame_callback != nullptr) (*render_frame_callback)(ppu.frame_buffer); // WILL HANG IF PPU IS OFF
+                    if (render_frame_callback != nullptr) (*render_frame_callback)(cpu.bus.ppu.frame_buffer); // WILL HANG IF PPU IS OFF
                 }
                 cpu.bus.ppu.check_stat_interrupt();
                 cpu.bus.ppu.schedule_next_mode(1);
@@ -176,10 +176,10 @@ void Scheduler::tick_frame() {
                 break;
             case SAMPLE_APU:
                 schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
-                apu.sample();
-                if (apu.sample_count == SAMPLE_COUNT) {
-                    if (queue_audio_callback != nullptr) (*queue_audio_callback)(apu.sample_output);
-                    apu.sample_count = 0;
+                cpu.bus.apu.sample();
+                if (cpu.bus.apu.sample_count == SAMPLE_COUNT) {
+                    if (queue_audio_callback != nullptr) (*queue_audio_callback)(cpu.bus.apu.sample_output);
+                    cpu.bus.apu.sample_count = 0;
                 }
                 break;
             default:
@@ -193,7 +193,7 @@ void Scheduler::tick_frame() {
     for(uint8_t i=0;i<MAX_EVENT;i++) {
         if (event_queue[i].cycle != NO_EVENT_SCHEDULED && event_queue[i].cycle > CYCLE_PER_FRAME) event_queue[i].cycle -= CYCLE_PER_FRAME;
         // else logger.get_logger()->warn("Scheduler will miss event: {:d} at: {:d}", i, event_queue[i].cycle);
-        if (i == TIMA_OVERFLOW && Timer::tima_overflow_cycle > CYCLE_PER_FRAME) Timer::tima_overflow_cycle -= CYCLE_PER_FRAME;
+        if (i == TIMA_OVERFLOW && cpu.bus.timer.tima_overflow_cycle > CYCLE_PER_FRAME) cpu.bus.timer.tima_overflow_cycle -= CYCLE_PER_FRAME;
     }
 
     frame_count++;

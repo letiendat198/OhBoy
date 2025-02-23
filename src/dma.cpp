@@ -1,4 +1,5 @@
 #include "dma.h"
+#include "memory.h"
 
 void DMA::transfer_dma() {
     uint16_t dest = 0xFE00;
