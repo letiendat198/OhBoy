@@ -13,7 +13,7 @@ Scheduler::Scheduler() {
     cpu.bus.timer.schedule_next_div_overflow();
 
     cpu.bus.apu.schedule_div_apu();
-    schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
+    // schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
 }
 
 // Schedule an event a number of cycle from this point on
@@ -146,7 +146,7 @@ void Scheduler::tick_frame() {
                     cpu.bus.ppu.mode = 1;
                     cpu.bus.ppu.window_ly = 0;
                     cpu.bus.interrupt.set_flag(VBLANK_INTR);
-                    if (render_frame_callback != nullptr) (*render_frame_callback)(cpu.bus.ppu.frame_buffer); // WILL HANG IF PPU IS OFF
+                    if (frame_count % 2 == 0 && render_frame_callback != nullptr) (*render_frame_callback)(cpu.bus.ppu.frame_buffer); // WILL HANG IF PPU IS OFF
                 }
                 cpu.bus.ppu.check_stat_interrupt();
                 cpu.bus.ppu.schedule_next_mode(1);
@@ -158,32 +158,32 @@ void Scheduler::tick_frame() {
                 cpu.bus.interrupt.set_flag(TIMER_INTR);
                 cpu.bus.timer.schedule_tima_overflow(cpu.bus.timer.tma);
                 break;
-            case DIV_APU_TICK:
-                cpu.bus.apu.on_div_apu_tick();
-                cpu.bus.apu.schedule_div_apu();
-                break;
-            case SQUARE1_PERIOD_OVERFLOW:
-                cpu.bus.apu.channel1.on_period_overflow();
-                break;
-            case SQUARE2_PERIOD_OVERFLOW:
-                cpu.bus.apu.channel2.on_period_overflow();
-                break;
-            case WAVE_PERIOD_OVERFLOW:
-                cpu.bus.apu.channel3.on_period_overflow();
-                break;
-            case NOISE_PERIOD_OVERFLOW:
-                cpu.bus.apu.channel4.on_period_overflow();
-                break;
-            case SAMPLE_APU:
-                schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
-                cpu.bus.apu.sample();
-                if (cpu.bus.apu.sample_count == SAMPLE_COUNT) {
-                    if (queue_audio_callback != nullptr) (*queue_audio_callback)(cpu.bus.apu.sample_output);
-                    cpu.bus.apu.sample_count = 0;
-                }
-                break;
+            // case DIV_APU_TICK:
+            //     cpu.bus.apu.on_div_apu_tick();
+            //     cpu.bus.apu.schedule_div_apu();
+            //     break;
+            // case SQUARE1_PERIOD_OVERFLOW:
+            //     cpu.bus.apu.channel1.on_period_overflow();
+            //     break;
+            // case SQUARE2_PERIOD_OVERFLOW:
+            //     cpu.bus.apu.channel2.on_period_overflow();
+            //     break;
+            // case WAVE_PERIOD_OVERFLOW:
+            //     cpu.bus.apu.channel3.on_period_overflow();
+            //     break;
+            // case NOISE_PERIOD_OVERFLOW:
+            //     cpu.bus.apu.channel4.on_period_overflow();
+            //     break;
+            // case SAMPLE_APU:
+            //     schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
+            //     cpu.bus.apu.sample();
+            //     if (cpu.bus.apu.sample_count == SAMPLE_COUNT) {
+            //         if (queue_audio_callback != nullptr) (*queue_audio_callback)(cpu.bus.apu.sample_output);
+            //         cpu.bus.apu.sample_count = 0;
+            //     }
+            //     break;
             default:
-                printf("Not yet implemented event\n");
+                break;
         }
         current_cycle = cycle_backup; // Restore context
     }
