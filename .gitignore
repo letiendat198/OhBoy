@@ -6,6 +6,7 @@ venv
 roms
 deps
 gui
+images
 include/boot.h
 include/cgb_boot.h
 include/game.h
