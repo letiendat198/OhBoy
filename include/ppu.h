@@ -60,7 +60,7 @@ private:
     void read_palette(uint16_t *palette, uint16_t palette_addr);
     void read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj);
 public:
-    uint16_t *frame_buffer = new uint16_t[320*240]();
+    uint16_t *frame_buffer = new uint16_t[160*144]();
     uint8_t ly = 0;
     uint8_t window_ly = 0;
     bool is_enable = false;
