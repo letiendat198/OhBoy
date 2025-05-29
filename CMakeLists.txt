@@ -16,13 +16,28 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 
-add_executable(OhBoy src/main.cpp
-        src/cpu.cpp
-        src/opcode.cpp
-        src/memory.cpp
-        src/cartridge.cpp
-        src/logger.cpp
-        src/opcode_prefixed.cpp
+add_library(OhBoy
+        core/src/cpu.cpp
+        core/src/opcode.cpp
+        core/src/memory.cpp
+        core/src/cartridge.cpp
+        core/src/logger.cpp
+        core/src/opcode_prefixed.cpp
+
+        core/src/ppu.cpp
+        core/src/interrupt.cpp
+        core/src/timer.cpp
+        core/src/dma.cpp
+        core/src/joypad.cpp
+        core/src/scheduler.cpp
+        core/include/scheduler.h
+        core/src/mbc.cpp
+        core/src/apu.cpp
+)
+
+add_executable(OhBoyDebugger
+        debugger/main.cpp
+        debugger/debugger.cpp
         deps/imgui/imgui.cpp
         deps/imgui/imgui_demo.cpp
         deps/imgui/imgui_draw.cpp
@@ -32,18 +47,7 @@ add_executable(OhBoy src/main.cpp
         deps/imgui/misc/cpp/imgui_stdlib.cpp
         deps/imgui/backends/imgui_impl_sdl2.cpp
         deps/imgui/backends/imgui_impl_sdlrenderer2.cpp
-        src/debugger.cpp
-        src/ppu.cpp
-        src/interrupt.cpp
-        src/timer.cpp
-        src/dma.cpp
-        src/joypad.cpp
         deps/popl/include/popl.hpp
-        deps/blip_buf/blip_buf.c
-        src/scheduler.cpp
-        include/scheduler.h
-        src/mbc.cpp
-        src/apu.cpp
 )
 
 set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
@@ -56,39 +60,43 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Corrosion)
 # Import targets defined in a package or workspace manifest `Cargo.toml` file
-corrosion_import_crate(MANIFEST_PATH gui/Cargo.toml)
-add_dependencies(OhBoy OhBoyGUI)
+corrosion_import_crate(MANIFEST_PATH debugger/gui/Cargo.toml)
+add_dependencies(OhBoyDebugger OhBoyGUI)
+add_dependencies(OhBoyDebugger OhBoy)
+target_link_libraries(OhBoyDebugger OhBoy)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog)
 target_link_libraries(OhBoy spdlog)
+target_link_libraries(OhBoyDebugger spdlog)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt)
-target_link_libraries(OhBoy fmt::fmt)
+target_link_libraries(OhBoyDebugger fmt::fmt)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") 
-    target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2-VC/lib/x64/SDL2main.lib)
-    target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2-VC/lib/x64/SDL2.lib)
+    target_link_libraries(OhBoyDebugger ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2-VC/lib/x64/SDL2main.lib)
+    target_link_libraries(OhBoyDebugger ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2-VC/lib/x64/SDL2.lib)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND WIN32)
-    target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2main.a)
-    target_link_libraries(OhBoy ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2.dll.a)
+    target_link_libraries(OhBoyDebugger ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2main.a)
+    target_link_libraries(OhBoyDebugger ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/x86_64-w64-mingw32/lib/libSDL2.dll.a)
 else ()
     find_package(SDL2 REQUIRED)
-    target_link_libraries(OhBoy ${SDL2_LIBRARIES})
+    target_link_libraries(OhBoyDebugger ${SDL2_LIBRARIES})
 endif()
 
-include_directories("include")
-include_directories("deps/imgui")
-include_directories("deps/imgui/backends")
-include_directories("deps/imgui/misc/cpp")
-include_directories("deps/imgui_club/imgui_memory_editor")
-include_directories("deps/popl/include")
-include_directories("deps/spdlog/include")
-include_directories("deps/blip_buf")
+target_include_directories(OhBoy PRIVATE "core/include")
+target_include_directories(OhBoy PRIVATE "deps/spdlog/include")
+target_include_directories(OhBoyDebugger PRIVATE "core/include")
+target_include_directories(OhBoyDebugger PRIVATE "deps/imgui")
+target_include_directories(OhBoyDebugger PRIVATE "deps/imgui/backends")
+target_include_directories(OhBoyDebugger PRIVATE "deps/imgui/misc/cpp")
+target_include_directories(OhBoyDebugger PRIVATE "deps/imgui_club/imgui_memory_editor")
+target_include_directories(OhBoyDebugger PRIVATE "deps/popl/include")
+target_include_directories(OhBoyDebugger PRIVATE "deps/spdlog/include")
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") 
-    include_directories("deps/SDL2-VC/include")
+    target_include_directories(OhBoyDebugger PRIVATE "deps/SDL2-VC/include")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND WIN32)
-    include_directories("deps/SDL2/x86_64-w64-mingw32/include/SDL2")
+    target_include_directories(OhBoyDebugger PRIVATE "deps/SDL2/x86_64-w64-mingw32/include/SDL2")
 else ()
-    include_directories(${SDL2_INCLUDE_DIRS})
+    target_include_directories(OhBoyDebugger PRIVATE ${SDL2_INCLUDE_DIRS})
 endif()

@@ -2,12 +2,8 @@
 #define SCHEDULER_H
 
 #include <cpu.h>
-#include <ppu.h>
-#include <apu.h>
 
 #define NO_EVENT_SCHEDULED UINT32_MAX
-
-class Debugger;
 
 enum EVENT_ID: uint8_t {
     SAMPLE_APU,
@@ -43,13 +39,19 @@ struct SchedulerEvent {
     }
 };
 
+typedef void (*audio_callback_t)(short*, uint16_t);
+typedef void (*render_callback_t)(uint16_t*);
+typedef void (*joypad_callback_t)(uint8_t*);
+
 class Scheduler {
 private:
     inline static const uint8_t MAX_EVENT = ILLEGAL + 1;
     inline static SchedulerEvent *event_queue = new SchedulerEvent[MAX_EVENT+1];
     inline static SchedulerEvent *next_event = nullptr;
 
-    Debugger *debugger = nullptr;
+    audio_callback_t audio_callback = nullptr;
+    render_callback_t render_callback = nullptr;
+    joypad_callback_t joypad_callback = nullptr;
 public:
     inline static Logger logger = Logger("Scheduler");
     CPU cpu;
@@ -68,7 +70,13 @@ public:
     SchedulerEvent progress();
     void tick_frame();
 
-    void set_debugger(Debugger *debugger);
+    void set_audio_callback(audio_callback_t callback);
+    void set_render_callback(render_callback_t callback);
+    void set_joypad_callback(joypad_callback_t callback);
+    bool set_cartridge_rom(uint8_t *data, uint32_t rom_size);
+    void set_boot_rom(uint8_t *data, bool is_cgb);
+    void load_sram(uint8_t *data);
+    uint8_t* get_sram();
 };
 
 #endif //SCHEDULER_H

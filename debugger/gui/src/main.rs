@@ -154,8 +154,8 @@ async fn scan_files(path: String) -> Vec<String> {
 async fn run_emulator(path: String, is_debug: bool) {
     let debug_flag = if is_debug {"-d"} else {""};
     let exec_file = match std::env::consts::OS {
-        "windows" => "OhBoy.exe",
-        _ => "./OhBoy"
+        "windows" => "OhBoyDebugger.exe",
+        _ => "./OhBoyDebugger"
     };
     let mut child = tokio::process::Command::new(exec_file)
         .stdout(std::process::Stdio::inherit())

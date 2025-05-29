@@ -24,20 +24,18 @@ public:
     uint8_t *boot_data = nullptr;
     uint8_t *rom_data = nullptr;
     uint8_t *external_ram = nullptr;
-    uint32_t rom_bank = 1;
-    uint32_t ram_bank = 0;
+    uint32_t rom_bank = 1; // Current rom bank being pointed to
+    uint32_t ram_bank = 0; // Current ram bank being pointed to
     bool ram_enable = false;
     bool rtc_access = false;
 
     uint32_t external_ram_size = 0;
 
-    std::string save_file_path;
-
-    bool is_cgb = false;
+    bool is_boot_cgb = false;
     MBC mbc = MBC(this);
 
-    bool init(const char *file);
-    bool save_sram();
+    bool init_rom(uint8_t *data, uint32_t rom_size);
+    void init_boot(uint8_t *data, bool is_cgb);
 };
 
 #endif

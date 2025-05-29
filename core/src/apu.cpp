@@ -116,7 +116,7 @@ void WaveChannel::on_period_overflow() {
     if (volume != 0) sample = current_nibble >> (volume - 1);
     else sample = 0;
 
-    // logger.get_logger()->debug("Current sample: {:X}", sample);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Current sample: {:X}", sample);
 
     wave_ram_step = (wave_ram_step + 1) % 32;
 
@@ -138,7 +138,7 @@ void NoiseChannel::trigger() {
 
     if (!is_enabled) return;
     uint32_t freq = divider_lookup[reg.NRx3 & 0x7] << ((reg.NRx3 >> 4) & 0xF); // Max shift is 16, so need uint32
-    // logger.get_logger()->debug("Noise period overflow scheduled at: {:d}", freq);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Noise period overflow scheduled at: {:d}", freq);
     Scheduler::reschedule(NOISE_PERIOD_OVERFLOW, freq);
 }
 
@@ -152,11 +152,11 @@ void NoiseChannel::on_period_overflow() {
     lfsr = (lfsr & 0x7FFF) | (temp << 15);
     if (((reg.NRx3 >> 3) & 0x1) == 1) lfsr = (lfsr & 0xFF7F) | (temp << 7);
     lfsr = lfsr >> 1;
-    // logger.get_logger()->debug("Current LFSR: {:04X}", lfsr);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Current LFSR: {:04X}", lfsr);
 
     sample = (lfsr & 0x1) * volume;
     uint32_t freq = divider_lookup[reg.NRx3 & 0x7] << ((reg.NRx3 >> 4) & 0xF); // Max shift is 16, so need uint32
-    // logger.get_logger()->debug("Noise period overflow scheduled at: {:d}", freq);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Noise period overflow scheduled at: {:d}", freq);
     Scheduler::schedule(NOISE_PERIOD_OVERFLOW, freq);
 }
 
@@ -363,11 +363,11 @@ void APU::write_apu_register(uint16_t addr, uint8_t data) {
        case 0xFF26: { // NR52
             is_enabled = data >> 7 & 0x1;
             if (!is_enabled) disable();
-            // logger.get_logger()->debug("NR52 write: {:X}", data);
+            // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "NR52 write: {:X}", data);
             break;
        }
        default:
-           logger.get_logger()->debug("Write invalid or unused APU register address: {:#X}", addr);
+           SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Write invalid or unused APU register address: {:#X}", addr);
    }
 }
 
@@ -457,12 +457,12 @@ uint8_t APU::read_apu_register(uint16_t addr) {
         case 0xFF26: { // NR52
             raw_register_data = is_enabled << 7 | channel4.is_enabled << 3 | channel3.is_enabled << 2 |
                 channel2.is_enabled << 1 | channel1.is_enabled;
-            // logger.get_logger()->debug("NR52 read: {:X}", raw_register_data | IO_READ_VALUE_DMG_CGB[(addr & 0xFF) - 0x10]);
+            // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "NR52 read: {:X}", raw_register_data | IO_READ_VALUE_DMG_CGB[(addr & 0xFF) - 0x10]);
             break;
         }
         default:
-            logger.get_logger()->debug("Read invalid or unused APU register address: {:#X}", addr);
+            SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Read invalid or unused APU register address: {:#X}", addr);
     }
-    // logger.get_logger()->debug("APU register read at addr {:#X}: {:X}", addr, raw_register_data);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "APU register read at addr {:#X}: {:X}", addr, raw_register_data);
     return raw_register_data | IO_READ_VALUE_DMG_CGB[(addr & 0xFF) - 0x10];
 }

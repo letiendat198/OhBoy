@@ -4,6 +4,7 @@
 
 #ifndef LOGGER_H
 #define LOGGER_H
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
 
 #include <iostream>
 #include <fstream>

@@ -1,15 +1,17 @@
-#include "../include/debugger.h"
+#include "debugger.h"
 
 #include <config.h>
 #include <cstdio>
 #include <imgui_internal.h>
 
-#include "dma.h"
 #include "joypad.h"
 
-Debugger::Debugger(Scheduler *scheduler, bool debug) {
-    is_debug = debug;
+Debugger::Debugger(Scheduler *scheduler) {
     this->scheduler = scheduler;
+}
+
+void Debugger::init(bool hide_debug) {
+    this->hide_debug = hide_debug;
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0)
     {
@@ -21,7 +23,7 @@ Debugger::Debugger(Scheduler *scheduler, bool debug) {
 
     int width = 160*scale + 18;
     int height = 144*scale + 18;
-    if (is_debug) {
+    if (hide_debug) {
         width = 1280;
         height = 720;
     }
@@ -70,7 +72,7 @@ Debugger::Debugger(Scheduler *scheduler, bool debug) {
     ImGui_ImplSDLRenderer2_Init(renderer);
 }
 
-void Debugger::render() {
+void Debugger::render(uint16_t *frame_buffer) {
     ImGuiIO& io = ImGui::GetIO(); (void) io;
     SDL_Event event;
     SDL_PollEvent(&event);
@@ -92,9 +94,9 @@ void Debugger::render() {
 
     ImGui::DockSpaceOverViewport(0, 0, ImGuiDockNodeFlags_PassthruCentralNode, 0);
 
-    render_game();
+    render_game(frame_buffer);
 
-    if (is_debug) {
+    if (hide_debug) {
         render_registers(io);
         memory_editor.ReadOnly = true;
         memory_editor.DrawWindow("Memory Bus", scheduler->cpu.bus.memory, 0x2000);
@@ -112,14 +114,14 @@ void Debugger::render() {
     SDL_RenderPresent(renderer);
 }
 
-void Debugger::render_game() {
-    if (!is_debug) {
+void Debugger::render_game(uint16_t *frame_buffer) {
+    if (!hide_debug) {
         ImGuiWindowClass window_class;
         window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
         ImGui::SetNextWindowClass(&window_class);
     }
     ImGui::Begin("Game");
-    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void*)scheduler->cpu.bus.ppu.frame_buffer, 160, 144, 16, 160*2, 0x0, 0x0, 0x0, 0x0);
+    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(frame_buffer, 160, 144, 16, 160*2, 0x0, 0x0, 0x0, 0x0);
     if (surface == nullptr) {
         fprintf(stderr, "Failed to create SDL surface: %s\n", SDL_GetError());
     }
@@ -233,23 +235,23 @@ void Debugger::render_registers(const ImGuiIO& io) {
 //     static_cast<APU*>(userdata)->sample_count = 0;
 // }
 
-void Debugger::queue_audio() {
+void Debugger::queue_audio(short *sample, uint16_t sample_count) {
     while(SDL_GetQueuedAudioSize(audioDeviceID) != 0) {}
-    SDL_QueueAudio(audioDeviceID, scheduler->cpu.bus.apu.sample_output, SAMPLE_COUNT*sizeof(short));
+    SDL_QueueAudio(audioDeviceID, sample, sample_count*sizeof(short));
 }
 
 
-void Debugger::capture_keyboard() {
-    memset(scheduler->cpu.bus.joypad.key_state, 0, 8);
+void Debugger::capture_keyboard(uint8_t *key_state) {
+    memset(key_state, 0, 8);
     const Uint8* key = SDL_GetKeyboardState(NULL);
-    if(key[SDL_SCANCODE_Y]) scheduler->cpu.bus.joypad.key_state[0]=1;
-    if(key[SDL_SCANCODE_T]) scheduler->cpu.bus.joypad.key_state[1]=1;
-    if(key[SDL_SCANCODE_N]) scheduler->cpu.bus.joypad.key_state[2]=1;
-    if(key[SDL_SCANCODE_M]) scheduler->cpu.bus.joypad.key_state[3]=1;
-    if(key[SDL_SCANCODE_S]) scheduler->cpu.bus.joypad.key_state[4]=1;
-    if(key[SDL_SCANCODE_W]) scheduler->cpu.bus.joypad.key_state[5]=1;
-    if(key[SDL_SCANCODE_A]) scheduler->cpu.bus.joypad.key_state[6]=1;
-    if(key[SDL_SCANCODE_D]) scheduler->cpu.bus.joypad.key_state[7]=1;
+    if(key[SDL_SCANCODE_Y]) key_state[0]=1;
+    if(key[SDL_SCANCODE_T]) key_state[1]=1;
+    if(key[SDL_SCANCODE_N]) key_state[2]=1;
+    if(key[SDL_SCANCODE_M]) key_state[3]=1;
+    if(key[SDL_SCANCODE_S]) key_state[4]=1;
+    if(key[SDL_SCANCODE_W]) key_state[5]=1;
+    if(key[SDL_SCANCODE_A]) key_state[6]=1;
+    if(key[SDL_SCANCODE_D]) key_state[7]=1;
 }
 
 void Debugger::end() {

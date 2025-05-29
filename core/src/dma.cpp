@@ -1,6 +1,6 @@
 #include "dma.h"
 
-#include <debugger.h>
+#include <memory.h>
 
 void DMA::transfer_dma() {
     uint16_t dest = 0xFE00;
@@ -12,7 +12,7 @@ void DMA::transfer_dma() {
 
 void DMA::transfer_gdma() {
 
-    // logger.get_logger()->debug("GDMA transfer from: {:#X} to: {:#X} with length: {:d}", hdma_src, 0x8000 + hdma_dest, (hdma_length+1) * 0x10);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "GDMA transfer from: {:#X} to: {:#X} with length: {:d}", hdma_src, 0x8000 + hdma_dest, (hdma_length+1) * 0x10);
 
     uint16_t length = (hdma_length+1) * 0x10;
 
@@ -29,7 +29,7 @@ void DMA::transfer_gdma() {
 
 
 void DMA::transfer_hdma() { // TODO: HDMA stop prematurely if dest addr overflow (including ignored upper 3 bits)
-    // logger.get_logger()->debug("HDMA transfer from: {:#X} to: {:#X}", hdma_src, 0x8000 + hdma_dest);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "HDMA transfer from: {:#X} to: {:#X}", hdma_src, 0x8000 + hdma_dest);
 
      for(uint8_t i=0;i<16;i++) {
          bus->unsafe_write(0x8000 + hdma_dest + i, bus->unsafe_read(hdma_src + i));
@@ -41,7 +41,7 @@ void DMA::transfer_hdma() { // TODO: HDMA stop prematurely if dest addr overflow
     hdma_dest += 16;
 
     hdma_length -= 1;
-    // logger.get_logger()->debug("Remaining progress: {:#X}", new_progress);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Remaining progress: {:#X}", new_progress);
     if (hdma_length == 0xFF) {
         is_hdma_running = false;
     }

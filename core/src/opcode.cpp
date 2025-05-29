@@ -89,14 +89,14 @@ void CPU::op_0F() {
 } // RRCA
 void CPU::op_10() {
     mcycle = 1;
-    if (bus.cartridge.is_cgb) {
+    if (bus.cartridge.is_boot_cgb) {
         if (switch_armed) {
             bus.write(0xFF04, 0); // Reset DIV
             double_spd_mode = !double_spd_mode;
             switch_armed = false;
             Scheduler::switch_speed(double_spd_mode);
             // mcycle = 2050; // Avoid overwhelming scheduler and cause early turn around
-            logger.get_logger()->debug("Speed switch requested, mode is now: {:X}", double_spd_mode);
+            SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Speed switch requested, mode is now: {:X}", double_spd_mode);
         }
     }
     opskip = 2;

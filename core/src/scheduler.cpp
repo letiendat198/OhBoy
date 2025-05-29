@@ -1,4 +1,3 @@
-#include <debugger.h>
 #include <dma.h>
 #include <interrupt.h>
 #include <timer.h>
@@ -31,7 +30,7 @@ void Scheduler::schedule(EVENT_ID event_id, uint32_t cycle_to_go) {
 
     if (next_event == nullptr || event_queue[event_id] < *next_event) next_event = &event_queue[event_id];
 
-    // logger.get_logger()->debug("Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Schedule event: {:d} for cycle: {:d}", static_cast<int>(event), cycle_to_go + current_cycle);
 }
 
 // Schedule an event at this exact cycle
@@ -74,13 +73,13 @@ void Scheduler::find_next_event() {
 
 void Scheduler::switch_speed(bool is_double_spd) {
     CYCLE_PER_FRAME = is_double_spd ? 17556*2 : 17556;
-    logger.get_logger()->debug("Speed switch at cycle: {:d}", current_cycle);
+    SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Speed switch at cycle: {:d}", current_cycle);
 
     if (is_double_spd) {
         for(uint8_t i = 0; i <= DRAW; i++) {
             if (event_queue[i].cycle == NO_EVENT_SCHEDULED) continue;
             event_queue[i].cycle += event_queue[i].relative_cycle;
-            logger.get_logger()->debug("Reschedule event: {:d} from cycle: {:d} to {:d}", i, event_queue[i].cycle - event_queue[i].relative_cycle, event_queue[i].cycle);
+            SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Reschedule event: {:d} from cycle: {:d} to {:d}", i, event_queue[i].cycle - event_queue[i].relative_cycle, event_queue[i].cycle);
         }
     }
     else {
@@ -96,7 +95,7 @@ void Scheduler::switch_speed(bool is_double_spd) {
 
 SchedulerEvent Scheduler::progress() {
     assert(next_event != nullptr);
-    // logger.get_logger()->debug("Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Next event: {:d} at cycle: {:d}", static_cast<int>(event_queue.begin()->event), event_queue.begin()->cycle);
     while(current_cycle < next_event->cycle) {
         cpu.handle_interrupts();
         if (cpu.halt) { // Skip to next event if halt, cause CPU do nothing anyway
@@ -144,7 +143,7 @@ void Scheduler::tick_frame() {
                     cpu.bus.ppu.mode = 1;
                     cpu.bus.ppu.window_ly = 0;
                     cpu.bus.interrupt.set_flag(VBLANK_INTR);
-                    if (debugger != nullptr) debugger->render(); // WILL HANG IF cpu.bus.ppu IS OFF
+                    if (render_callback != nullptr) render_callback(cpu.bus.ppu.frame_buffer); // WILL HANG IF cpu.bus.ppu IS OFF
                 }
                 cpu.bus.ppu.check_stat_interrupt();
                 cpu.bus.ppu.schedule_next_mode(1);
@@ -176,25 +175,56 @@ void Scheduler::tick_frame() {
                 schedule(SAMPLE_APU, CYCLE_PER_SAMPLE);
                 cpu.bus.apu.sample();
                 if (cpu.bus.apu.sample_count == SAMPLE_COUNT) {
-                    if (debugger != nullptr) debugger->queue_audio();
+                    if (audio_callback != nullptr) audio_callback(cpu.bus.apu.sample_output, SAMPLE_COUNT);
                     cpu.bus.apu.sample_count = 0;
                 }
                 break;
             default:
-                logger.get_logger()->debug("Not yet implemented event");
+                SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Not yet implemented event");
         }
         current_cycle = cycle_backup; // Restore context
     }
-    // logger.get_logger()->debug("Turn around at cycle: {:d}", current_cycle);
+    if (joypad_callback != nullptr) joypad_callback(cpu.bus.joypad.key_state);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Turn around at cycle: {:d}", current_cycle);
     current_cycle -= CYCLE_PER_FRAME;
 
     for(uint8_t i=0;i<MAX_EVENT;i++) {
         if (event_queue[i].cycle != NO_EVENT_SCHEDULED && event_queue[i].cycle > CYCLE_PER_FRAME) event_queue[i].cycle -= CYCLE_PER_FRAME;
-        else logger.get_logger()->warn("Scheduler will miss event: {:d} at: {:d}", i, event_queue[i].cycle);
+        else if (event_queue[i].cycle != NO_EVENT_SCHEDULED) SPDLOG_LOGGER_WARN(logger.get_logger(), "Scheduler will miss event: {:d} at: {:d}", i, event_queue[i].cycle);
         if (i == TIMA_OVERFLOW && cpu.bus.timer.tima_overflow_cycle > CYCLE_PER_FRAME) cpu.bus.timer.tima_overflow_cycle -= CYCLE_PER_FRAME;
     }
 }
 
-void Scheduler::set_debugger(Debugger *debugger) {
-    this->debugger = debugger;
+void Scheduler::set_audio_callback(audio_callback_t callback) {
+    audio_callback = callback;
 }
+
+void Scheduler::set_render_callback(render_callback_t callback) {
+    render_callback = callback;
+}
+
+void Scheduler::set_joypad_callback(joypad_callback_t callback) {
+    joypad_callback = callback;
+}
+
+bool Scheduler::set_cartridge_rom(uint8_t *data, uint32_t rom_size) {
+    return cpu.bus.cartridge.init_rom(data, rom_size);
+}
+
+void Scheduler::set_boot_rom(uint8_t *data, bool is_cgb) {
+    cpu.bus.cartridge.init_boot(data, is_cgb);
+    cpu.bus.ppu.set_cgb_mode(is_cgb);
+}
+
+void Scheduler::load_sram(uint8_t *data) {
+    cpu.bus.cartridge.external_ram =  data;
+}
+
+uint8_t* Scheduler::get_sram() {
+    if (cpu.bus.cartridge.header.ram_banks == 0) return nullptr;
+
+    return cpu.bus.cartridge.external_ram;
+}
+
+
+

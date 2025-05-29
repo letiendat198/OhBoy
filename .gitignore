@@ -6,10 +6,7 @@ venv
 roms
 deps/SDL2
 deps/SDL2-VC
-gui/target
-gui/*.ini
-gui/*.log
-include/boot.h
-include/cgb_boot.h
-include/game.h
+debugger/gui/target
+debugger/gui/*.ini
+debugger/gui/*.log
 *.diagsession

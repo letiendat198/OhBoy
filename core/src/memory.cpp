@@ -1,10 +1,12 @@
 #include "memory.h"
 
-#include <debugger.h>
+#include <cpu.h>
 #include <dma.h>
 #include <interrupt.h>
 #include <joypad.h>
 #include <timer.h>
+
+#include "scheduler.h"
 
 uint8_t Memory::read(uint16_t addr) {
     switch (addr) {
@@ -24,7 +26,7 @@ uint8_t Memory::read(uint16_t addr) {
             return (timer.calc_current_div() >> 6) & 0xFF;
         }
         case 0xFF05: { // TIMA
-            // logger.get_logger()->debug("Read TIMA: {:d} at cycle: {:d}, DIV: {:b}", timer.calc_current_tima(), Scheduler::current_cycle, timer.calc_current_div());
+            // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Read TIMA: {:d} at cycle: {:d}, DIV: {:b}", timer.calc_current_tima(), Scheduler::current_cycle, timer.calc_current_div());
             if (timer.current_tac.enable) return timer.calc_current_tima();
             else return timer.paused_tima;
         }
@@ -39,7 +41,7 @@ uint8_t Memory::read(uint16_t addr) {
         case 0xFF54: // HDMA4
             return 0xFF; // Read-only
         case 0xFF55: {
-            // logger.get_logger()->debug("Reading HDMA register: {:#X}, HDMA current status: {:X}", (!dma.is_hdma_running) << 7 | (dma.hdma_length & 0x7F), dma.is_hdma_running);
+            // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Reading HDMA register: {:#X}, HDMA current status: {:X}", (!dma.is_hdma_running) << 7 | (dma.hdma_length & 0x7F), dma.is_hdma_running);
             return (!dma.is_hdma_running) << 7 | (dma.hdma_length & 0x7F);
         }
         case 0xFF44: // LY
@@ -75,7 +77,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
             return;
         }
         case 0xFF04: { // DIV RESET
-            // logger.get_logger()->debug("DIV reset at cycle: {:d}", Scheduler::current_cycle);
+            // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "DIV reset at cycle: {:d}", Scheduler::current_cycle);
 
             // When DIV is written and causing a falling edge on selected TIMA bit, tick once
             uint16_t current_div = timer.calc_current_div();
@@ -93,7 +95,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
         case 0xFF05: { //TIMA
             if (timer.current_tac.enable) timer.schedule_tima_overflow(data);
             else timer.paused_tima = data;
-            // logger.get_logger()->debug("Write: {:d} to TIMA at cycle: {:d}. Overflow at: {:d}. DIV: {:b}", data, Scheduler::current_cycle, timer.tima_overflow_cycle,  timer.calc_current_div());
+            // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Write: {:d} to TIMA at cycle: {:d}. Overflow at: {:d}. DIV: {:b}", data, Scheduler::current_cycle, timer.tima_overflow_cycle,  timer.calc_current_div());
             return;
         }
         case 0xFF07: { // TAC
@@ -116,7 +118,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
                     }
                 }
             }
-            // logger.get_logger()->debug("TAC enable: {}, TAC delay: {:d}", tac.enable, tac.increment_freq);
+            // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "TAC enable: {}, TAC delay: {:d}", tac.enable, tac.increment_freq);
             if (tac.enable && tac.increment_freq != old_tac.increment_freq) { // On freq change - Potentially problematic
                 timer.schedule_tima_overflow(timer.calc_current_tima());
                 if (((div>>old_tac.bit_select) & 0x1) == 1 && ((div>>tac.bit_select) & 0x1) == 0) timer.tick_tima_once();
@@ -136,7 +138,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
         {
             dma.dma_addr = data;
             dma.transfer_dma();
-            // logger.get_logger()->debug("DMA initiated");
+            // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "DMA initiated");
             return;
         }
         case 0xFF51: { // HDMA1
@@ -164,7 +166,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
             if (dma.is_hdma_running == false) {
                 dma.is_hdma_running = true;
                 dma.hdma_type = (data >> 7) & 0x1;
-                // logger.get_logger()->debug("Requesting HDMA type {:X} with length of {:#X}", dma.hdma_type, data & 0x7F);
+                // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Requesting HDMA type {:X} with length of {:#X}", dma.hdma_type, data & 0x7F);
                 if (dma.hdma_type == 0) dma.transfer_gdma();
                 else if (dma.hdma_type == 1 && ppu.mode == 0) dma.transfer_hdma();
             }
@@ -173,7 +175,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
                 if (terminate_bit == 0) {
                     dma.is_hdma_running = false;
                 }
-                // logger.get_logger()->debug("HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
+                // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "HDMA overwritten with data {:#X}, terminating bit is {:X}", data, terminate_bit);
             }
             return;
         }
@@ -249,7 +251,7 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
         case 1:
         case 2:
         case 3:
-            if (is_boot && (addr < 0x100 || (cartridge.is_cgb && 0x200<=addr && addr<=0x8FF))) return *(cartridge.boot_data + addr);
+            if (is_boot && (addr < 0x100 || (cartridge.is_boot_cgb && 0x200<=addr && addr<=0x8FF))) return *(cartridge.boot_data + addr);
             return *(cartridge.rom_data + addr);
         case 4:
         case 5:
@@ -261,7 +263,7 @@ uint8_t Memory::unsafe_read(uint16_t addr) {
             // if (ppu.mode != 3)
                 return read_vram(addr, vram_bank);
             // else {
-            //     logger.get_logger()->warn("Reading VRAM in mode 3");
+            //     SPDLOG_LOGGER_WARN(logger.get_logger(), "Reading VRAM in mode 3");
             //     return 0xFF;
             // }
         case 0xA:
@@ -295,7 +297,7 @@ void Memory::unsafe_write(uint16_t addr, uint8_t data) {
         case 9:
             // if (ppu.mode != 3)
                 write_vram(addr, data, vram_bank);
-            // else logger.get_logger()->warn("Writing VRAM in mode 3 is forbidden");
+            // else SPDLOG_LOGGER_WARN(logger.get_logger(), "Writing VRAM in mode 3 is forbidden");
             break;
         case 0xA:
         case 0xB:
@@ -378,7 +380,7 @@ uint8_t Memory::read_vram(uint16_t addr, uint8_t bank) { // Low level VRAM acces
 }
 
 void Memory::write_vram(uint16_t addr, uint8_t data, uint8_t bank) { // Low level VRAM access - Won't automatically use current bank
-    // logger.get_logger()->debug("Writing to VRAM at addr: {:X}, translated to: {:X}", addr, addr - 0x8000);
+    // SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Writing to VRAM at addr: {:X}, translated to: {:X}", addr, addr - 0x8000);
     uint16_t real_addr = addr - 0x8000;
     vram[real_addr + 0x2000 * bank] = data;
 }
