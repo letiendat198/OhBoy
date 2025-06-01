@@ -110,6 +110,7 @@ SchedulerEvent Scheduler::progress() {
     return old_event;
 }
 
+uint8_t frame_count = 0;
 void Scheduler::tick_frame() {
     // WARN: Scheduler may not clear event with cycle before limit if current cycle hit turn around limit
     while (current_cycle < CYCLE_PER_FRAME || next_event->cycle <= CYCLE_PER_FRAME) {
@@ -131,7 +132,7 @@ void Scheduler::tick_frame() {
                 cpu.bus.ppu.schedule_next_mode(3);
                 break;
             case HBLANK:
-                cpu.bus.ppu.draw_scanline();
+                if (frame_count % frame_skip == 0) cpu.bus.ppu.draw_scanline();
                 cpu.bus.ppu.mode = 0;
                 if (cpu.bus.dma.is_hdma_running && cpu.bus.dma.hdma_type == 1 && !cpu.halt) cpu.bus.dma.transfer_hdma();
                 cpu.bus.ppu.check_stat_interrupt();
@@ -143,7 +144,7 @@ void Scheduler::tick_frame() {
                     cpu.bus.ppu.mode = 1;
                     cpu.bus.ppu.window_ly = 0;
                     cpu.bus.interrupt.set_flag(VBLANK_INTR);
-                    if (render_callback != nullptr) render_callback(cpu.bus.ppu.frame_buffer); // WILL HANG IF cpu.bus.ppu IS OFF
+                    if (frame_count % frame_skip == 0) if (render_callback != nullptr) render_callback(cpu.bus.ppu.frame_buffer); // WILL HANG IF cpu.bus.ppu IS OFF
                 }
                 cpu.bus.ppu.check_stat_interrupt();
                 cpu.bus.ppu.schedule_next_mode(1);
@@ -193,6 +194,12 @@ void Scheduler::tick_frame() {
         else if (event_queue[i].cycle != NO_EVENT_SCHEDULED) SPDLOG_LOGGER_WARN(logger.get_logger(), "Scheduler will miss event: {:d} at: {:d}", i, event_queue[i].cycle);
         if (i == TIMA_OVERFLOW && cpu.bus.timer.tima_overflow_cycle > CYCLE_PER_FRAME) cpu.bus.timer.tima_overflow_cycle -= CYCLE_PER_FRAME;
     }
+
+    frame_count = (frame_count + 1) % frame_skip;
+}
+
+void Scheduler::set_frame_skip(uint8_t frame_skip) {
+    if (frame_skip > 0) this->frame_skip = frame_skip;
 }
 
 void Scheduler::set_audio_callback(audio_callback_t callback) {
@@ -217,6 +224,7 @@ void Scheduler::set_boot_rom(uint8_t *data, bool is_cgb) {
 }
 
 void Scheduler::load_sram(uint8_t *data) {
+    if (cpu.bus.cartridge.external_ram != nullptr) delete cpu.bus.cartridge.external_ram; // If loading save when sram was inited, delete the inited sram to load saved
     cpu.bus.cartridge.external_ram =  data;
 }
 

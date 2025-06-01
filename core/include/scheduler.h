@@ -49,6 +49,7 @@ private:
     inline static SchedulerEvent *event_queue = new SchedulerEvent[MAX_EVENT+1];
     inline static SchedulerEvent *next_event = nullptr;
 
+    uint8_t frame_skip = 1;
     audio_callback_t audio_callback = nullptr;
     render_callback_t render_callback = nullptr;
     joypad_callback_t joypad_callback = nullptr;
@@ -70,6 +71,7 @@ public:
     SchedulerEvent progress();
     void tick_frame();
 
+    void set_frame_skip(uint8_t frame_skip);
     void set_audio_callback(audio_callback_t callback);
     void set_render_callback(render_callback_t callback);
     void set_joypad_callback(joypad_callback_t callback);

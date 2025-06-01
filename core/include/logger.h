@@ -4,7 +4,12 @@
 
 #ifndef LOGGER_H
 #define LOGGER_H
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
+
+#ifdef OHBOY_ENABLE_LOGGING
+    #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
+#else
+    #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_OFF
+#endif
 
 #include <iostream>
 #include <fstream>
@@ -13,7 +18,7 @@
 
 class Logger {
 private:
-    std::shared_ptr<spdlog::logger> logger;
+    std::shared_ptr<spdlog::logger> logger = nullptr;
 public:
     Logger(std::string logger_name);
     std::shared_ptr<spdlog::logger> get_logger();
