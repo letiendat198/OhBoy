@@ -172,6 +172,7 @@ void PPU::read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj
         uint8_t b = (p2 >> 2) & 0x1F;
 
         // Color correction. From: https://www.pokecommunity.com/threads/built-in-color-correction-for-gbc-games.448482/
+#ifndef ESP_PLATFORM // LCD have gamma curve
         uint8_t rx = (13*r + 2*g +    b) >> 4;
         uint8_t gx = (       3*g +    b) >> 2;
         uint8_t bx = (       2*g + 14*b) >> 4;
@@ -179,7 +180,7 @@ void PPU::read_cgb_palette(uint16_t *palette, uint8_t color_palette, bool is_obj
         r = gamma_lookup[rx];
         g = gamma_lookup[gx];
         b = gamma_lookup[bx];
-
+#endif
         palette[color_id] = (r << 11) | (g << 6) | b;
     }
 }

@@ -45,7 +45,8 @@ bool Cartridge::init_rom(uint8_t *data, uint32_t rom_size) {
     }
 
     external_ram_size = 0x2000*header.ram_banks;
+#ifndef ESP_PLATFORM
     external_ram = new uint8_t[external_ram_size]();
-
+#endif
     return true;
 }

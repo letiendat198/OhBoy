@@ -156,6 +156,7 @@ void Scheduler::tick_frame() {
                 cpu.bus.interrupt.set_flag(TIMER_INTR);
                 cpu.bus.timer.schedule_tima_overflow(cpu.bus.timer.tma);
                 break;
+#ifndef OHBOY_NO_AUDIO
             case DIV_APU_TICK:
                 cpu.bus.apu.on_div_apu_tick();
                 cpu.bus.apu.schedule_div_apu();
@@ -180,6 +181,7 @@ void Scheduler::tick_frame() {
                     cpu.bus.apu.sample_count = 0;
                 }
                 break;
+#endif
             default:
                 SPDLOG_LOGGER_DEBUG(logger.get_logger(), "Not yet implemented event");
         }

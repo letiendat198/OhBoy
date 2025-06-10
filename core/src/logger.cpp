@@ -12,6 +12,7 @@ std::shared_ptr<spdlog::logger> Logger::get_logger() {
     return logger;
 }
 #else
+    printf("%s", logger_name.c_str());
 }
 #endif
 

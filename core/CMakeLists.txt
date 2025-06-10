@@ -16,10 +16,10 @@ add_library(OhBoy
         src/apu.cpp
 )
 
-set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+# set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog)
 target_link_libraries(OhBoy spdlog)
 
-target_include_directories(OhBoy PRIVATE "include")
+target_include_directories(OhBoy PUBLIC "include")
 target_include_directories(OhBoy PRIVATE "deps/spdlog/include")
