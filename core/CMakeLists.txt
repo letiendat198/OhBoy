@@ -16,7 +16,9 @@ add_library(OhBoy
         src/apu.cpp
 )
 
-# set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+if (NOT ESP_PLATFORM) # ESP-IDF doesn't like LTO :(
+        set_property(TARGET OhBoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog)
 target_link_libraries(OhBoy spdlog)
