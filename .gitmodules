@@ -1,18 +1,3 @@
-[submodule "debugger/deps/imgui"]
-	path = debugger/deps/imgui
-	url = https://github.com/ocornut/imgui.git
-[submodule "debugger/deps/popl"]
-	path = debugger/deps/popl
-	url = https://github.com/badaix/popl.git
-[submodule "debugger/deps/spdlog"]
-	path = debugger/deps/spdlog
-	url = https://github.com/gabime/spdlog.git
-[submodule "debugger/deps/fmt"]
-	path = debugger/deps/fmt
-	url = https://github.com/fmtlib/fmt.git
-[submodule "debugger/deps/imgui_club"]
-	path = debugger/deps/imgui_club
-	url = https://github.com/ocornut/imgui_club.git
 [submodule "core/deps/spdlog"]
 	path = core/deps/spdlog
 	url = https://github.com/gabime/spdlog.git

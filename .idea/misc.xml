@@ -9,6 +9,7 @@
   <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
   <component name="CidrRootsConfiguration">
     <excludeRoots>
+      <file path="$PROJECT_DIR$/core/deps" />
       <file path="$PROJECT_DIR$/debugger/deps" />
       <file path="$PROJECT_DIR$/debugger/gui/target" />
       <file path="$PROJECT_DIR$/gameboy-doctor" />
