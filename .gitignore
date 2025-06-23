@@ -4,8 +4,6 @@ cmake-build-release
 out
 venv
 roms
-debugger/deps/SDL2
-debugger/deps/SDL2-VC
 debugger/gui/target
 debugger/gui/*.ini
 debugger/gui/*.log

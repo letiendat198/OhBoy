@@ -2,9 +2,12 @@
 
 A Game Boy/Game Boy Color emulator
 
-The emulator core was written in C++ and the GUI was written in Rust using Iced
+The emulator core and debugger was written in C++ and the ROM selector GUI was written in Rust with Iced
 
-Looking for the minimal version that can run on a Pi Pico 2? Check the [pico branch](https://github.com/letiendat198/OhBoy/tree/pico)
+The core is compiled to a static library with `spdlog` as the only dependency (TODO: Copy spdlog macro to skip it
+if logging is turned off). You can link and use it anywhere that can compile C++ code (tested on Pi Pico 2 and ESP32-S3. DMG and CGB ~50-60fps without sound)
+
+`Pico` branch is obsolete. Please include the `CMakeLists.txt` file in `core/` if you only need the core 
 
 ## Images
 
@@ -32,8 +35,9 @@ Keyboard:
 Require GCC, MinGW or MSVC versions that support C++ 17.
 ### Prerequisite
 - You will need to install [Rust](https://www.rust-lang.org/tools/install)
-- Download pre-built [SDL2](https://github.com/libsdl-org/SDL/releases/tag/release-2.30.8) (the `devel-mingw` variant for MinGW, `devel-VC` variant for MSVC), 
-rename it SDL2 (or SDL2-VC if using MSVC) then put it inside `deps` folder.  Install `libsdl2-dev` if you're on Linux
+- ~~For Windows: Download pre-built [SDL2](https://github.com/libsdl-org/SDL/releases/tag/release-2.30.8) (the `devel-mingw` variant for MinGW, `devel-VC` variant for MSVC), 
+rename it SDL2 (or SDL2-VC if using MSVC) then put it inside `deps` folder~~ (included now, zlib license should allow it)
+- For Linux: Install `libsdl2-dev`
 ### Building
 ```
 # Clone this repository and its dependencies
