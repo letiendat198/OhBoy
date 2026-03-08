@@ -36,7 +36,7 @@ Require GCC, MinGW or MSVC versions that support C++ 17.
 ### Prerequisite
 - You will need to install [Rust](https://www.rust-lang.org/tools/install)
 - For Windows: Download pre-built [SDL2](https://github.com/libsdl-org/SDL/releases/tag/release-2.30.8) (the `devel-mingw` variant for MinGW, `devel-VC` variant for MSVC), 
-rename it SDL2 (or SDL2-VC if using MSVC) then put it inside `deps` folder
+rename it SDL2 (or SDL2-VC if using MSVC) then put it inside `debugger/deps` folder
 - For Linux: Install `libsdl2-dev`
 ### Building
 ```
