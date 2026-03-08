@@ -3,6 +3,5 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/core/deps/spdlog" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/out/build/x64-Debug/_deps/corrosion-src" vcs="Git" />
   </component>
 </project>

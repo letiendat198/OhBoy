@@ -7,4 +7,6 @@ roms
 debugger/gui/target
 debugger/gui/*.ini
 debugger/gui/*.log
+debugger/deps/SDL2
+debugger/deps/SDL2-VC
 *.diagsession
